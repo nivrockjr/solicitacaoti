@@ -130,13 +130,16 @@ const DashboardPage: React.FC = () => {
             <CardTitle>Request Types</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px] flex items-center justify-center">
-            <BarChart
+            <BarChart 
               data={chartData}
               index="name"
               categories={['value']}
               colors={['hsl(var(--primary))']}
               valueFormatter={(value: number) => String(value)}
               className="w-full aspect-[4/3]"
+              config={{
+                value: { color: 'hsl(var(--primary))' }
+              }}
             />
           </CardContent>
         </Card>
@@ -146,13 +149,16 @@ const DashboardPage: React.FC = () => {
             <CardTitle>Request Status</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px] flex items-center justify-center">
-            <BarChart
+            <BarChart 
               data={statusData}
               index="name"
               categories={['value']}
               colors={['hsl(var(--accent))']}
               valueFormatter={(value: number) => String(value)}
               className="w-full aspect-[4/3]"
+              config={{
+                value: { color: 'hsl(var(--accent))' }
+              }}
             />
           </CardContent>
         </Card>

@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
@@ -353,6 +354,83 @@ function getPayloadConfigFromPayload(
     : config[key as keyof typeof config]
 }
 
+// Add BarChart component
+const BarChart = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<typeof ChartContainer> & {
+    data: any[]
+    index: string
+    categories: string[]
+    colors?: string[]
+    valueFormatter?: (value: number) => string
+    yAxisWidth?: number
+  }
+>(
+  (
+    {
+      data,
+      index,
+      categories,
+      colors,
+      valueFormatter = (value: number) => `${value}`,
+      yAxisWidth = 40,
+      ...props
+    },
+    ref
+  ) => {
+    const config = React.useMemo(() => {
+      return categories.reduce<ChartConfig>((acc, category, i) => {
+        acc[category] = {
+          color: colors?.[i] ?? `hsl(var(--chart-${i}))`,
+        }
+        return acc
+      }, {})
+    }, [categories, colors])
+
+    return (
+      <ChartContainer ref={ref} {...props} config={config}>
+        <RechartsPrimitive.BarChart data={data}>
+          <RechartsPrimitive.XAxis
+            dataKey={index}
+            stroke="hsl(var(--foreground))"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+          />
+          <RechartsPrimitive.YAxis
+            width={yAxisWidth}
+            stroke="hsl(var(--foreground))"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={valueFormatter}
+          />
+          <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+          <RechartsPrimitive.Tooltip
+            content={
+              <ChartTooltipContent
+                formatter={(value: number, name) => [
+                  valueFormatter(value),
+                  name,
+                ]}
+              />
+            }
+          />
+          {categories.map((category, i) => (
+            <RechartsPrimitive.Bar
+              key={category}
+              dataKey={category}
+              fill={colors?.[i] ?? `hsl(var(--chart-${i}))`}
+              radius={[4, 4, 0, 0]}
+            />
+          ))}
+        </RechartsPrimitive.BarChart>
+      </ChartContainer>
+    )
+  }
+)
+BarChart.displayName = "BarChart"
+
 export {
   ChartContainer,
   ChartTooltip,
@@ -360,4 +438,6 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  BarChart, // Export the BarChart component
 }
+

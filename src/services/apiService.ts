@@ -15,6 +15,12 @@ let holidays = cloneDeep(mockHolidays);
 let notifications = cloneDeep(mockNotifications);
 let currentUser: User | null = null;
 
+// Mock user passwords (normally would be stored securely, hashed)
+const mockPasswords = {
+  "1": "admin123",  // Admin user password
+  "2": "user123",   // Regular user password
+};
+
 // Authentication
 export const login = async (email: string, password: string): Promise<User> => {
   await delay(500);
@@ -25,7 +31,11 @@ export const login = async (email: string, password: string): Promise<User> => {
     throw new Error("Invalid email or password");
   }
   
-  // In a real app, we would validate the password here
+  // Check password against mock passwords
+  const correctPassword = mockPasswords[user.id];
+  if (password !== correctPassword) {
+    throw new Error("Invalid email or password");
+  }
   
   currentUser = user;
   return user;

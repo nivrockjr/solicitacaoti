@@ -1,3 +1,4 @@
+
 import { User, ITRequest, RequestType, RequestPriority, Holiday, Notification } from '../types';
 import { mockUsers, mockRequests, mockHolidays, mockNotifications } from './mockData';
 import { addDays, format, isWeekend, isBefore, isAfter, parseISO } from 'date-fns';
@@ -17,7 +18,7 @@ let currentUser: User | null = null;
 
 // Mock user passwords (normally would be stored securely, hashed)
 const mockPasswords = {
-  "1": "admin123",  // Admin user password
+  "1": "Pqmz*2747",  // Admin user password
   "2": "user123",   // Regular user password
 };
 
@@ -28,13 +29,13 @@ export const login = async (email: string, password: string): Promise<User> => {
   const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user) {
-    throw new Error("Invalid email or password");
+    throw new Error("Email ou senha inválidos");
   }
   
   // Check password against mock passwords
   const correctPassword = mockPasswords[user.id];
   if (password !== correctPassword) {
-    throw new Error("Invalid email or password");
+    throw new Error("Email ou senha inválidos");
   }
   
   currentUser = user;
@@ -52,11 +53,11 @@ export const forgotPassword = async (email: string): Promise<void> => {
   const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user) {
-    throw new Error("User not found");
+    throw new Error("Usuário não encontrado");
   }
   
   // In a real app, we would send a reset password link to the user's email
-  console.log(`Password reset email sent to ${email}`);
+  console.log(`Email de redefinição de senha enviado para ${email}`);
 };
 
 export const getCurrentUser = async (): Promise<User | null> => {
@@ -83,7 +84,7 @@ export const getRequestById = async (id: string): Promise<ITRequest | undefined>
 export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' | 'deadlineAt'>): Promise<ITRequest> => {
   await delay(500);
   
-  const newId = `REQ-${String(requests.length + 1).padStart(3, '0')}`;
+  const newId = `SOL-${String(requests.length + 1).padStart(3, '0')}`;
   const now = new Date();
   const createdAtStr = now.toISOString();
   
@@ -95,7 +96,7 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' 
     id: newId,
     createdAt: createdAtStr,
     deadlineAt: deadline.toISOString(),
-    status: 'new'
+    status: 'nova'
   };
   
   requests.push(newRequest);
@@ -103,8 +104,8 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' 
   // Create notifications
   createNotification({
     userId: newRequest.requesterId,
-    title: "Request Submitted",
-    message: `Your request ${newId} has been submitted successfully`,
+    title: "Solicitação Enviada",
+    message: `Sua solicitação ${newId} foi enviada com sucesso`,
     type: "request_created",
     requestId: newId
   });
@@ -113,8 +114,8 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' 
   users.filter(u => u.role === 'admin').forEach(admin => {
     createNotification({
       userId: admin.id,
-      title: "New Request",
-      message: `A new ${request.priority} priority request ${newId} has been submitted`,
+      title: "Nova Solicitação",
+      message: `Uma nova solicitação de prioridade ${request.priority} ${newId} foi enviada`,
       type: "request_created",
       requestId: newId
     });
@@ -129,26 +130,26 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   const index = requests.findIndex(r => r.id === id);
   
   if (index === -1) {
-    throw new Error("Request not found");
+    throw new Error("Solicitação não encontrada");
   }
   
   const oldRequest = requests[index];
   
   // Check for status change to handle notifications
   if (updates.status && updates.status !== oldRequest.status) {
-    if (updates.status === 'assigned') {
+    if (updates.status === 'atribuida') {
       createNotification({
         userId: oldRequest.requesterId,
-        title: "Request Assigned",
-        message: `Your request ${id} has been assigned to a technician`,
+        title: "Solicitação Atribuída",
+        message: `Sua solicitação ${id} foi atribuída a um técnico`,
         type: "request_assigned",
         requestId: id
       });
-    } else if (updates.status === 'resolved') {
+    } else if (updates.status === 'resolvida') {
       createNotification({
         userId: oldRequest.requesterId,
-        title: "Request Resolved",
-        message: `Your request ${id} has been resolved`,
+        title: "Solicitação Resolvida",
+        message: `Sua solicitação ${id} foi resolvida`,
         type: "request_resolved",
         requestId: id
       });
@@ -159,8 +160,8 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   if (updates.deadlineAt && updates.deadlineAt !== oldRequest.deadlineAt) {
     createNotification({
       userId: oldRequest.requesterId,
-      title: "Deadline Updated",
-      message: `The deadline for your request ${id} has been updated`,
+      title: "Prazo Atualizado",
+      message: `O prazo para sua solicitação ${id} foi alterado`,
       type: "deadline_changed",
       requestId: id
     });
@@ -169,6 +170,70 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   requests[index] = { ...oldRequest, ...updates };
   
   return requests[index];
+};
+
+// Users management (only for admins)
+export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
+  await delay(500);
+  
+  // Check if current user is admin
+  if (!currentUser || currentUser.role !== 'admin') {
+    throw new Error("Permissão negada: Somente administradores podem criar usuários");
+  }
+  
+  // Check if email already exists
+  if (users.some(u => u.email.toLowerCase() === userData.email.toLowerCase())) {
+    throw new Error("Email já está em uso");
+  }
+  
+  const newId = String(users.length + 1);
+  const newUser: User = {
+    ...userData,
+    id: newId,
+  };
+  
+  users.push(newUser);
+  
+  // Also add a default password
+  mockPasswords[newId] = "senha123"; // Default password
+  
+  return newUser;
+};
+
+export const updateUser = async (id: string, updates: Partial<User>): Promise<User> => {
+  await delay(500);
+  
+  // Check if current user is admin
+  if (!currentUser || currentUser.role !== 'admin') {
+    throw new Error("Permissão negada: Somente administradores podem atualizar usuários");
+  }
+  
+  const index = users.findIndex(u => u.id === id);
+  
+  if (index === -1) {
+    throw new Error("Usuário não encontrado");
+  }
+  
+  users[index] = { ...users[index], ...updates };
+  
+  return users[index];
+};
+
+export const updateUserPassword = async (userId: string, newPassword: string): Promise<void> => {
+  await delay(500);
+  
+  // Check if current user is admin or the user themselves
+  if (!currentUser || (currentUser.id !== userId && currentUser.role !== 'admin')) {
+    throw new Error("Permissão negada: Somente administradores podem alterar senhas de outros usuários");
+  }
+  
+  const userIndex = users.findIndex(u => u.id === userId);
+  
+  if (userIndex === -1) {
+    throw new Error("Usuário não encontrado");
+  }
+  
+  mockPasswords[userId] = newPassword;
 };
 
 // Holidays
@@ -202,7 +267,7 @@ export const markNotificationAsRead = async (id: string): Promise<Notification> 
   const index = notifications.findIndex(n => n.id === id);
   
   if (index === -1) {
-    throw new Error("Notification not found");
+    throw new Error("Notificação não encontrada");
   }
   
   notifications[index] = { ...notifications[index], isRead: true };
@@ -230,22 +295,29 @@ const calculateDeadline = (type: RequestType, priority: RequestPriority): Date =
   let deadlineDays: number;
   
   switch (type) {
-    case 'inventory':
-      deadlineDays = 1; // 1 day for inventory requests
+    case "geral":
+      deadlineDays = 1; // 1 dia para solicitações gerais
       break;
-    case 'system':
-      deadlineDays = 5; // 5 days for system requests
+    case "sistemas":
+      deadlineDays = 10; // 10 dias para solicitações de sistemas
       break;
-    case 'emergency':
-      return addBusinessHours(now, 4); // 4 hours for emergency
+    case "ajuste_estoque":
+      deadlineDays = 2; // 2 dias para ajustes de estoque
+      break;
+    case "solicitacao_equipamento":
+      deadlineDays = 10; // 10 dias para solicitações de equipamentos
+      break;
+    case "manutencao_preventiva":
+      deadlineDays = 5; // 5 dias para manutenção preventiva
+      break;
     default:
-      deadlineDays = 3; // Default to 3 days
+      deadlineDays = 3; // Default para outros casos
   }
   
   // Adjust based on priority
-  if (priority === 'high') {
+  if (priority === 'alta') {
     deadlineDays = Math.max(1, deadlineDays - 1);
-  } else if (priority === 'low') {
+  } else if (priority === 'baixa') {
     deadlineDays += 1;
   }
   

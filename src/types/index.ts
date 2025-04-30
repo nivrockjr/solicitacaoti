@@ -10,9 +10,9 @@ export interface User {
   position?: string;
 }
 
-export type RequestType = 'inventory' | 'system' | 'emergency' | 'other';
-export type RequestPriority = 'low' | 'medium' | 'high';
-export type RequestStatus = 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed';
+export type RequestType = 'geral' | 'sistemas' | 'ajuste_estoque' | 'solicitacao_equipamento' | 'manutencao_preventiva';
+export type RequestPriority = 'baixa' | 'media' | 'alta';
+export type RequestStatus = 'nova' | 'atribuida' | 'em_andamento' | 'resolvida' | 'fechada';
 
 export interface ITRequest {
   id: string;

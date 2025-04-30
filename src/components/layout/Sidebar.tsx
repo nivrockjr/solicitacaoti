@@ -18,31 +18,31 @@ const Sidebar: React.FC = () => {
       showFor: 'both',
     },
     {
-      title: 'New Request',
+      title: 'Nova Solicitação',
       href: '/request/new',
       icon: <FilePlus className="h-5 w-5" />,
       showFor: 'both',
     },
     {
-      title: 'My Requests',
+      title: 'Minhas Solicitações',
       href: '/requests/my',
       icon: <FileText className="h-5 w-5" />,
       showFor: 'requester',
     },
     {
-      title: 'All Requests',
+      title: 'Todas Solicitações',
       href: '/requests',
       icon: <FileText className="h-5 w-5" />,
       showFor: 'admin',
     },
     {
-      title: 'Users',
+      title: 'Usuários',
       href: '/users',
       icon: <Users className="h-5 w-5" />,
       showFor: 'admin',
     },
     {
-      title: 'Settings',
+      title: 'Configurações',
       href: '/settings',
       icon: <Settings className="h-5 w-5" />,
       showFor: 'both',
@@ -58,9 +58,9 @@ const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 border-r bg-card h-screen flex flex-col">
       <div className="p-6">
-        <h2 className="text-lg font-semibold">IT Request Tracker</h2>
+        <h2 className="text-lg font-semibold">Suporte TI</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {isAdmin ? 'Admin Portal' : 'User Portal'}
+          {isAdmin ? 'Portal do Administrador' : 'Portal do Solicitante'}
         </p>
       </div>
       

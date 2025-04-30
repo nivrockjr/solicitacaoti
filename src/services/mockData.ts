@@ -5,113 +5,113 @@ import { User, ITRequest, Holiday, Notification } from '../types';
 export const mockUsers: User[] = [
   {
     id: "1",
-    email: "admin@company.com",
-    name: "Admin User",
+    email: "ti.mz@pqvirk.com.br",
+    name: "Administrador TI",
     role: "admin",
-    department: "IT",
-    position: "IT Manager"
+    department: "TI",
+    position: "Gerente de TI"
   },
   {
     id: "2",
     email: "user@company.com",
-    name: "Regular User",
+    name: "Usuário Regular",
     role: "requester",
     department: "Marketing",
-    position: "Marketing Specialist"
+    position: "Especialista de Marketing"
   }
 ];
 
 // Mock IT Requests
 export const mockRequests: ITRequest[] = [
   {
-    id: "REQ-001",
+    id: "SOL-001",
     requesterId: "2",
-    requesterName: "Regular User",
+    requesterName: "Usuário Regular",
     requesterEmail: "user@company.com",
-    title: "Need new monitor",
-    description: "Current monitor has dead pixels, need a replacement",
-    type: "inventory",
-    priority: "medium",
-    status: "new",
+    title: "Preciso de um novo monitor",
+    description: "Monitor atual tem pixels mortos, preciso de substituição",
+    type: "solicitacao_equipamento",
+    priority: "media",
+    status: "nova",
     createdAt: "2025-04-28T10:30:00Z",
-    deadlineAt: "2025-04-29T18:00:00Z",
+    deadlineAt: "2025-05-10T18:00:00Z",
     comments: [
       {
         id: "c1",
         userId: "2",
-        userName: "Regular User",
-        text: "Please expedite if possible",
+        userName: "Usuário Regular",
+        text: "Por favor, se possível agilize",
         createdAt: "2025-04-28T10:35:00Z"
       }
     ]
   },
   {
-    id: "REQ-002",
+    id: "SOL-002",
     requesterId: "2",
-    requesterName: "Regular User",
+    requesterName: "Usuário Regular",
     requesterEmail: "user@company.com",
-    title: "System access request",
-    description: "Need access to the reporting system",
-    type: "system",
-    priority: "low",
-    status: "assigned",
+    title: "Solicitação de acesso ao sistema",
+    description: "Preciso de acesso ao sistema de relatórios",
+    type: "sistemas",
+    priority: "baixa",
+    status: "atribuida",
     createdAt: "2025-04-27T14:15:00Z",
-    deadlineAt: "2025-05-02T18:00:00Z",
+    deadlineAt: "2025-05-11T18:00:00Z",
     assignedTo: "1",
     comments: [
       {
         id: "c2",
         userId: "1",
-        userName: "Admin User",
-        text: "Working on this",
+        userName: "Administrador TI",
+        text: "Trabalhando nisso",
         createdAt: "2025-04-28T09:00:00Z"
       }
     ]
   },
   {
-    id: "REQ-003",
+    id: "SOL-003",
     requesterId: "2",
-    requesterName: "Regular User",
+    requesterName: "Usuário Regular",
     requesterEmail: "user@company.com",
-    title: "Email not working",
-    description: "Cannot send or receive emails since this morning",
-    type: "emergency",
-    priority: "high",
-    status: "in_progress",
+    title: "Email não está funcionando",
+    description: "Não consigo enviar ou receber emails desde esta manhã",
+    type: "geral",
+    priority: "alta",
+    status: "em_andamento",
     createdAt: "2025-04-28T08:00:00Z",
-    deadlineAt: "2025-04-28T12:00:00Z",
+    deadlineAt: "2025-04-29T12:00:00Z",
     assignedTo: "1",
     comments: [
       {
         id: "c3",
         userId: "1",
-        userName: "Admin User",
-        text: "Investigating email server issues",
+        userName: "Administrador TI",
+        text: "Investigando problemas no servidor de email",
         createdAt: "2025-04-28T08:15:00Z"
       }
     ]
   },
   {
-    id: "REQ-004",
+    id: "SOL-004",
     requesterId: "2",
-    requesterName: "Regular User",
+    requesterName: "Usuário Regular",
     requesterEmail: "user@company.com",
-    title: "Software installation",
-    description: "Need Photoshop installed on my machine",
-    type: "system",
-    priority: "medium",
-    status: "resolved",
+    title: "Instalação de software",
+    description: "Preciso do Photoshop instalado na minha máquina",
+    type: "sistemas",
+    priority: "media",
+    status: "resolvida",
     createdAt: "2025-04-25T11:20:00Z",
-    deadlineAt: "2025-04-30T18:00:00Z",
+    deadlineAt: "2025-05-09T18:00:00Z",
     assignedTo: "1",
-    resolution: "Software installed and tested",
+    resolution: "Software instalado e testado",
     resolvedAt: "2025-04-27T15:45:00Z",
     comments: [
       {
         id: "c4",
         userId: "1",
-        userName: "Admin User",
-        text: "Installation complete",
+        userName: "Administrador TI",
+        text: "Instalação completa",
         createdAt: "2025-04-27T15:45:00Z"
       }
     ]
@@ -122,32 +122,32 @@ export const mockRequests: ITRequest[] = [
 export const mockHolidays: Holiday[] = [
   {
     id: "h1",
-    name: "New Year's Day",
+    name: "Ano Novo",
     date: "2025-01-01"
   },
   {
     id: "h2",
-    name: "Memorial Day",
-    date: "2025-05-26"
+    name: "Carnaval",
+    date: "2025-03-04"
   },
   {
     id: "h3",
-    name: "Independence Day",
-    date: "2025-07-04"
+    name: "Tiradentes",
+    date: "2025-04-21"
   },
   {
     id: "h4",
-    name: "Labor Day",
-    date: "2025-09-01"
+    name: "Dia do Trabalhador",
+    date: "2025-05-01"
   },
   {
     id: "h5",
-    name: "Thanksgiving Day",
-    date: "2025-11-27"
+    name: "Independência",
+    date: "2025-09-07"
   },
   {
     id: "h6",
-    name: "Christmas Day",
+    name: "Natal",
     date: "2025-12-25"
   }
 ];
@@ -157,41 +157,41 @@ export const mockNotifications: Notification[] = [
   {
     id: "n1",
     userId: "2",
-    title: "Request Received",
-    message: "Your request REQ-001 has been received and is pending assignment",
+    title: "Solicitação Recebida",
+    message: "Sua solicitação SOL-001 foi recebida e está aguardando atribuição",
     isRead: false,
     createdAt: "2025-04-28T10:30:00Z",
     type: "request_created",
-    requestId: "REQ-001"
+    requestId: "SOL-001"
   },
   {
     id: "n2",
     userId: "2",
-    title: "Request Assigned",
-    message: "Your request REQ-002 has been assigned to Admin User",
+    title: "Solicitação Atribuída",
+    message: "Sua solicitação SOL-002 foi atribuída para Administrador TI",
     isRead: true,
     createdAt: "2025-04-28T09:00:00Z",
     type: "request_assigned",
-    requestId: "REQ-002"
+    requestId: "SOL-002"
   },
   {
     id: "n3",
     userId: "1",
-    title: "New Request",
-    message: "A new high priority request REQ-003 has been submitted",
+    title: "Nova Solicitação",
+    message: "Uma nova solicitação de alta prioridade SOL-003 foi enviada",
     isRead: false,
     createdAt: "2025-04-28T08:00:00Z",
     type: "request_created",
-    requestId: "REQ-003"
+    requestId: "SOL-003"
   },
   {
     id: "n4",
     userId: "2",
-    title: "Request Resolved",
-    message: "Your request REQ-004 has been resolved",
+    title: "Solicitação Resolvida",
+    message: "Sua solicitação SOL-004 foi resolvida",
     isRead: false,
     createdAt: "2025-04-27T15:45:00Z",
     type: "request_resolved",
-    requestId: "REQ-004"
+    requestId: "SOL-004"
   }
 ];

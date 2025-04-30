@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentUser = await getCurrentUser();
         setUser(currentUser);
       } catch (error) {
-        console.error('Failed to initialize auth:', error);
+        console.error('Falha ao inicializar autenticação:', error);
       } finally {
         setIsLoading(false);
       }
@@ -40,13 +40,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const user = await apiLogin(email, password);
       setUser(user);
       toast({
-        title: "Login Successful",
-        description: `Welcome back, ${user.name}!`,
+        title: "Login Realizado",
+        description: `Bem-vindo(a), ${user.name}!`,
       });
     } catch (error) {
       toast({
-        title: "Login Failed",
-        description: error instanceof Error ? error.message : "Invalid credentials",
+        title: "Falha no Login",
+        description: error instanceof Error ? error.message : "Credenciais inválidas",
         variant: "destructive",
       });
       throw error;
@@ -61,16 +61,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await apiLogout();
       setUser(null);
       toast({
-        title: "Logout Successful",
-        description: "You have been logged out.",
+        title: "Logout Realizado",
+        description: "Você encerrou sua sessão.",
       });
     } catch (error) {
       toast({
-        title: "Logout Failed",
-        description: "An error occurred during logout.",
+        title: "Falha no Logout",
+        description: "Ocorreu um erro durante o logout.",
         variant: "destructive",
       });
-      console.error('Logout failed:', error);
+      console.error('Falha no logout:', error);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
 };

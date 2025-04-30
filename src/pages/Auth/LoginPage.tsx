@@ -21,7 +21,7 @@ const LoginPage: React.FC = () => {
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="font-medium">Perfil Admin:</div>
-                  <div>admin@company.com / admin123</div>
+                  <div>ti.mz@pqvirk.com.br / Pqmz*2747</div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="font-medium">Perfil Solicitante:</div>

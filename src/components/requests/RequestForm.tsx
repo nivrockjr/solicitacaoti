@@ -20,10 +20,10 @@ import { useAuth } from '@/contexts/AuthContext';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const requestSchema = z.object({
-  title: z.string().min(5, 'Title must be at least 5 characters').max(100),
-  description: z.string().min(20, 'Description must be at least 20 characters'),
-  type: z.enum(['inventory', 'system', 'emergency', 'other'] as const),
-  priority: z.enum(['low', 'medium', 'high'] as const),
+  title: z.string().min(5, 'Título deve ter pelo menos 5 caracteres').max(100),
+  description: z.string().min(20, 'Descrição deve ter pelo menos 20 caracteres'),
+  type: z.enum(['geral', 'sistemas', 'ajuste_estoque', 'solicitacao_equipamento', 'manutencao_preventiva'] as const),
+  priority: z.enum(['baixa', 'media', 'alta'] as const),
 });
 
 type RequestFormValues = z.infer<typeof requestSchema>;
@@ -45,8 +45,8 @@ const RequestForm: React.FC = () => {
     defaultValues: {
       title: '',
       description: '',
-      type: 'system',
-      priority: 'medium',
+      type: 'geral',
+      priority: 'media',
     },
   });
   
@@ -91,8 +91,8 @@ const RequestForm: React.FC = () => {
           clearInterval(progressInterval);
           console.error('File upload error:', error);
           toast({
-            title: 'File Upload Error',
-            description: `Failed to upload ${file.name}`,
+            title: 'Erro ao Enviar Arquivo',
+            description: `Falha ao enviar ${file.name}`,
             variant: 'destructive',
           });
         }
@@ -107,21 +107,21 @@ const RequestForm: React.FC = () => {
         description: values.description,
         type: values.type as RequestType,
         priority: values.priority as RequestPriority,
-        status: 'new',
+        status: 'nova',
         attachments,
       });
       
       toast({
-        title: 'Request Submitted',
-        description: `Your request #${newRequest.id} has been submitted successfully`,
+        title: 'Solicitação Enviada',
+        description: `Sua solicitação #${newRequest.id} foi enviada com sucesso`,
       });
       
       navigate(`/request/${newRequest.id}`);
     } catch (error) {
       console.error('Submit request error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to submit the request. Please try again.',
+        title: 'Erro',
+        description: 'Não foi possível enviar a solicitação. Por favor, tente novamente.',
         variant: 'destructive',
       });
     } finally {
@@ -136,8 +136,8 @@ const RequestForm: React.FC = () => {
     const oversizedFiles = selectedFiles.filter(file => file.size > MAX_FILE_SIZE);
     if (oversizedFiles.length > 0) {
       toast({
-        title: 'File Size Error',
-        description: `Some files exceed the 10MB limit: ${oversizedFiles.map(f => f.name).join(', ')}`,
+        title: 'Erro de Tamanho de Arquivo',
+        description: `Alguns arquivos excedem o limite de 10MB: ${oversizedFiles.map(f => f.name).join(', ')}`,
         variant: 'destructive',
       });
     }
@@ -168,7 +168,7 @@ const RequestForm: React.FC = () => {
   return (
     <Card className="max-w-3xl mx-auto">
       <CardHeader>
-        <CardTitle>Create New Request</CardTitle>
+        <CardTitle>Criar Nova Solicitação</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -178,9 +178,9 @@ const RequestForm: React.FC = () => {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel>Título</FormLabel>
                   <FormControl>
-                    <Input placeholder="Brief title for your request" {...field} />
+                    <Input placeholder="Título breve para sua solicitação" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -193,7 +193,7 @@ const RequestForm: React.FC = () => {
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Request Type</FormLabel>
+                    <FormLabel>Qual Seu Problema?</FormLabel>
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
@@ -201,27 +201,33 @@ const RequestForm: React.FC = () => {
                         className="space-y-2"
                       >
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="inventory" id="inventory" />
-                          <FormLabel htmlFor="inventory" className="font-normal cursor-pointer">
-                            Inventory (1 day)
+                          <RadioGroupItem value="geral" id="geral" />
+                          <FormLabel htmlFor="geral" className="font-normal cursor-pointer">
+                            Geral (1 dia)
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="system" id="system" />
-                          <FormLabel htmlFor="system" className="font-normal cursor-pointer">
-                            System (5 days)
+                          <RadioGroupItem value="sistemas" id="sistemas" />
+                          <FormLabel htmlFor="sistemas" className="font-normal cursor-pointer">
+                            Sistemas (10 dias)
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="emergency" id="emergency" />
-                          <FormLabel htmlFor="emergency" className="font-normal cursor-pointer">
-                            Emergency (4 hours)
+                          <RadioGroupItem value="ajuste_estoque" id="ajuste_estoque" />
+                          <FormLabel htmlFor="ajuste_estoque" className="font-normal cursor-pointer">
+                            Ajuste de Estoque (2 dias)
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="other" id="other" />
-                          <FormLabel htmlFor="other" className="font-normal cursor-pointer">
-                            Other
+                          <RadioGroupItem value="solicitacao_equipamento" id="solicitacao_equipamento" />
+                          <FormLabel htmlFor="solicitacao_equipamento" className="font-normal cursor-pointer">
+                            Solicitação de Equipamentos (10 dias)
+                          </FormLabel>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="manutencao_preventiva" id="manutencao_preventiva" />
+                          <FormLabel htmlFor="manutencao_preventiva" className="font-normal cursor-pointer">
+                            Manutenção Preventiva (5 dias)
                           </FormLabel>
                         </div>
                       </RadioGroup>
@@ -236,7 +242,7 @@ const RequestForm: React.FC = () => {
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Priority</FormLabel>
+                    <FormLabel>Prioridade</FormLabel>
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
@@ -244,21 +250,21 @@ const RequestForm: React.FC = () => {
                         className="space-y-2"
                       >
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="low" id="low" />
-                          <FormLabel htmlFor="low" className="font-normal cursor-pointer">
-                            Low
+                          <RadioGroupItem value="baixa" id="baixa" />
+                          <FormLabel htmlFor="baixa" className="font-normal cursor-pointer">
+                            Baixa
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="medium" id="medium" />
-                          <FormLabel htmlFor="medium" className="font-normal cursor-pointer">
-                            Medium
+                          <RadioGroupItem value="media" id="media" />
+                          <FormLabel htmlFor="media" className="font-normal cursor-pointer">
+                            Média
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="high" id="high" />
-                          <FormLabel htmlFor="high" className="font-normal cursor-pointer">
-                            High
+                          <RadioGroupItem value="alta" id="alta" />
+                          <FormLabel htmlFor="alta" className="font-normal cursor-pointer">
+                            Alta
                           </FormLabel>
                         </div>
                       </RadioGroup>
@@ -274,10 +280,10 @@ const RequestForm: React.FC = () => {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Detailed description of your request" 
+                      placeholder="Descreva detalhadamente sua solicitação" 
                       className="min-h-[120px]" 
                       {...field} 
                     />
@@ -288,9 +294,9 @@ const RequestForm: React.FC = () => {
             />
             
             <div>
-              <FormLabel>Attachments</FormLabel>
+              <FormLabel>Anexos</FormLabel>
               <FormDescription>
-                Upload files related to your request (max 10MB per file)
+                Envie arquivos relacionados à sua solicitação (máx. 10MB por arquivo)
               </FormDescription>
               
               <div className="mt-2 space-y-4">
@@ -336,7 +342,7 @@ const RequestForm: React.FC = () => {
                     className="w-full"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Select Files
+                    Selecionar Arquivos
                   </Button>
                   <input
                     id="file-upload"
@@ -357,11 +363,11 @@ const RequestForm: React.FC = () => {
                 onClick={() => navigate(-1)}
                 disabled={isSubmitting}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Submit Request
+                Enviar Solicitação
               </Button>
             </div>
           </form>

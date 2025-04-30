@@ -60,12 +60,12 @@ const MyRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">My Requests</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Minhas Solicitações</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search requests..."
+              placeholder="Buscar solicitações..."
               className="pl-8 w-full md:w-[250px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -74,7 +74,7 @@ const MyRequestsPage: React.FC = () => {
           <Button asChild>
             <Link to="/request/new">
               <FilePlus className="h-4 w-4 mr-2" />
-              New Request
+              Nova Solicitação
             </Link>
           </Button>
         </div>
@@ -83,10 +83,10 @@ const MyRequestsPage: React.FC = () => {
       <Tabs defaultValue="active">
         <TabsList>
           <TabsTrigger value="active">
-            Active ({activeRequests.length})
+            Ativas ({activeRequests.length})
           </TabsTrigger>
           <TabsTrigger value="resolved">
-            Resolved ({resolvedRequests.length})
+            Resolvidas ({resolvedRequests.length})
           </TabsTrigger>
         </TabsList>
         
@@ -97,16 +97,16 @@ const MyRequestsPage: React.FC = () => {
             </div>
           ) : filteredActive.length === 0 ? (
             <Card className="p-8 text-center">
-              <h3 className="font-medium text-lg mb-2">No active requests found</h3>
+              <h3 className="font-medium text-lg mb-2">Nenhuma solicitação ativa encontrada</h3>
               <p className="text-muted-foreground mb-4">
                 {searchQuery 
-                  ? "No requests match your search query" 
-                  : "You don't have any active requests"}
+                  ? "Nenhuma solicitação corresponde à sua busca" 
+                  : "Você não possui solicitações ativas"}
               </p>
               <Button asChild>
                 <Link to="/request/new">
                   <FilePlus className="h-4 w-4 mr-2" />
-                  Create New Request
+                  Criar Nova Solicitação
                 </Link>
               </Button>
             </Card>
@@ -126,11 +126,11 @@ const MyRequestsPage: React.FC = () => {
             </div>
           ) : filteredResolved.length === 0 ? (
             <Card className="p-8 text-center">
-              <h3 className="font-medium text-lg mb-2">No resolved requests found</h3>
+              <h3 className="font-medium text-lg mb-2">Nenhuma solicitação resolvida encontrada</h3>
               <p className="text-muted-foreground">
                 {searchQuery 
-                  ? "No resolved requests match your search query" 
-                  : "You don't have any resolved requests yet"}
+                  ? "Nenhuma solicitação resolvida corresponde à sua busca" 
+                  : "Você ainda não possui solicitações resolvidas"}
               </p>
             </Card>
           ) : (

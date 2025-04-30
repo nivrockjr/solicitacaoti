@@ -16,19 +16,19 @@ const SettingsPage: React.FC = () => {
   
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>User Profile</CardTitle>
+            <CardTitle>Perfil do Usuário</CardTitle>
             <CardDescription>
-              Your account information and preferences
+              Suas informações e preferências de conta
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              <Label>Name</Label>
+              <Label>Nome</Label>
               <p className="text-sm font-medium">{user?.name}</p>
             </div>
             <div className="space-y-1">
@@ -36,18 +36,18 @@ const SettingsPage: React.FC = () => {
               <p className="text-sm font-medium">{user?.email}</p>
             </div>
             <div className="space-y-1">
-              <Label>Role</Label>
-              <p className="text-sm font-medium">{user?.role === 'admin' ? 'Administrator' : 'Requester'}</p>
+              <Label>Função</Label>
+              <p className="text-sm font-medium">{user?.role === 'admin' ? 'Administrador' : 'Solicitante'}</p>
             </div>
             {user?.department && (
               <div className="space-y-1">
-                <Label>Department</Label>
+                <Label>Departamento</Label>
                 <p className="text-sm font-medium">{user.department}</p>
               </div>
             )}
             {user?.position && (
               <div className="space-y-1">
-                <Label>Position</Label>
+                <Label>Cargo</Label>
                 <p className="text-sm font-medium">{user.position}</p>
               </div>
             )}
@@ -56,17 +56,17 @@ const SettingsPage: React.FC = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>Appearance</CardTitle>
+            <CardTitle>Aparência</CardTitle>
             <CardDescription>
-              Customize the visual appearance of the application
+              Personalize a aparência visual da aplicação
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="dark-mode">Dark Mode</Label>
+                <Label htmlFor="dark-mode">Modo Escuro</Label>
                 <p className="text-sm text-muted-foreground">
-                  Switch between light and dark themes
+                  Alternar entre temas claro e escuro
                 </p>
               </div>
               <Switch
@@ -80,17 +80,17 @@ const SettingsPage: React.FC = () => {
         
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Notifications</CardTitle>
+            <CardTitle>Notificações</CardTitle>
             <CardDescription>
-              Configure how you receive notifications
+              Configure como você recebe notificações
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="email-notifications">Email Notifications</Label>
+                <Label htmlFor="email-notifications">Notificações por Email</Label>
                 <p className="text-sm text-muted-foreground">
-                  Receive notifications via email
+                  Receber notificações por email
                 </p>
               </div>
               <Switch
@@ -102,9 +102,9 @@ const SettingsPage: React.FC = () => {
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="browser-notifications">Browser Notifications</Label>
+                <Label htmlFor="browser-notifications">Notificações do Navegador</Label>
                 <p className="text-sm text-muted-foreground">
-                  Receive notifications in your browser
+                  Receber notificações no navegador
                 </p>
               </div>
               <Switch
@@ -116,9 +116,9 @@ const SettingsPage: React.FC = () => {
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="whatsapp-notifications">WhatsApp Notifications</Label>
+                <Label htmlFor="whatsapp-notifications">Notificações WhatsApp</Label>
                 <p className="text-sm text-muted-foreground">
-                  Receive notifications via WhatsApp
+                  Receber notificações via WhatsApp
                 </p>
               </div>
               <Switch
@@ -128,7 +128,7 @@ const SettingsPage: React.FC = () => {
               />
             </div>
             
-            <Button className="mt-4">Save Notification Preferences</Button>
+            <Button className="mt-4">Salvar Preferências de Notificação</Button>
           </CardContent>
         </Card>
       </div>

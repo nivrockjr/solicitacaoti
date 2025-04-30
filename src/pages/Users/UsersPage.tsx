@@ -23,43 +23,43 @@ const UsersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search users..."
+              placeholder="Buscar usuários..."
               className="pl-8 w-full md:w-[250px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button>Add User</Button>
+          <Button>Adicionar Usuário</Button>
         </div>
       </div>
       
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
+          <CardTitle>Todos os Usuários</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="h-10 px-4 text-left font-medium">Name</th>
+                  <th className="h-10 px-4 text-left font-medium">Nome</th>
                   <th className="h-10 px-4 text-left font-medium">Email</th>
-                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Department</th>
-                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Position</th>
-                  <th className="h-10 px-4 text-left font-medium">Role</th>
-                  <th className="h-10 px-4 text-right font-medium">Actions</th>
+                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Departamento</th>
+                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Cargo</th>
+                  <th className="h-10 px-4 text-left font-medium">Função</th>
+                  <th className="h-10 px-4 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-4 text-center text-muted-foreground">
-                      No users found
+                      Nenhum usuário encontrado
                     </td>
                   </tr>
                 ) : (
@@ -71,11 +71,11 @@ const UsersPage: React.FC = () => {
                       <td className="p-4 align-middle hidden md:table-cell">{user.position || '-'}</td>
                       <td className="p-4 align-middle">
                         <Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
-                          {user.role === 'admin' ? 'Administrator' : 'Requester'}
+                          {user.role === 'admin' ? 'Administrador' : 'Solicitante'}
                         </Badge>
                       </td>
                       <td className="p-4 align-middle text-right">
-                        <Button variant="ghost" size="sm">Edit</Button>
+                        <Button variant="ghost" size="sm">Editar</Button>
                       </td>
                     </tr>
                   ))

@@ -12,10 +12,10 @@ const NewRequestPage: React.FC = () => {
         <Button variant="ghost" size="icon" asChild>
           <Link to="/dashboard">
             <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
+            <span className="sr-only">Voltar</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Create New Request</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Criar Nova Solicitação</h1>
       </div>
       
       <RequestForm />

@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Por favor, insira um endereço de e-mail válido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -38,7 +38,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
       setError(null);
       await login(data.email, data.password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Falha no login');
     }
   };
 
@@ -47,7 +47,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
         <CardDescription className="text-center">
-          Enter your credentials to access your account
+          Digite suas credenciais para acessar sua conta
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -66,7 +66,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="email@company.com" type="email" {...field} />
+                    <Input placeholder="email@empresa.com" type="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -78,7 +78,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Senha</FormLabel>
                   <FormControl>
                     <Input placeholder="••••••••" type="password" {...field} />
                   </FormControl>
@@ -88,14 +88,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
             />
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Logging in...' : 'Log in'}
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center">
         <Button variant="link" onClick={onForgotPassword} disabled={isLoading}>
-          Forgot your password?
+          Esqueceu sua senha?
         </Button>
       </CardFooter>
     </Card>

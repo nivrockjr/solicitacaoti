@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search, SlidersHorizontal } from 'lucide-react';
@@ -106,12 +105,12 @@ const AllRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">All Requests</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Todas as Solicitações</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search requests..."
+              placeholder="Buscar solicitações..."
               className="pl-8 w-full md:w-[250px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -127,13 +126,13 @@ const AllRequestsPage: React.FC = () => {
                     {filters.types.length + filters.priorities.length}
                   </span>
                 )}
-                <span className="sr-only">Filter requests</span>
+                <span className="sr-only">Filtrar solicitações</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[220px] p-4" align="end">
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium mb-2">Request Type</h4>
+                  <h4 className="font-medium mb-2">Tipo de Solicitação</h4>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -141,7 +140,7 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.types.includes('inventory')}
                         onCheckedChange={() => handleTypeFilterChange('inventory')}
                       />
-                      <Label htmlFor="type-inventory">Inventory</Label>
+                      <Label htmlFor="type-inventory">Inventário</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -149,7 +148,7 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.types.includes('system')}
                         onCheckedChange={() => handleTypeFilterChange('system')}
                       />
-                      <Label htmlFor="type-system">System</Label>
+                      <Label htmlFor="type-system">Sistema</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -157,7 +156,7 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.types.includes('emergency')}
                         onCheckedChange={() => handleTypeFilterChange('emergency')}
                       />
-                      <Label htmlFor="type-emergency">Emergency</Label>
+                      <Label htmlFor="type-emergency">Emergência</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -165,13 +164,13 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.types.includes('other')}
                         onCheckedChange={() => handleTypeFilterChange('other')}
                       />
-                      <Label htmlFor="type-other">Other</Label>
+                      <Label htmlFor="type-other">Outros</Label>
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="font-medium mb-2">Priority</h4>
+                  <h4 className="font-medium mb-2">Prioridade</h4>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -179,7 +178,7 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.priorities.includes('high')}
                         onCheckedChange={() => handlePriorityFilterChange('high')}
                       />
-                      <Label htmlFor="priority-high">High</Label>
+                      <Label htmlFor="priority-high">Alta</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -187,7 +186,7 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.priorities.includes('medium')}
                         onCheckedChange={() => handlePriorityFilterChange('medium')}
                       />
-                      <Label htmlFor="priority-medium">Medium</Label>
+                      <Label htmlFor="priority-medium">Média</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -195,14 +194,14 @@ const AllRequestsPage: React.FC = () => {
                         checked={filters.priorities.includes('low')}
                         onCheckedChange={() => handlePriorityFilterChange('low')}
                       />
-                      <Label htmlFor="priority-low">Low</Label>
+                      <Label htmlFor="priority-low">Baixa</Label>
                     </div>
                   </div>
                 </div>
                 
                 {hasActiveFilters && (
                   <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full">
-                    Clear Filters
+                    Limpar Filtros
                   </Button>
                 )}
               </div>
@@ -212,7 +211,7 @@ const AllRequestsPage: React.FC = () => {
           <Button asChild>
             <Link to="/request/new">
               <FilePlus className="h-4 w-4 mr-2" />
-              New Request
+              Nova Solicitação
             </Link>
           </Button>
         </div>
@@ -221,19 +220,19 @@ const AllRequestsPage: React.FC = () => {
       <Tabs defaultValue="all">
         <TabsList>
           <TabsTrigger value="all">
-            All ({requestsByStatus('all').length})
+            Todas ({requestsByStatus('all').length})
           </TabsTrigger>
           <TabsTrigger value="new">
-            New ({requestsByStatus('new').length})
+            Novas ({requestsByStatus('new').length})
           </TabsTrigger>
           <TabsTrigger value="assigned">
-            Assigned ({requestsByStatus('assigned').length})
+            Atribuídas ({requestsByStatus('assigned').length})
           </TabsTrigger>
           <TabsTrigger value="in_progress">
-            In Progress ({requestsByStatus('in_progress').length})
+            Em Progresso ({requestsByStatus('in_progress').length})
           </TabsTrigger>
           <TabsTrigger value="resolved">
-            Resolved ({requestsByStatus('resolved').length})
+            Resolvidas ({requestsByStatus('resolved').length})
           </TabsTrigger>
         </TabsList>
         
@@ -245,23 +244,23 @@ const AllRequestsPage: React.FC = () => {
               </div>
             ) : requestsByStatus(status as any).length === 0 ? (
               <Card className="p-8 text-center">
-                <h3 className="font-medium text-lg mb-2">No requests found</h3>
+                <h3 className="font-medium text-lg mb-2">Nenhuma solicitação encontrada</h3>
                 <p className="text-muted-foreground mb-4">
                   {searchQuery || hasActiveFilters 
-                    ? "No requests match your search or filters" 
-                    : "There are no requests with this status"}
+                    ? "Nenhuma solicitação corresponde à sua busca ou filtros" 
+                    : "Não há solicitações com este status"}
                 </p>
                 
                 {hasActiveFilters && (
                   <Button onClick={clearFilters} className="mr-2">
-                    Clear Filters
+                    Limpar Filtros
                   </Button>
                 )}
                 
                 <Button asChild>
                   <Link to="/request/new">
                     <FilePlus className="h-4 w-4 mr-2" />
-                    Create New Request
+                    Criar Nova Solicitação
                   </Link>
                 </Button>
               </Card>
@@ -278,11 +277,13 @@ const AllRequestsPage: React.FC = () => {
       
       {hasActiveFilters && (
         <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">Active filters:</p>
+          <p className="text-sm text-muted-foreground">Filtros ativos:</p>
           <div className="flex flex-wrap gap-2">
             {filters.types.map((type) => (
               <Badge key={`type-${type}`} variant="outline" className="flex items-center gap-1">
-                {type}
+                {type === 'inventory' ? 'Inventário' : 
+                 type === 'system' ? 'Sistema' : 
+                 type === 'emergency' ? 'Emergência' : 'Outros'}
                 <button 
                   className="ml-1 hover:text-destructive"
                   onClick={() => handleTypeFilterChange(type)}
@@ -293,7 +294,8 @@ const AllRequestsPage: React.FC = () => {
             ))}
             {filters.priorities.map((priority) => (
               <Badge key={`priority-${priority}`} variant="outline" className="flex items-center gap-1">
-                {priority} priority
+                {priority === 'high' ? 'Alta' : 
+                 priority === 'medium' ? 'Média' : 'Baixa'} prioridade
                 <button 
                   className="ml-1 hover:text-destructive"
                   onClick={() => handlePriorityFilterChange(priority)}
@@ -303,7 +305,7 @@ const AllRequestsPage: React.FC = () => {
               </Badge>
             ))}
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6">
-              Clear all
+              Limpar todos
             </Button>
           </div>
         </div>

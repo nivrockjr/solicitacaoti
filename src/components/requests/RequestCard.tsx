@@ -20,14 +20,19 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
   const getStatusColor = () => {
     switch (request.status) {
       case 'new':
+      case 'nova':
         return 'bg-blue-500';
       case 'assigned':
+      case 'atribuida':
         return 'bg-amber-500';
       case 'in_progress':
+      case 'em_andamento':
         return 'bg-purple-500';
       case 'resolved':
+      case 'resolvida':
         return 'bg-green-500';
       case 'closed':
+      case 'fechada':
         return 'bg-slate-500';
       default:
         return 'bg-slate-500';
@@ -37,10 +42,13 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
   const getPriorityIcon = () => {
     switch (request.priority) {
       case 'high':
+      case 'alta':
         return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'medium':
+      case 'media':
         return <AlertCircle className="h-4 w-4 text-amber-500" />;
       case 'low':
+      case 'baixa':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       default:
         return null;
@@ -60,7 +68,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
             <h3 className="font-medium leading-tight line-clamp-1">{request.title}</h3>
             <p className="text-xs text-muted-foreground">Request #{request.id}</p>
           </div>
-          <Badge variant={request.priority === 'high' ? 'destructive' : request.priority === 'medium' ? 'default' : 'outline'}>
+          <Badge variant={(request.priority === 'high' || request.priority === 'alta') ? 'destructive' : (request.priority === 'medium' || request.priority === 'media') ? 'default' : 'outline'}>
             <span className="flex items-center gap-1">
               {getPriorityIcon()}
               {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}

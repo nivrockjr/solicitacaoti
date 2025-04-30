@@ -10,9 +10,9 @@ export interface User {
   position?: string;
 }
 
-export type RequestType = 'geral' | 'sistemas' | 'ajuste_estoque' | 'solicitacao_equipamento' | 'manutencao_preventiva';
-export type RequestPriority = 'baixa' | 'media' | 'alta';
-export type RequestStatus = 'nova' | 'atribuida' | 'em_andamento' | 'resolvida' | 'fechada';
+export type RequestType = 'geral' | 'sistemas' | 'ajuste_estoque' | 'solicitacao_equipamento' | 'manutencao_preventiva' | 'inventory' | 'system' | 'emergency' | 'other';
+export type RequestPriority = 'baixa' | 'media' | 'alta' | 'high' | 'medium' | 'low';
+export type RequestStatus = 'nova' | 'atribuida' | 'em_andamento' | 'resolvida' | 'fechada' | 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed';
 
 export interface ITRequest {
   id: string;

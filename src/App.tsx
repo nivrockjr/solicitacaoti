@@ -18,6 +18,7 @@ import NewRequestPage from "@/pages/Requests/NewRequestPage";
 import MyRequestsPage from "@/pages/Requests/MyRequestsPage";
 import AllRequestsPage from "@/pages/Requests/AllRequestsPage";
 import RequestDetailPage from "@/pages/Requests/RequestDetailPage";
+import ReportsPage from "@/pages/Reports/ReportsPage";
 import UsersPage from "@/pages/Users/UsersPage";
 import SettingsPage from "@/pages/Settings/SettingsPage";
 import NotFound from "@/pages/NotFound";
@@ -47,6 +48,7 @@ const App = () => (
                   <Route path="request/:id" element={<RequestDetailPage />} />
                   <Route path="requests/my" element={<MyRequestsPage />} />
                   <Route path="requests" element={<AllRequestsPage />} />
+                  <Route path="reports" element={<ReportsPage />} />
                   <Route path="users" element={<UsersPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                 </Route>

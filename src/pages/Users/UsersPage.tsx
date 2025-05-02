@@ -71,7 +71,16 @@ const UsersPage: React.FC = () => {
   
   const handleCreateUser = async (values: UserFormValues) => {
     try {
-      const newUser = await createUser(values);
+      // Aqui garantimos que role é sempre enviado, mesmo se estiver undefined no form
+      const userData: Omit<User, 'id'> = {
+        name: values.name,
+        email: values.email,
+        role: values.role, // Já é obrigatório pelo schema
+        department: values.department,
+        position: values.position
+      };
+      
+      const newUser = await createUser(userData);
       setUsers([...users, newUser]);
       userForm.reset();
       toast({

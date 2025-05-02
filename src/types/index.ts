@@ -1,4 +1,3 @@
-
 export type UserRole = 'requester' | 'admin';
 
 export interface User {
@@ -8,6 +7,7 @@ export interface User {
   role: UserRole;
   department?: string;
   position?: string;
+  whatsapp?: string;
 }
 
 export type RequestType = 'geral' | 'sistemas' | 'ajuste_estoque' | 'solicitacao_equipamento' | 'manutencao_preventiva' | 'inventory' | 'system' | 'emergency' | 'other';

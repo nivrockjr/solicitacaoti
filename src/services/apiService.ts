@@ -1,4 +1,3 @@
-
 import { User, ITRequest, RequestType, RequestPriority, Holiday, Notification } from '../types';
 import { mockUsers, mockRequests, mockHolidays, mockNotifications } from './mockData';
 import { addDays, format, isWeekend, isBefore, isAfter, parseISO } from 'date-fns';

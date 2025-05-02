@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -20,7 +19,6 @@ import { useAuth } from '@/contexts/AuthContext';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const requestSchema = z.object({
-  title: z.string().min(5, 'Título deve ter pelo menos 5 caracteres').max(100),
   description: z.string().min(20, 'Descrição deve ter pelo menos 20 caracteres'),
   type: z.enum(['geral', 'sistemas', 'ajuste_estoque', 'solicitacao_equipamento', 'manutencao_preventiva'] as const),
   priority: z.enum(['baixa', 'media', 'alta'] as const),
@@ -43,7 +41,6 @@ const RequestForm: React.FC = () => {
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
     defaultValues: {
-      title: '',
       description: '',
       type: 'geral',
       priority: 'media',
@@ -98,12 +95,12 @@ const RequestForm: React.FC = () => {
         }
       }
       
-      // Create the request
+      // Create the request - using description as title since title field is removed
       const newRequest = await createRequest({
         requesterId: user.id,
         requesterName: user.name,
         requesterEmail: user.email,
-        title: values.title,
+        title: values.description.substring(0, 100), // Usar os primeiros 100 caracteres da descrição como título
         description: values.description,
         type: values.type as RequestType,
         priority: values.priority as RequestPriority,
@@ -173,20 +170,6 @@ const RequestForm: React.FC = () => {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Título</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Título breve para sua solicitação" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}

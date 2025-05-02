@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,8 @@ const userFormSchema = z.object({
   email: z.string().email('Email inválido'),
   role: z.enum(['admin', 'requester']),
   department: z.string().optional(),
-  position: z.string().optional(), // Permanece como "position" no schema, mas será exibido como "Unidade"
+  position: z.string().optional(), 
+  whatsapp: z.string().optional(),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -51,6 +53,7 @@ const UsersPage: React.FC = () => {
       role: 'requester',
       department: '',
       position: '',
+      whatsapp: '',
     },
   });
   
@@ -69,6 +72,7 @@ const UsersPage: React.FC = () => {
       role: 'requester',
       department: '',
       position: '',
+      whatsapp: '',
     },
   });
   
@@ -77,6 +81,7 @@ const UsersPage: React.FC = () => {
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (user.department && user.department.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (user.position && user.position.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (user.whatsapp && user.whatsapp.toLowerCase().includes(searchQuery.toLowerCase())) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
@@ -88,7 +93,8 @@ const UsersPage: React.FC = () => {
         email: values.email,
         role: values.role, // Já é obrigatório pelo schema
         department: values.department,
-        position: values.position
+        position: values.position,
+        whatsapp: values.whatsapp
       };
       
       const newUser = await createUser(userData);
@@ -160,6 +166,7 @@ const UsersPage: React.FC = () => {
       role: user.role,
       department: user.department || '',
       position: user.position || '',
+      whatsapp: user.whatsapp || '',
     });
   };
   
@@ -257,6 +264,20 @@ const UsersPage: React.FC = () => {
                         </FormItem>
                       )}
                     />
+                    
+                    <FormField
+                      control={userForm.control}
+                      name="whatsapp"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>WhatsApp</FormLabel>
+                          <FormControl>
+                            <Input placeholder="(00) 00000-0000" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -313,6 +334,7 @@ const UsersPage: React.FC = () => {
                   <th className="h-10 px-4 text-left font-medium">Email</th>
                   <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Departamento</th>
                   <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Unidade</th>
+                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">WhatsApp</th>
                   <th className="h-10 px-4 text-left font-medium">Função</th>
                   <th className="h-10 px-4 text-right font-medium">Ações</th>
                 </tr>
@@ -320,7 +342,7 @@ const UsersPage: React.FC = () => {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-4 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-4 text-center text-muted-foreground">
                       Nenhum usuário encontrado
                     </td>
                   </tr>
@@ -331,6 +353,7 @@ const UsersPage: React.FC = () => {
                       <td className="p-4 align-middle">{user.email}</td>
                       <td className="p-4 align-middle hidden md:table-cell">{user.department || '-'}</td>
                       <td className="p-4 align-middle hidden md:table-cell">{user.position || '-'}</td>
+                      <td className="p-4 align-middle hidden md:table-cell">{user.whatsapp || '-'}</td>
                       <td className="p-4 align-middle">
                         <Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
                           {user.role === 'admin' ? 'Administrador' : 'Solicitante'}
@@ -458,6 +481,19 @@ const UsersPage: React.FC = () => {
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editUserForm.control}
+                  name="whatsapp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>WhatsApp</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(00) 00000-0000" {...field} value={field.value || ''} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />

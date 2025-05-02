@@ -47,8 +47,14 @@ const SettingsPage: React.FC = () => {
             )}
             {user?.position && (
               <div className="space-y-1">
-                <Label>Cargo</Label>
+                <Label>Unidade</Label>
                 <p className="text-sm font-medium">{user.position}</p>
+              </div>
+            )}
+            {user?.whatsapp && (
+              <div className="space-y-1">
+                <Label>WhatsApp</Label>
+                <p className="text-sm font-medium">{user.whatsapp}</p>
               </div>
             )}
           </CardContent>

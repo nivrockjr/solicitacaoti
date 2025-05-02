@@ -26,7 +26,7 @@ const MyRequestsPage: React.FC = () => {
         const fetchedRequests = await getRequests(user.id);
         setRequests(fetchedRequests);
       } catch (error) {
-        console.error('Error fetching requests:', error);
+        console.error('Erro ao buscar solicitações:', error);
       } finally {
         setLoading(false);
       }
@@ -36,11 +36,11 @@ const MyRequestsPage: React.FC = () => {
   }, [user]);
   
   const activeRequests = requests.filter(
-    r => r.status !== 'resolved' && r.status !== 'closed'
+    r => r.status !== 'resolved' && r.status !== 'closed' && r.status !== 'resolvida' && r.status !== 'fechada'
   );
   
   const resolvedRequests = requests.filter(
-    r => r.status === 'resolved' || r.status === 'closed'
+    r => r.status === 'resolved' || r.status === 'closed' || r.status === 'resolvida' || r.status === 'fechada'
   );
   
   const filterRequests = (requests: ITRequest[]) => {
@@ -48,7 +48,7 @@ const MyRequestsPage: React.FC = () => {
     
     return requests.filter(
       r => 
-        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
         r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.id.toLowerCase().includes(searchQuery.toLowerCase())
     );

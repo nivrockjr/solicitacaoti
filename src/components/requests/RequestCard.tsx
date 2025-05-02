@@ -56,7 +56,33 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
   };
   
   const formatStatus = (status: string) => {
-    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const statusMap = {
+      'new': 'Nova',
+      'nova': 'Nova',
+      'assigned': 'Atribuída',
+      'atribuida': 'Atribuída',
+      'in_progress': 'Em Andamento',
+      'em_andamento': 'Em Andamento',
+      'resolved': 'Resolvida',
+      'resolvida': 'Resolvida',
+      'closed': 'Fechada',
+      'fechada': 'Fechada'
+    };
+    
+    return statusMap[status as keyof typeof statusMap] || status;
+  };
+  
+  const formatPriority = (priority: string) => {
+    const priorityMap = {
+      'high': 'Alta',
+      'alta': 'Alta',
+      'medium': 'Média',
+      'media': 'Média',
+      'low': 'Baixa',
+      'baixa': 'Baixa'
+    };
+    
+    return priorityMap[priority as keyof typeof priorityMap] || priority;
   };
   
   return (
@@ -65,13 +91,15 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <h3 className="font-medium leading-tight line-clamp-1">{request.title}</h3>
-            <p className="text-xs text-muted-foreground">Request #{request.id}</p>
+            <h3 className="font-medium leading-tight line-clamp-1">
+              {request.title || request.description.substring(0, 50)}
+            </h3>
+            <p className="text-xs text-muted-foreground">Solicitação #{request.id}</p>
           </div>
           <Badge variant={(request.priority === 'high' || request.priority === 'alta') ? 'destructive' : (request.priority === 'medium' || request.priority === 'media') ? 'default' : 'outline'}>
             <span className="flex items-center gap-1">
               {getPriorityIcon()}
-              {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
+              {formatPriority(request.priority)}
             </span>
           </Badge>
         </div>
@@ -86,7 +114,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>Due {format(new Date(request.deadlineAt), 'MMM d, h:mm a')}</span>
+            <span>Vence em {format(new Date(request.deadlineAt), 'dd/MM/yyyy, HH:mm')}</span>
           </div>
         </div>
       </CardContent>
@@ -97,7 +125,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
           className="w-full"
           onClick={() => navigate(`/request/${request.id}`)}
         >
-          View Details
+          Ver Detalhes
         </Button>
       </CardFooter>
     </Card>

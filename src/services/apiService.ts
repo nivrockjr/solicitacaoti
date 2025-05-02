@@ -84,17 +84,18 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' 
   await delay(500);
   
   const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const year = String(now.getFullYear()).slice(-2); // Últimos dois dígitos do ano
+  const dia = String(now.getDate()).padStart(2, '0');
+  const mes = String(now.getMonth() + 1).padStart(2, '0');
+  const ano = String(now.getFullYear());
+  const anoAbreviado = ano.slice(-2);
   
   // Conta o número de solicitações para o dia atual para gerar o número sequencial
   const today = now.toISOString().split('T')[0];
   const todayRequests = requests.filter(r => r.createdAt.startsWith(today)).length + 1;
-  const sequentialNumber = String(todayRequests).padStart(3, '0');
+  const sequentialNumber = String(todayRequests).padStart(6, '0');
   
-  // Formato: Dia-Mês-Ano-Sequencial (DD-MM-AA-SSS)
-  const newId = `${day}-${month}-${year}-${sequentialNumber}`;
+  // Formato: DiaMesAnoAbreviado-Sequencial (DDMMAA-000000)
+  const newId = `${dia}${mes}${anoAbreviado}-${sequentialNumber}`;
   
   const createdAtStr = now.toISOString();
   

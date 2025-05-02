@@ -19,7 +19,6 @@ export interface ITRequest {
   requesterId: string;
   requesterName: string; 
   requesterEmail: string;
-  title: string;
   description: string;
   type: RequestType;
   priority: RequestPriority;
@@ -31,6 +30,7 @@ export interface ITRequest {
   comments?: Comment[];
   resolution?: string;
   resolvedAt?: string;
+  title?: string; // Mantido como opcional para compatibilidade com dados existentes
 }
 
 export interface Attachment {

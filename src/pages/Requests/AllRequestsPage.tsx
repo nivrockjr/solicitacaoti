@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search, SlidersHorizontal } from 'lucide-react';
@@ -34,7 +35,7 @@ const AllRequestsPage: React.FC = () => {
         const fetchedRequests = await getRequests();
         setRequests(fetchedRequests);
       } catch (error) {
-        console.error('Error fetching requests:', error);
+        console.error('Erro ao buscar solicitações:', error);
       } finally {
         setLoading(false);
       }
@@ -43,14 +44,29 @@ const AllRequestsPage: React.FC = () => {
     fetchRequests();
   }, []);
   
+  const normalizeStatus = (status: RequestStatus | 'all'): string[] => {
+    if (status === 'all') return ['all'];
+    
+    const statusMap: Record<string, string[]> = {
+      'new': ['new', 'nova'],
+      'assigned': ['assigned', 'atribuida'],
+      'in_progress': ['in_progress', 'em_andamento'],
+      'resolved': ['resolved', 'resolvida'],
+      'closed': ['closed', 'fechada']
+    };
+    
+    return statusMap[status] || [status];
+  };
+  
   const requestsByStatus = (status: RequestStatus | 'all'): ITRequest[] => {
     let filtered = [...requests];
+    const statusesToCheck = normalizeStatus(status);
     
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
         r => 
-          r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (r.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
           r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
           r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           r.requesterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,7 +86,7 @@ const AllRequestsPage: React.FC = () => {
     
     // Filter by status
     if (status !== 'all') {
-      filtered = filtered.filter(r => r.status === status);
+      filtered = filtered.filter(r => statusesToCheck.includes(r.status));
     }
     
     return filtered;
@@ -101,6 +117,35 @@ const AllRequestsPage: React.FC = () => {
   };
   
   const hasActiveFilters = filters.types.length > 0 || filters.priorities.length > 0;
+  
+  const getTypeName = (type: RequestType): string => {
+    const typeMap: Record<RequestType, string> = {
+      'geral': 'Geral',
+      'sistemas': 'Sistemas',
+      'ajuste_estoque': 'Ajuste de Estoque',
+      'solicitacao_equipamento': 'Solicitação de Equipamento',
+      'manutencao_preventiva': 'Manutenção Preventiva',
+      'inventory': 'Inventário',
+      'system': 'Sistema',
+      'emergency': 'Emergência',
+      'other': 'Outro'
+    };
+    
+    return typeMap[type] || type;
+  };
+  
+  const getPriorityName = (priority: RequestPriority): string => {
+    const priorityMap: Record<RequestPriority, string> = {
+      'high': 'Alta',
+      'medium': 'Média',
+      'low': 'Baixa',
+      'alta': 'Alta',
+      'media': 'Média',
+      'baixa': 'Baixa'
+    };
+    
+    return priorityMap[priority] || priority;
+  };
   
   return (
     <div className="space-y-6">
@@ -136,35 +181,43 @@ const AllRequestsPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="type-inventory" 
-                        checked={filters.types.includes('inventory')}
-                        onCheckedChange={() => handleTypeFilterChange('inventory')}
+                        id="type-geral" 
+                        checked={filters.types.includes('geral')}
+                        onCheckedChange={() => handleTypeFilterChange('geral')}
                       />
-                      <Label htmlFor="type-inventory">Inventário</Label>
+                      <Label htmlFor="type-geral">Geral</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="type-system" 
-                        checked={filters.types.includes('system')}
-                        onCheckedChange={() => handleTypeFilterChange('system')}
+                        id="type-sistemas" 
+                        checked={filters.types.includes('sistemas')}
+                        onCheckedChange={() => handleTypeFilterChange('sistemas')}
                       />
-                      <Label htmlFor="type-system">Sistema</Label>
+                      <Label htmlFor="type-sistemas">Sistemas</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="type-emergency" 
-                        checked={filters.types.includes('emergency')}
-                        onCheckedChange={() => handleTypeFilterChange('emergency')}
+                        id="type-ajuste_estoque" 
+                        checked={filters.types.includes('ajuste_estoque')}
+                        onCheckedChange={() => handleTypeFilterChange('ajuste_estoque')}
                       />
-                      <Label htmlFor="type-emergency">Emergência</Label>
+                      <Label htmlFor="type-ajuste_estoque">Ajuste de Estoque</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="type-other" 
-                        checked={filters.types.includes('other')}
-                        onCheckedChange={() => handleTypeFilterChange('other')}
+                        id="type-solicitacao_equipamento" 
+                        checked={filters.types.includes('solicitacao_equipamento')}
+                        onCheckedChange={() => handleTypeFilterChange('solicitacao_equipamento')}
                       />
-                      <Label htmlFor="type-other">Outros</Label>
+                      <Label htmlFor="type-solicitacao_equipamento">Solicitação de Equipamento</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="type-manutencao_preventiva" 
+                        checked={filters.types.includes('manutencao_preventiva')}
+                        onCheckedChange={() => handleTypeFilterChange('manutencao_preventiva')}
+                      />
+                      <Label htmlFor="type-manutencao_preventiva">Manutenção Preventiva</Label>
                     </div>
                   </div>
                 </div>
@@ -174,27 +227,27 @@ const AllRequestsPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="priority-high" 
-                        checked={filters.priorities.includes('high')}
-                        onCheckedChange={() => handlePriorityFilterChange('high')}
+                        id="priority-alta" 
+                        checked={filters.priorities.includes('alta')}
+                        onCheckedChange={() => handlePriorityFilterChange('alta')}
                       />
-                      <Label htmlFor="priority-high">Alta</Label>
+                      <Label htmlFor="priority-alta">Alta</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="priority-medium" 
-                        checked={filters.priorities.includes('medium')}
-                        onCheckedChange={() => handlePriorityFilterChange('medium')}
+                        id="priority-media" 
+                        checked={filters.priorities.includes('media')}
+                        onCheckedChange={() => handlePriorityFilterChange('media')}
                       />
-                      <Label htmlFor="priority-medium">Média</Label>
+                      <Label htmlFor="priority-media">Média</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="priority-low" 
-                        checked={filters.priorities.includes('low')}
-                        onCheckedChange={() => handlePriorityFilterChange('low')}
+                        id="priority-baixa" 
+                        checked={filters.priorities.includes('baixa')}
+                        onCheckedChange={() => handlePriorityFilterChange('baixa')}
                       />
-                      <Label htmlFor="priority-low">Baixa</Label>
+                      <Label htmlFor="priority-baixa">Baixa</Label>
                     </div>
                   </div>
                 </div>
@@ -229,7 +282,7 @@ const AllRequestsPage: React.FC = () => {
             Atribuídas ({requestsByStatus('assigned').length})
           </TabsTrigger>
           <TabsTrigger value="in_progress">
-            Em Progresso ({requestsByStatus('in_progress').length})
+            Em Andamento ({requestsByStatus('in_progress').length})
           </TabsTrigger>
           <TabsTrigger value="resolved">
             Resolvidas ({requestsByStatus('resolved').length})
@@ -281,9 +334,7 @@ const AllRequestsPage: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             {filters.types.map((type) => (
               <Badge key={`type-${type}`} variant="outline" className="flex items-center gap-1">
-                {type === 'inventory' ? 'Inventário' : 
-                 type === 'system' ? 'Sistema' : 
-                 type === 'emergency' ? 'Emergência' : 'Outros'}
+                {getTypeName(type)}
                 <button 
                   className="ml-1 hover:text-destructive"
                   onClick={() => handleTypeFilterChange(type)}
@@ -294,8 +345,7 @@ const AllRequestsPage: React.FC = () => {
             ))}
             {filters.priorities.map((priority) => (
               <Badge key={`priority-${priority}`} variant="outline" className="flex items-center gap-1">
-                {priority === 'high' ? 'Alta' : 
-                 priority === 'medium' ? 'Média' : 'Baixa'} prioridade
+                {getPriorityName(priority)}
                 <button 
                   className="ml-1 hover:text-destructive"
                   onClick={() => handlePriorityFilterChange(priority)}

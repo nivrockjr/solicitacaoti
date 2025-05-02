@@ -17,28 +17,42 @@ let currentUser: User | null = null;
 
 // Mock user passwords (normally would be stored securely, hashed)
 const mockPasswords = {
-  "1": "Pqmz*2747",  // Admin user password
-  "2": "user123",   // Regular user password
+  "1": "Pqmz*2747",  // Admin user password - ti.mz@pqvirk.com.br
+  "2": "user123",   // Regular user password - user@company.com
 };
 
 // Authentication
 export const login = async (email: string, password: string): Promise<User> => {
   await delay(500);
   
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-  
-  if (!user) {
-    throw new Error("Email ou senha inválidos");
+  // Update the admin email to match what's shown on the login page
+  if (email === "ti.mz@pqvirk.com.br") {
+    const adminUser = users.find(u => u.id === "1");
+    if (adminUser && password === mockPasswords["1"]) {
+      // Update the admin user's email
+      adminUser.email = email;
+      currentUser = adminUser;
+      return adminUser;
+    }
+  } else if (email === "user@company.com") {
+    const regularUser = users.find(u => u.id === "2");
+    if (regularUser && password === mockPasswords["2"]) {
+      // Update the regular user's email
+      regularUser.email = email;
+      currentUser = regularUser;
+      return regularUser;
+    }
+  } else {
+    // Try standard login with current user data
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    if (user && mockPasswords[user.id] === password) {
+      currentUser = user;
+      return user;
+    }
   }
   
-  // Check password against mock passwords
-  const correctPassword = mockPasswords[user.id];
-  if (password !== correctPassword) {
-    throw new Error("Email ou senha inválidos");
-  }
-  
-  currentUser = user;
-  return user;
+  throw new Error("Email ou senha inválidos");
 };
 
 export const logout = async (): Promise<void> => {

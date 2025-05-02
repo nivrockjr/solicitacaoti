@@ -1,23 +1,24 @@
-
 import { User, ITRequest, Holiday, Notification } from "../types";
 
 // Mock users
 export const mockUsers: User[] = [
   {
     id: "1",
-    email: "admin@empresa.com.br",
+    email: "ti.mz@pqvirk.com.br", // Updated email to match login screen
     name: "Administrador",
     role: "admin",
     department: "TI",
     position: "Administrador de Sistema",
+    whatsapp: "+55 11 99999-9999" // Added WhatsApp field
   },
   {
     id: "2",
-    email: "usuario@empresa.com.br",
+    email: "user@company.com", // Updated email to match login screen
     name: "Usuário Padrão",
     role: "requester",
     department: "Vendas",
     position: "Analista de Vendas",
+    whatsapp: "+55 11 88888-8888" // Added WhatsApp field
   },
 ];
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,14 +14,14 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, updateUserPassword } from '@/services/apiService';
+import { createUser, updateUser, updateUserPassword } from '@/services/apiService';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('Email inválido'),
   role: z.enum(['admin', 'requester']),
   department: z.string().optional(),
-  position: z.string().optional(),
+  position: z.string().optional(), // Permanece como "position" no schema, mas será exibido como "Unidade"
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -37,6 +36,7 @@ const UsersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -58,6 +58,17 @@ const UsersPage: React.FC = () => {
     resolver: zodResolver(passwordFormSchema),
     defaultValues: {
       password: '',
+    },
+  });
+  
+  const editUserForm = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      role: 'requester',
+      department: '',
+      position: '',
     },
   });
   
@@ -96,6 +107,26 @@ const UsersPage: React.FC = () => {
     }
   };
   
+  const handleEditUser = async (values: UserFormValues) => {
+    if (!selectedUserForEdit) return;
+    
+    try {
+      const updatedUser = await updateUser(selectedUserForEdit.id, values);
+      setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
+      setSelectedUserForEdit(null);
+      toast({
+        title: 'Usuário Atualizado',
+        description: `${updatedUser.name} foi atualizado com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao atualizar usuário',
+        variant: 'destructive',
+      });
+    }
+  };
+  
   const handlePasswordChange = async (values: PasswordFormValues) => {
     if (!selectedUser) return;
     
@@ -119,6 +150,17 @@ const UsersPage: React.FC = () => {
   const openPasswordForm = (user: User) => {
     setSelectedUser(user);
     setShowPasswordForm(true);
+  };
+  
+  const openEditUserForm = (user: User) => {
+    setSelectedUserForEdit(user);
+    editUserForm.reset({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department || '',
+      position: user.position || '',
+    });
   };
   
   if (!isAdmin) {
@@ -236,9 +278,9 @@ const UsersPage: React.FC = () => {
                       name="position"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Cargo</FormLabel>
+                          <FormLabel>Unidade</FormLabel>
                           <FormControl>
-                            <Input placeholder="Cargo" {...field} />
+                            <Input placeholder="Unidade" {...field} />
                           </FormControl>
                         </FormItem>
                       )}
@@ -270,7 +312,7 @@ const UsersPage: React.FC = () => {
                   <th className="h-10 px-4 text-left font-medium">Nome</th>
                   <th className="h-10 px-4 text-left font-medium">Email</th>
                   <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Departamento</th>
-                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Cargo</th>
+                  <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Unidade</th>
                   <th className="h-10 px-4 text-left font-medium">Função</th>
                   <th className="h-10 px-4 text-right font-medium">Ações</th>
                 </tr>
@@ -307,6 +349,7 @@ const UsersPage: React.FC = () => {
                           variant="ghost" 
                           size="icon"
                           title="Editar Usuário"
+                          onClick={() => openEditUserForm(user)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -347,6 +390,109 @@ const UsersPage: React.FC = () => {
               
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowPasswordForm(false)}>Cancelar</Button>
+                <Button type="submit">Salvar</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para edição de usuário */}
+      <Dialog open={!!selectedUserForEdit} onOpenChange={(open) => !open && setSelectedUserForEdit(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              {selectedUserForEdit && `Editar informações de ${selectedUserForEdit.name}.`}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editUserForm}>
+            <form onSubmit={editUserForm.handleSubmit(handleEditUser)} className="space-y-4">
+              <FormField
+                control={editUserForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome do usuário" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editUserForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="email@exemplo.com" type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editUserForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Função</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma função" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="requester">Solicitante</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editUserForm.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Departamento</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Departamento" {...field} value={field.value || ''} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editUserForm.control}
+                  name="position"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unidade</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Unidade" {...field} value={field.value || ''} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedUserForEdit(null)}>Cancelar</Button>
                 <Button type="submit">Salvar</Button>
               </DialogFooter>
             </form>

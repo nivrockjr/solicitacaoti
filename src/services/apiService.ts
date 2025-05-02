@@ -84,8 +84,19 @@ export const getRequestById = async (id: string): Promise<ITRequest | undefined>
 export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' | 'deadlineAt'>): Promise<ITRequest> => {
   await delay(500);
   
-  const newId = `SOL-${String(requests.length + 1).padStart(3, '0')}`;
   const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = String(now.getFullYear()).slice(-2); // Últimos dois dígitos do ano
+  
+  // Conta o número de solicitações para o dia atual para gerar o número sequencial
+  const today = now.toISOString().split('T')[0];
+  const todayRequests = requests.filter(r => r.createdAt.startsWith(today)).length + 1;
+  const sequentialNumber = String(todayRequests).padStart(3, '0');
+  
+  // Formato: Dia-Mês-Ano-Sequencial (DD-MM-AA-SSS)
+  const newId = `${day}-${month}-${year}-${sequentialNumber}`;
+  
   const createdAtStr = now.toISOString();
   
   // Calculate deadline based on type

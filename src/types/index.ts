@@ -1,3 +1,4 @@
+
 export type UserRole = 'requester' | 'admin';
 
 export interface User {

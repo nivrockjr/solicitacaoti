@@ -1,3 +1,4 @@
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -107,7 +108,10 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
       3: { cellWidth: 25 }, // Tipo
       4: { cellWidth: 20 }, // Vencimento - diminuído
       5: { cellWidth: 20 }, // Prioridade - diminuído
-      6: { cellWidth: 55 }  // Descrição - aumentado para acomodar texto completo
+      6: { 
+        cellWidth: 55,  // Descrição - aumentado para acomodar texto completo
+        overflow: 'linebreak'
+      }
     },
     headStyles: {
       fillColor: [41, 128, 185],
@@ -122,13 +126,6 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
     willDrawCell: function(data) {
       if (data.column.index === 6) { // Coluna de descrição
         doc.setFontSize(8); // Certifica-se de que a fonte seja pequena o suficiente
-      }
-    },
-    // Permitir quebra de texto para descrições longas
-    columnStyles: {
-      6: { 
-        cellWidth: 'auto',
-        overflow: 'linebreak'
       }
     }
   });

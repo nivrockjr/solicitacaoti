@@ -6,13 +6,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+const EmailSettingsSchema = z.object({
+  emailNotifications: z.boolean(),
+  browserNotifications: z.boolean(),
+  whatsappNotifications: z.boolean(),
+  emailAccount: z.string().email('Email inválido').optional(),
+  emailPassword: z.string().min(1, 'Senha é obrigatória').optional(),
+});
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [browserNotifications, setBrowserNotifications] = useState(true);
-  const [whatsappNotifications, setWhatsappNotifications] = useState(false);
+  const { toast } = useToast();
+  const [showEmailSettings, setShowEmailSettings] = useState(false);
+  
+  const form = useForm<z.infer<typeof EmailSettingsSchema>>({
+    resolver: zodResolver(EmailSettingsSchema),
+    defaultValues: {
+      emailNotifications: true,
+      browserNotifications: true,
+      whatsappNotifications: false,
+      emailAccount: user?.email || '',
+      emailPassword: '',
+    },
+  });
+
+  const onSubmit = (data: z.infer<typeof EmailSettingsSchema>) => {
+    // In a real app, this would save the settings to a backend
+    console.log('Saved notification settings:', data);
+    
+    toast({
+      title: 'Configurações Salvas',
+      description: 'Suas preferências de notificação foram salvas com sucesso!',
+    });
+  };
   
   return (
     <div className="space-y-6">
@@ -91,50 +125,133 @@ const SettingsPage: React.FC = () => {
               Configure como você recebe notificações
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="email-notifications">Notificações por Email</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receber notificações por email
-                </p>
-              </div>
-              <Switch
-                id="email-notifications"
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="browser-notifications">Notificações do Navegador</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receber notificações no navegador
-                </p>
-              </div>
-              <Switch
-                id="browser-notifications"
-                checked={browserNotifications}
-                onCheckedChange={setBrowserNotifications}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="whatsapp-notifications">Notificações WhatsApp</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receber notificações via WhatsApp
-                </p>
-              </div>
-              <Switch
-                id="whatsapp-notifications"
-                checked={whatsappNotifications}
-                onCheckedChange={setWhatsappNotifications}
-              />
-            </div>
-            
-            <Button className="mt-4">Salvar Preferências de Notificação</Button>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="emailNotifications"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Notificações por Email</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Receber notificações por email
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            if (checked) setShowEmailSettings(true);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                {form.watch('emailNotifications') && showEmailSettings && (
+                  <div className="space-y-4 border border-border rounded-md p-4">
+                    <h3 className="font-medium">Configurações de Email</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Configure suas credenciais para envio e recebimento de emails
+                    </p>
+                    
+                    <div className="grid gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Servidor de Entrada (IMAP)</Label>
+                          <p className="text-sm font-medium">imap.kinghost.net</p>
+                        </div>
+                        <div>
+                          <Label>Porta IMAP</Label>
+                          <p className="text-sm font-medium">143</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Servidor de Saída (SMTP)</Label>
+                          <p className="text-sm font-medium">smtp.kinghost.net</p>
+                        </div>
+                        <div>
+                          <Label>Porta SMTP</Label>
+                          <p className="text-sm font-medium">587</p>
+                        </div>
+                      </div>
+                      
+                      <FormField
+                        control={form.control}
+                        name="emailAccount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Conta de Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="seu@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="emailPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Senha do Email</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Senha" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <FormField
+                  control={form.control}
+                  name="browserNotifications"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Notificações do Navegador</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Receber notificações no navegador
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="whatsappNotifications"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Notificações WhatsApp</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Receber notificações via WhatsApp
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <Button type="submit">Salvar Preferências de Notificação</Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </div>

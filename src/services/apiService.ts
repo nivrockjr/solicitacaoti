@@ -1,6 +1,14 @@
 import { User, ITRequest, RequestType, RequestPriority, Holiday, Notification } from '../types';
 import { mockUsers, mockRequests, mockHolidays, mockNotifications } from './mockData';
 import { addDays, format, isWeekend, isBefore, isAfter, parseISO } from 'date-fns';
+import { 
+  sendEmail, 
+  generateRequestConfirmationEmail, 
+  generateStatusUpdateEmail,
+  generateDeadlineAlertEmail,
+  generateAdminDailyDigestEmail,
+  generateNewRequestAlertEmail 
+} from './emailService';
 
 // Simulated API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -146,6 +154,19 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' 
     });
   });
   
+  // Send email confirmation to requester
+  const requesterUser = users.find(u => u.id === request.requesterId);
+  if (requesterUser) {
+    const { subject, body } = generateRequestConfirmationEmail(newRequest);
+    sendEmail(requesterUser.email, subject, body).catch(console.error);
+  }
+  
+  // Send email notification to admins about new request
+  users.filter(u => u.role === 'admin').forEach(admin => {
+    const { subject, body } = generateNewRequestAlertEmail(newRequest);
+    sendEmail(admin.email, subject, body).catch(console.error);
+  });
+  
   return newRequest;
 };
 
@@ -159,6 +180,7 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   }
   
   const oldRequest = requests[index];
+  const oldStatus = oldRequest.status;
   
   // Check for status change to handle notifications
   if (updates.status && updates.status !== oldRequest.status) {
@@ -178,6 +200,14 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
         type: "request_resolved",
         requestId: id
       });
+    }
+    
+    // Send email notification about status change
+    const requesterUser = users.find(u => u.id === oldRequest.requesterId);
+    if (requesterUser) {
+      const updatedRequest = { ...oldRequest, ...updates };
+      const { subject, body } = generateStatusUpdateEmail(updatedRequest, oldStatus);
+      sendEmail(requesterUser.email, subject, body).catch(console.error);
     }
   }
   
@@ -419,4 +449,106 @@ const isBusinessDay = (date: Date): boolean => {
 export const uploadFile = async (file: File): Promise<string> => {
   await delay(1000); // Simulate upload time
   return URL.createObjectURL(file); // In a real app, this would be a URL from a file storage service
+};
+
+// New functions for email notifications
+
+// Check for requests with approaching or passed deadlines
+export const checkRequestDeadlines = async (): Promise<void> => {
+  const now = new Date();
+  const oneDayFromNow = addDays(now, 1);
+  
+  for (const request of requests) {
+    // Skip requests that are already resolved or closed
+    if (request.status === 'resolvida' || request.status === 'fechada') continue;
+    
+    const deadlineDate = new Date(request.deadlineAt);
+    const requesterUser = users.find(u => u.id === request.requesterId);
+    
+    if (!requesterUser) continue;
+    
+    // Check if request is overdue
+    if (isBefore(deadlineDate, now)) {
+      const { subject, body } = generateDeadlineAlertEmail(request, true);
+      sendEmail(requesterUser.email, subject, body).catch(console.error);
+    }
+    // Check if request deadline is approaching (within 1 day)
+    else if (isBefore(deadlineDate, oneDayFromNow)) {
+      const { subject, body } = generateDeadlineAlertEmail(request, false);
+      sendEmail(requesterUser.email, subject, body).catch(console.error);
+    }
+  }
+};
+
+// Send daily digest emails to admins (morning and afternoon)
+export const sendAdminDailyDigestEmails = async (): Promise<void> => {
+  const pendingRequests = requests.filter(req => 
+    req.status !== 'resolvida' && req.status !== 'fechada'
+  ).sort((a, b) => new Date(a.deadlineAt).getTime() - new Date(b.deadlineAt).getTime());
+  
+  const adminUsers = users.filter(u => u.role === 'admin');
+  
+  for (const admin of adminUsers) {
+    const { subject, body } = generateAdminDailyDigestEmail(pendingRequests);
+    sendEmail(admin.email, subject, body).catch(console.error);
+  }
+};
+
+// Simulate email scheduler initialization (in a real app, this would be handled by a backend service)
+let emailSchedulerInitialized = false;
+
+export const initEmailScheduler = (): void => {
+  if (emailSchedulerInitialized) return;
+  
+  console.log('Initializing email scheduler...');
+  
+  // Check for request deadlines every hour
+  setInterval(() => {
+    console.log('Checking request deadlines...');
+    checkRequestDeadlines().catch(console.error);
+  }, 60 * 60 * 1000); // 1 hour
+  
+  // Morning digest (8 AM)
+  const scheduleMorningDigest = () => {
+    const now = new Date();
+    const scheduledTime = new Date(now);
+    scheduledTime.setHours(8, 0, 0, 0);
+    
+    if (now > scheduledTime) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+    
+    const timeUntilExecution = scheduledTime.getTime() - now.getTime();
+    
+    setTimeout(() => {
+      console.log('Sending morning digest emails...');
+      sendAdminDailyDigestEmails().catch(console.error);
+      scheduleMorningDigest(); // Reschedule for next day
+    }, timeUntilExecution);
+  };
+  
+  // Afternoon digest (2 PM)
+  const scheduleAfternoonDigest = () => {
+    const now = new Date();
+    const scheduledTime = new Date(now);
+    scheduledTime.setHours(14, 0, 0, 0);
+    
+    if (now > scheduledTime) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+    
+    const timeUntilExecution = scheduledTime.getTime() - now.getTime();
+    
+    setTimeout(() => {
+      console.log('Sending afternoon digest emails...');
+      sendAdminDailyDigestEmails().catch(console.error);
+      scheduleAfternoonDigest(); // Reschedule for next day
+    }, timeUntilExecution);
+  };
+  
+  scheduleMorningDigest();
+  scheduleAfternoonDigest();
+  
+  emailSchedulerInitialized = true;
+  console.log('Email scheduler initialized successfully.');
 };

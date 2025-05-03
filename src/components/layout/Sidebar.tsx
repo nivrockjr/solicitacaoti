@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, FilePlus, FileText, Settings, Users } from 'lucide-react';
+import { BarChart3, FilePlus, FileText, Settings, Users, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,12 @@ const Sidebar: React.FC = () => {
       title: 'Todas Solicitações',
       href: '/requests',
       icon: <FileText className="h-5 w-5" />,
+      showFor: 'admin',
+    },
+    {
+      title: 'Relatórios',
+      href: '/reports',
+      icon: <FileSpreadsheet className="h-5 w-5" />,
       showFor: 'admin',
     },
     {

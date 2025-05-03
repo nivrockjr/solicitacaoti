@@ -1,4 +1,3 @@
-
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -36,10 +35,10 @@ function translatePriority(priority: string): string {
 export function exportToPdf(requests: ITRequest[], filters: any) {
   const doc = new jsPDF();
   
-  // Título do relatório
-  doc.setFontSize(18);
+  // Título do relatório - fonte um pouco menor
+  doc.setFontSize(16);
   doc.text('Relatório de Solicitações', 14, 22);
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   
   // Data de geração
   const today = format(new Date(), 'dd/MM/yyyy HH:mm');
@@ -89,34 +88,54 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
     translateRequestType(request.type),
     format(new Date(request.deadlineAt), 'dd/MM/yyyy'),
     translatePriority(request.priority),
-    request.description.substring(0, 30) + (request.description.length > 30 ? '...' : '')
+    request.description // Descrição completa, sem truncamento
   ]);
   
-  // Criar a tabela
+  // Criar a tabela com fonte menor
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 45,
     styles: {
-      fontSize: 9,
-      cellPadding: 3,
+      fontSize: 8, // Fonte menor
+      cellPadding: 2, // Padding menor para caber mais informação
     },
     columnStyles: {
-      0: { cellWidth: 25 },
-      6: { cellWidth: 40 }
+      0: { cellWidth: 20 }, // ID - diminuído
+      1: { cellWidth: 30 }, // Solicitante
+      2: { cellWidth: 20 }, // Data - diminuído
+      3: { cellWidth: 25 }, // Tipo
+      4: { cellWidth: 20 }, // Vencimento - diminuído
+      5: { cellWidth: 20 }, // Prioridade - diminuído
+      6: { cellWidth: 55 }  // Descrição - aumentado para acomodar texto completo
     },
     headStyles: {
       fillColor: [41, 128, 185],
       textColor: 255,
       fontStyle: 'bold',
+      fontSize: 9, // Cabeçalho um pouco maior que o conteúdo
     },
     alternateRowStyles: {
       fillColor: [240, 240, 240]
+    },
+    // Permite que o texto quebre em várias linhas
+    willDrawCell: function(data) {
+      if (data.column.index === 6) { // Coluna de descrição
+        doc.setFontSize(8); // Certifica-se de que a fonte seja pequena o suficiente
+      }
+    },
+    // Permitir quebra de texto para descrições longas
+    columnStyles: {
+      6: { 
+        cellWidth: 'auto',
+        overflow: 'linebreak'
+      }
     }
   });
   
   // Número total de solicitações
   const finalY = (doc as any).lastAutoTable.finalY || 45;
+  doc.setFontSize(10);
   doc.text(`Total de solicitações: ${requests.length}`, 14, finalY + 10);
   
   // Salvar o PDF

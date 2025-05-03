@@ -1,3 +1,4 @@
+
 import { User, ITRequest, Holiday, Notification } from "../types";
 
 // Mock users
@@ -21,6 +22,12 @@ export const mockUsers: User[] = [
     whatsapp: "+55 11 88888-8888" // Added WhatsApp field
   },
 ];
+
+// Mock passwords (normally would be stored securely, hashed)
+export const mockPasswords: Record<string, string> = {
+  "1": "Pqmz*2747",  // Admin user password - ti.mz@pqvirk.com.br
+  "2": "user123",   // Regular user password - user@company.com
+};
 
 // Mock requests
 export const mockRequests: ITRequest[] = [

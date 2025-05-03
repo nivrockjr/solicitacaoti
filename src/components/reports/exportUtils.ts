@@ -100,16 +100,17 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
     styles: {
       fontSize: 8, // Fonte menor
       cellPadding: 2, // Padding menor para caber mais informação
+      overflow: 'linebreak' // Garantir que todo texto tenha quebra de linha
     },
     columnStyles: {
       0: { cellWidth: 20 }, // ID - diminuído
       1: { cellWidth: 30 }, // Solicitante
       2: { cellWidth: 20 }, // Data - diminuído
       3: { cellWidth: 25 }, // Tipo
-      4: { cellWidth: 20 }, // Vencimento - diminuído
+      4: { cellWidth: 25 }, // Vencimento - aumentado para não quebrar
       5: { cellWidth: 20 }, // Prioridade - diminuído
       6: { 
-        cellWidth: 55,  // Descrição - aumentado para acomodar texto completo
+        cellWidth: 50,  // Descrição - ajustado para dar mais espaço aos outros
         overflow: 'linebreak'
       }
     },
@@ -118,6 +119,9 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
       textColor: 255,
       fontStyle: 'bold',
       fontSize: 9, // Cabeçalho um pouco maior que o conteúdo
+      halign: 'center', // Centralizar texto do cabeçalho
+      valign: 'middle', // Alinhar verticalmente ao meio
+      minCellHeight: 14 // Altura mínima para evitar quebras indesejadas
     },
     alternateRowStyles: {
       fillColor: [240, 240, 240]

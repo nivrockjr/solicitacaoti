@@ -1,16 +1,8 @@
-
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ITRequest } from '@/types';
-
-// Adicionar tipagens para jsPDF autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 // Função para traduzir tipos de solicitação
 function translateRequestType(type: string): string {
@@ -100,7 +92,7 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
   ]);
   
   // Criar a tabela
-  doc.autoTable({
+  autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 45,

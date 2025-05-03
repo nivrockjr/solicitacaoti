@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { FileExcel, FilePdf, Filter } from 'lucide-react';
+import { FileSpreadsheet, FileText, Filter } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -79,11 +79,11 @@ const ReportsPage = () => {
         <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
         <div className="flex gap-2">
           <Button onClick={handleExportToPdf} variant="outline" className="flex items-center gap-2">
-            <FilePdf className="h-4 w-4" />
+            <FileText className="h-4 w-4" />
             Exportar PDF
           </Button>
           <Button onClick={handleExportToExcel} variant="outline" className="flex items-center gap-2">
-            <FileExcel className="h-4 w-4" />
+            <FileSpreadsheet className="h-4 w-4" />
             Exportar Excel
           </Button>
         </div>

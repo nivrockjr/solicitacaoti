@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { supabase } from '@/lib/supabase';
 
 const EmailSettingsSchema = z.object({
   emailNotifications: z.boolean(),
@@ -21,13 +21,16 @@ const EmailSettingsSchema = z.object({
   emailPassword: z.string().min(1, 'Senha é obrigatória').optional(),
 });
 
+type EmailSettings = z.infer<typeof EmailSettingsSchema>;
+
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   const [showEmailSettings, setShowEmailSettings] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const form = useForm<z.infer<typeof EmailSettingsSchema>>({
+  const form = useForm<EmailSettings>({
     resolver: zodResolver(EmailSettingsSchema),
     defaultValues: {
       emailNotifications: true,
@@ -38,14 +41,89 @@ const SettingsPage: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof EmailSettingsSchema>) => {
-    // In a real app, this would save the settings to a backend
-    console.log('Saved notification settings:', data);
+  // Carregar configurações salvas do Supabase
+  useEffect(() => {
+    if (!user) return;
+
+    const loadUserSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Erro ao carregar configurações:', error);
+          return;
+        }
+
+        if (data) {
+          form.reset({
+            emailNotifications: data.email_notifications || true,
+            browserNotifications: data.browser_notifications || true,
+            whatsappNotifications: data.whatsapp_notifications || false,
+            emailAccount: data.email_account || user?.email || '',
+            emailPassword: '',
+          });
+          
+          if (data.email_notifications) {
+            setShowEmailSettings(true);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      }
+    };
+
+    loadUserSettings();
+  }, [user, form]);
+
+  const onSubmit = async (data: EmailSettings) => {
+    if (!user) return;
     
-    toast({
-      title: 'Configurações Salvas',
-      description: 'Suas preferências de notificação foram salvas com sucesso!',
-    });
+    setIsLoading(true);
+    
+    try {
+      // Salvar configurações no Supabase
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          email_notifications: data.emailNotifications,
+          browser_notifications: data.browserNotifications,
+          whatsapp_notifications: data.whatsappNotifications,
+          email_account: data.emailAccount,
+          // Só envie a senha se foi informada
+          ...(data.emailPassword ? { email_password: data.emailPassword } : {})
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        throw error;
+      }
+      
+      // Atualiza configurações de SMTP no Supabase Edge Function como secrets
+      if (data.emailNotifications && data.emailAccount && data.emailPassword) {
+        // Isso seria uma chamada administrativa que atualizaria as variáveis de ambiente
+        // Na implementação real, isso seria feito pelo administrador via Dashboard do Supabase
+        console.log('Configurações de SMTP atualizadas para:', data.emailAccount);
+      }
+      
+      toast({
+        title: 'Configurações Salvas',
+        description: 'Suas preferências de notificação foram salvas com sucesso!',
+      });
+    } catch (error: any) {
+      console.error('Erro ao salvar configurações:', error);
+      
+      toast({
+        title: 'Erro',
+        description: `Não foi possível salvar suas configurações: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -249,7 +327,9 @@ const SettingsPage: React.FC = () => {
                   )}
                 />
                 
-                <Button type="submit">Salvar Preferências de Notificação</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Salvando...' : 'Salvar Preferências de Notificação'}
+                </Button>
               </form>
             </Form>
           </CardContent>

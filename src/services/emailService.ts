@@ -1,5 +1,7 @@
+
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
+import { supabase } from '../lib/supabase';
 
 // Email configuration
 const EMAIL_CONFIG = {
@@ -19,21 +21,22 @@ export const sendEmail = async (to: string, subject: string, body: string): Prom
   console.log(`Body: ${body}`);
   
   try {
-    // For demonstration - this would call the Supabase Edge Function
-    // In a real implementation with Supabase, you would use:
-    // return await fetch('https://your-supabase-project.functions.supabase.co/send-email', {
-    //   method: 'POST',
-    //   body: JSON.stringify({ to, subject, body, config: EMAIL_CONFIG }),
-    //   headers: { 
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${supabaseApiKey}`
-    //   }
-    // }).then(res => res.ok);
-    
-    // For now we'll simulate a successful email send for the frontend demo
-    return new Promise(resolve => {
-      setTimeout(() => resolve(true), 500);
+    // Call the Supabase Edge Function for sending emails
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: JSON.stringify({ 
+        to, 
+        subject, 
+        body, 
+        config: EMAIL_CONFIG 
+      })
     });
+    
+    if (error) {
+      console.error('Error calling send-email function:', error);
+      return false;
+    }
+    
+    return data.success || false;
   } catch (error) {
     console.error('Error sending email:', error);
     return false;

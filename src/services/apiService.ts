@@ -5,6 +5,7 @@ import { getRequests, getRequestById, createRequest, updateRequest, uploadFile }
 import { getHolidays, addHoliday } from './holidayService';
 import { getNotifications, markNotificationAsRead } from './notificationService';
 import { initEmailScheduler, checkRequestDeadlines, sendAdminDailyDigestEmails } from './emailSchedulerService';
+import { sendEmail } from './emailService';
 
 // Re-export all the functionality
 export {
@@ -35,5 +36,8 @@ export {
   // Email Scheduler
   initEmailScheduler,
   checkRequestDeadlines,
-  sendAdminDailyDigestEmails
+  sendAdminDailyDigestEmails,
+  
+  // Email Service
+  sendEmail
 };

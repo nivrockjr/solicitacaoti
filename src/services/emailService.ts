@@ -1,4 +1,3 @@
-
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
 
@@ -13,24 +12,32 @@ const EMAIL_CONFIG = {
   }
 };
 
-// In a real implementation, this would use a library like nodemailer
-// Here we're simulating the email sending for frontend demonstration
+// In a real implementation with Supabase
 export const sendEmail = async (to: string, subject: string, body: string): Promise<boolean> => {
   console.log(`Sending email to: ${to}`);
   console.log(`Subject: ${subject}`);
   console.log(`Body: ${body}`);
   
-  // In a real implementation with Supabase or another backend:
-  // return await fetch('/api/send-email', {
-  //   method: 'POST',
-  //   body: JSON.stringify({ to, subject, body, config: EMAIL_CONFIG }),
-  //   headers: { 'Content-Type': 'application/json' }
-  // }).then(res => res.ok);
-  
-  // For now we'll simulate a successful email send
-  return new Promise(resolve => {
-    setTimeout(() => resolve(true), 500);
-  });
+  try {
+    // For demonstration - this would call the Supabase Edge Function
+    // In a real implementation with Supabase, you would use:
+    // return await fetch('https://your-supabase-project.functions.supabase.co/send-email', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ to, subject, body, config: EMAIL_CONFIG }),
+    //   headers: { 
+    //     'Content-Type': 'application/json',
+    //     'Authorization': `Bearer ${supabaseApiKey}`
+    //   }
+    // }).then(res => res.ok);
+    
+    // For now we'll simulate a successful email send for the frontend demo
+    return new Promise(resolve => {
+      setTimeout(() => resolve(true), 500);
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
 };
 
 // Email templates

@@ -1,6 +1,5 @@
 
 import { format, isWeekend, addDays } from 'date-fns';
-import { createNotification as createNotificationFn } from './notificationService';
 
 // Simulated API delay
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -78,4 +77,8 @@ export const isBusinessDay = (date: Date): boolean => {
 };
 
 // Re-export createNotification for use in other services
-export const createNotification = createNotificationFn;
+// Using require to break circular dependency
+export const createNotification = (...args: any[]) => {
+  const { createNotification: createNotificationFn } = require('./notificationService');
+  return createNotificationFn(...args);
+};

@@ -1,7 +1,10 @@
 
 import { Notification } from '../types';
-import { delay, cloneDeep } from './utils';
+import { delay } from './utils';
 import { mockNotifications } from './mockData';
+
+// Helper function for deep cloning objects - moved from utils to avoid circular dependency
+const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 // In-memory data store
 let notifications = cloneDeep(mockNotifications);

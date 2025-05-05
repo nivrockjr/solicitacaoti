@@ -1,5 +1,5 @@
+
 import { format, isWeekend, addDays } from 'date-fns';
-import { holidays } from './holidayService';
 import { createNotification as createNotificationFn } from './notificationService';
 
 // Simulated API delay
@@ -70,7 +70,9 @@ export const isBusinessDay = (date: Date): boolean => {
     return false;
   }
   
-  // Check if it's a holiday
+  // Check if it's a holiday - now we'll directly import holidays when needed
+  // This breaks the circular dependency
+  const { holidays } = require('./holidayService');
   const dateString = format(date, 'yyyy-MM-dd');
   return !holidays.some(holiday => holiday.date === dateString);
 };

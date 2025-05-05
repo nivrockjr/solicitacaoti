@@ -1,7 +1,9 @@
 
 import { Holiday } from '../types';
-import { delay, cloneDeep } from './utils';
 import { mockHolidays } from './mockData';
+
+// Helper function for deep cloning objects
+const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 // In-memory data store
 let holidays = cloneDeep(mockHolidays);
@@ -23,6 +25,9 @@ export const addHoliday = async (holiday: Omit<Holiday, 'id'>): Promise<Holiday>
   
   return newHoliday;
 };
+
+// Simulated API delay - moved from utils to avoid circular dependency
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Export holidays for use in other services
 export { holidays };

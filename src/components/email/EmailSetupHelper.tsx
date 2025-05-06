@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { sendEmail } from "@/services/apiService";
-import { settings } from "lucide-react";
+import { Settings } from "lucide-react";
 
 const EmailSetupHelper: React.FC = () => {
   const [testEmail, setTestEmail] = useState('');
@@ -63,7 +63,7 @@ const EmailSetupHelper: React.FC = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <settings className="h-5 w-5" />
+          <Settings className="h-5 w-5" />
           Configuração de E-mail
         </CardTitle>
         <CardDescription>

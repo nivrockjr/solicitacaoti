@@ -1,3 +1,4 @@
+
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
 import emailjs from '@emailjs/browser';
@@ -17,7 +18,7 @@ const EMAIL_CONFIG = {
 // Note: In a production app, you would get this from environment variables
 const EMAILJS_SERVICE_ID = 'service_lu4eukn'; // Atualizado com o ID do serviço mostrado na imagem
 const EMAILJS_USER_ID = 'user_placeholder'; // Será substituído após criar conta no EmailJS
-// This will need to be updated with your actual EmailJS public key after creating an account
+const EMAILJS_TEMPLATE_ID = 'template_placeholder'; // Será substituído após criar o template
 
 // Setup EmailJS
 const setupEmailJS = () => {
@@ -47,7 +48,7 @@ export const sendEmail = async (to: string, subject: string, body: string): Prom
     // Send email through EmailJS
     const response = await emailjs.send(
       EMAILJS_SERVICE_ID,
-      'email_template', // Template ID - será criado na interface do EmailJS
+      EMAILJS_TEMPLATE_ID, // Template ID - será criado na interface do EmailJS
       templateParams
     );
     

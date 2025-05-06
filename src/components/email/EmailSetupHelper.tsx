@@ -99,24 +99,32 @@ const EmailSetupHelper: React.FC = () => {
         </div>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 border-t p-4 mt-4">
-        <h3 className="text-sm font-medium">Dicas para resolver problemas de conexão:</h3>
+        <h3 className="text-sm font-medium">Configuração do EmailJS:</h3>
         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-          <li>Certifique-se que a porta 465 (SSL) não está bloqueada pelo seu firewall.</li>
-          <li>Verifique se o servidor SMTP da KingHost permite conexões externas.</li>
-          <li>No EmailJS, tente criar o serviço sem enviar o email de teste (desmarque a opção).</li>
-          <li>Se continuar com problemas, tente as portas alternativas: 25, 2525, ou 587 sem SSL.</li>
+          <li>No EmailJS, <strong>desmarque</strong> a opção "Send test email to verify configuration" antes de criar o serviço</li>
+          <li>Se o teste ainda falhar, tente as portas alternativas em ordem: 587 (sem SSL), 25 ou 2525</li>
+          <li>Após criar o serviço, copie seu Service ID (já preenchido como <code>service_lu4eukn</code>)</li>
+          <li>Acesse "Account" → "API Keys" para obter seu Public Key</li>
         </ol>
         
-        <h3 className="text-sm font-medium mt-4">Para completar a configuração no EmailJS:</h3>
+        <h3 className="text-sm font-medium mt-4">Criando um template no EmailJS:</h3>
         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-          <li>Use o Service ID: <code>service_lu4eukn</code></li>
-          <li>Crie um template com variáveis: <code>to_email</code>, <code>subject</code>, <code>message_html</code>, <code>from_name</code></li>
-          <li>Obtenha seu Public Key (User ID) e atualize no arquivo emailService.ts</li>
+          <li>No EmailJS, vá para "Email Templates" e clique em "Create New Template"</li>
+          <li>Crie um template com as variáveis: <code>to_email</code>, <code>subject</code>, <code>message_html</code>, <code>from_name</code></li>
+          <li>Depois, atualize o arquivo <code>emailService.ts</code> com seu Public Key e o Template ID</li>
         </ol>
+        
+        <div className="border-t border-border w-full my-3"></div>
+        
+        <h3 className="text-sm font-medium">Problemas de conexão comuns:</h3>
+        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+          <li>Certifique-se que a porta 465 não está bloqueada pelo firewall da sua rede</li>
+          <li>A KingHost pode estar bloqueando conexões externas para SMTP - contate o suporte</li>
+          <li>Se o problema persistir, considere usar serviços como SendGrid, Mailgun ou Gmail SMTP</li>
+        </ul>
       </CardFooter>
     </Card>
   );
 };
 
 export default EmailSetupHelper;
-

@@ -2,11 +2,11 @@ import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
 import emailjs from '@emailjs/browser';
 
-// Email configuration
+// Email configuration - Modificado para usar SSL/TLS na porta 465 como alternativa
 const EMAIL_CONFIG = {
   host: 'smtp.kinghost.net',
-  port: 587,
-  secure: false, // As specified, no encryption
+  port: 465,       // Alterado de 587 para 465 (porta SSL padrão)
+  secure: true,    // Alterado para true para usar SSL/TLS
   auth: {
     user: 'ti.mz@pqvirk.com.br',
     pass: 'Pqmz*2747'  
@@ -15,7 +15,7 @@ const EMAIL_CONFIG = {
 
 // Initialize EmailJS
 // Note: In a production app, you would get this from environment variables
-const EMAILJS_SERVICE_ID = 'kinghost_smtp';
+const EMAILJS_SERVICE_ID = 'service_lu4eukn'; // Atualizado com o ID do serviço mostrado na imagem
 const EMAILJS_USER_ID = 'user_placeholder'; // Será substituído após criar conta no EmailJS
 // This will need to be updated with your actual EmailJS public key after creating an account
 
@@ -95,7 +95,7 @@ export const generateStatusUpdateEmail = (request: ITRequest, oldStatus: Request
   const body = `
     <h2>Atualização de Solicitação</h2>
     <p>Olá ${request.requesterName},</p>
-    <p>Sua solicitação de TI teve uma atualização de status.</p>
+    <p>Sua solicitaç��o de TI teve uma atualização de status.</p>
     
     <h3>Detalhes da Solicitação:</h3>
     <ul>

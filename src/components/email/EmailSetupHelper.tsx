@@ -76,7 +76,7 @@ const EmailSetupHelper: React.FC = () => {
             <h3 className="text-sm font-medium">Servidor SMTP Configurado</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
               <li><strong>Servidor:</strong> smtp.kinghost.net</li>
-              <li><strong>Porta:</strong> 587</li>
+              <li><strong>Porta:</strong> 465 (SSL/TLS)</li>
               <li><strong>Usuário:</strong> ti.mz@pqvirk.com.br</li>
             </ul>
           </div>
@@ -99,12 +99,19 @@ const EmailSetupHelper: React.FC = () => {
         </div>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 border-t p-4 mt-4">
-        <h3 className="text-sm font-medium">Para completar a configuração:</h3>
+        <h3 className="text-sm font-medium">Dicas para resolver problemas de conexão:</h3>
         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-          <li>Crie uma conta no <a href="https://www.emailjs.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">EmailJS</a></li>
-          <li>Adicione um serviço SMTP com as credenciais acima</li>
+          <li>Certifique-se que a porta 465 (SSL) não está bloqueada pelo seu firewall.</li>
+          <li>Verifique se o servidor SMTP da KingHost permite conexões externas.</li>
+          <li>No EmailJS, tente criar o serviço sem enviar o email de teste (desmarque a opção).</li>
+          <li>Se continuar com problemas, tente as portas alternativas: 25, 2525, ou 587 sem SSL.</li>
+        </ol>
+        
+        <h3 className="text-sm font-medium mt-4">Para completar a configuração no EmailJS:</h3>
+        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+          <li>Use o Service ID: <code>service_lu4eukn</code></li>
           <li>Crie um template com variáveis: <code>to_email</code>, <code>subject</code>, <code>message_html</code>, <code>from_name</code></li>
-          <li>Atualize as constantes <code>EMAILJS_SERVICE_ID</code>, <code>EMAILJS_USER_ID</code> no arquivo emailService.ts</li>
+          <li>Obtenha seu Public Key (User ID) e atualize no arquivo emailService.ts</li>
         </ol>
       </CardFooter>
     </Card>
@@ -112,3 +119,4 @@ const EmailSetupHelper: React.FC = () => {
 };
 
 export default EmailSetupHelper;
+

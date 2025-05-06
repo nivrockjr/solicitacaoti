@@ -1,7 +1,6 @@
-
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
-import { supabase } from '../lib/supabase';
+import emailjs from '@emailjs/browser';
 
 // Email configuration
 const EMAIL_CONFIG = {
@@ -9,34 +8,51 @@ const EMAIL_CONFIG = {
   port: 587,
   secure: false, // As specified, no encryption
   auth: {
-    user: '', // To be filled with the user's email from the system
-    pass: ''  // To be filled with the password from the system
+    user: 'ti.mz@pqvirk.com.br',
+    pass: 'Pqmz*2747'  
   }
 };
 
-// In a real implementation with Supabase
+// Initialize EmailJS
+// Note: In a production app, you would get this from environment variables
+const EMAILJS_SERVICE_ID = 'kinghost_smtp';
+const EMAILJS_USER_ID = 'user_placeholder'; // Será substituído após criar conta no EmailJS
+// This will need to be updated with your actual EmailJS public key after creating an account
+
+// Setup EmailJS
+const setupEmailJS = () => {
+  console.log('Initializing EmailJS service...');
+  emailjs.init(EMAILJS_USER_ID);
+};
+
+// Call setup once when this module loads
+setupEmailJS();
+
+// Main email sending function using EmailJS
 export const sendEmail = async (to: string, subject: string, body: string): Promise<boolean> => {
   console.log(`Sending email to: ${to}`);
   console.log(`Subject: ${subject}`);
   console.log(`Body: ${body}`);
   
   try {
-    // Call the Supabase Edge Function for sending emails
-    const { data, error } = await supabase.functions.invoke('send-email', {
-      body: JSON.stringify({ 
-        to, 
-        subject, 
-        body, 
-        config: EMAIL_CONFIG 
-      })
-    });
+    // Prepare EmailJS template parameters
+    const templateParams = {
+      to_email: to,
+      subject: subject,
+      message_html: body,
+      from_name: "Sistema de TI",
+      from_email: EMAIL_CONFIG.auth.user
+    };
+
+    // Send email through EmailJS
+    const response = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      'email_template', // Template ID - será criado na interface do EmailJS
+      templateParams
+    );
     
-    if (error) {
-      console.error('Error calling send-email function:', error);
-      return false;
-    }
-    
-    return data.success || false;
+    console.log('Email sent successfully:', response.status, response.text);
+    return true;
   } catch (error) {
     console.error('Error sending email:', error);
     return false;

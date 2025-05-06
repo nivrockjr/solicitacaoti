@@ -12,6 +12,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/lib/supabase';
+import EmailSetupHelper from '@/components/email/EmailSetupHelper';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 const EmailSettingsSchema = z.object({
   emailNotifications: z.boolean(),
@@ -131,6 +133,13 @@ const SettingsPage: React.FC = () => {
       <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
       
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Email Setup Helper Card - Added at the top for visibility */}
+        <Card className="md:col-span-2">
+          <CardContent className="pt-6">
+            <EmailSetupHelper />
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardHeader>
             <CardTitle>Perfil do Usuário</CardTitle>

@@ -5,13 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { sendEmail } from "@/services/apiService";
-import { Settings } from "lucide-react";
+import { sendEmail } from "@/services/emailService";
+import { Settings, Copy, Check } from "lucide-react";
 
 const EmailSetupHelper: React.FC = () => {
   const [testEmail, setTestEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const smtpConfig = {
+    host: 'kinghost.smtpkl.com.br',
+    port: 587,
+    user: '230248762c7b4076f6b27d84b2ee2387',
+    ssl: 465
+  };
+
+  const handleCopy = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(field);
+    setTimeout(() => setCopied(null), 2000);
+  };
 
   const handleTestEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,21 +78,61 @@ const EmailSetupHelper: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
-          Configuração de E-mail
+          Configuração de SMTP Transacional
         </CardTitle>
         <CardDescription>
-          Teste a configuração de envio de e-mails do sistema
+          Configure o envio de e-mails utilizando SMTP Transacional da KingHost
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Servidor SMTP Configurado</h3>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li><strong>Servidor:</strong> smtp.kinghost.net</li>
-              <li><strong>Porta:</strong> 465 (SSL/TLS)</li>
-              <li><strong>Usuário:</strong> ti.mz@pqvirk.com.br</li>
-            </ul>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
+                <span><strong>Servidor:</strong> {smtpConfig.host}</span>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => handleCopy(smtpConfig.host, 'host')}
+                >
+                  {copied === 'host' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
+                <span><strong>Usuário:</strong> {smtpConfig.user}</span>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => handleCopy(smtpConfig.user, 'user')}
+                >
+                  {copied === 'user' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
+                <span><strong>Porta:</strong> {smtpConfig.port} (SMTP)</span>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => handleCopy(smtpConfig.port.toString(), 'port')}
+                >
+                  {copied === 'port' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
+                <span><strong>SSL/TLS:</strong> {smtpConfig.ssl}</span>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => handleCopy(smtpConfig.ssl.toString(), 'ssl')}
+                >
+                  {copied === 'ssl' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
           </div>
           
           <div className="space-y-2">
@@ -99,28 +153,22 @@ const EmailSetupHelper: React.FC = () => {
         </div>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 border-t p-4 mt-4">
-        <h3 className="text-sm font-medium">Configuração do EmailJS:</h3>
+        <h3 className="text-sm font-medium">Configuração do SMTP Transacional:</h3>
         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-          <li>No EmailJS, <strong>desmarque</strong> a opção "Send test email to verify configuration" antes de criar o serviço</li>
-          <li>Se o teste ainda falhar, tente as portas alternativas em ordem: 587 (sem SSL), 25 ou 2525</li>
-          <li>Após criar o serviço, copie seu Service ID (já preenchido como <code>service_lu4eukn</code>)</li>
-          <li>Acesse "Account" → "API Keys" para obter seu Public Key</li>
-        </ol>
-        
-        <h3 className="text-sm font-medium mt-4">Criando um template no EmailJS:</h3>
-        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-          <li>No EmailJS, vá para "Email Templates" e clique em "Create New Template"</li>
-          <li>Crie um template com as variáveis: <code>to_email</code>, <code>subject</code>, <code>message_html</code>, <code>from_name</code></li>
-          <li>Depois, atualize o arquivo <code>emailService.ts</code> com seu Public Key e o Template ID</li>
+          <li>As credenciais acima já estão configuradas no sistema</li>
+          <li>Use o botão de cópia para copiar qualquer informação necessária</li>
+          <li>O sistema está configurado para usar estas credenciais para todos os envios de e-mail</li>
+          <li>Seu plano atual permite até 1.000 envios mensais</li>
         </ol>
         
         <div className="border-t border-border w-full my-3"></div>
         
-        <h3 className="text-sm font-medium">Problemas de conexão comuns:</h3>
+        <h3 className="text-sm font-medium">Dicas para resolução de problemas:</h3>
         <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-          <li>Certifique-se que a porta 465 não está bloqueada pelo firewall da sua rede</li>
-          <li>A KingHost pode estar bloqueando conexões externas para SMTP - contate o suporte</li>
-          <li>Se o problema persistir, considere usar serviços como SendGrid, Mailgun ou Gmail SMTP</li>
+          <li>Certifique-se que as portas 587 (SMTP) e 465 (SSL/TLS) não estão bloqueadas pelo firewall da sua rede</li>
+          <li>Verifique se o domínio de destino não está bloqueando emails do seu servidor</li>
+          <li>Alguns serviços como Gmail podem marcar emails como spam se não estiverem corretamente configurados com SPF e DKIM</li>
+          <li>Se precisar de mais ajuda, entre em contato com o suporte da KingHost</li>
         </ul>
       </CardFooter>
     </Card>

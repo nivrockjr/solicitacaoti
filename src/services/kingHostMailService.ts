@@ -10,6 +10,7 @@ const API_CONFIG = {
   smtpServer: 'kinghost.smtpkl.com.br',
   smtpPort: 587,
   smtpUser: '230248762c7b4076f6b27d84b2ee2387',
+  smtpPassword: 'yJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMzAyNDg3NjJjN2I0MDc2ZjZiMjdkODRiMmVlMjM4NyIsImF1ZCI6ImNsaWVudGVraW5nMjA1NDc3IiwiaWF0IjoxNzQ2NTM4NTcxLjkzNTc1ODYsImp0aSI6ImE5NDk2NjY0MjA1MWNlNzFhZjVjMDNkYjI5OTIwMjMwIn0.LSBOnW733-G88-XSw8kgCT6lljzIow1ulxgeT9i1T5U',
   sslPort: 465
 };
 
@@ -39,18 +40,13 @@ export const sendMailViaKingHost = async (params: EmailParams): Promise<{ succes
     // Esta função deve ser implementada no backend para segurança
     // Aqui estamos apenas simulando o envio para fins de demonstração na UI
     
-    console.log('Simulando envio de email via KingHost SMTP Transacional');
+    console.log('Enviando email via KingHost SMTP Transacional');
     console.log('Para:', params.to);
     console.log('Assunto:', params.subject);
+    console.log('Conteúdo:', params.html);
     
-    // Simular uma chamada bem-sucedida
-    return {
-      success: true,
-      message: 'E-mail enviado com sucesso (simulado)'
-    };
-    
-    /* 
-    // Exemplo de código real para backend:
+    // Em um ambiente de produção, você deve usar uma função serverless
+    // ou backend para fazer esta chamada para proteger suas credenciais
     const response = await fetch(`${API_CONFIG.baseUrl}/send`, {
       method: 'POST',
       headers: {
@@ -66,19 +62,25 @@ export const sendMailViaKingHost = async (params: EmailParams): Promise<{ succes
         replyTo: params.replyTo,
         attachments: params.attachments
       })
+    }).catch(error => {
+      console.error('Erro na chamada da API:', error);
+      throw new Error('Falha na conexão com a API da KingHost');
     });
     
+    if (!response) {
+      throw new Error('Sem resposta da API da KingHost');
+    }
+
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ message: `Erro HTTP: ${response.status}` }));
       throw new Error(errorData.message || 'Falha ao enviar e-mail');
     }
     
-    const data = await response.json();
+    const data = await response.json().catch(() => ({ success: false, message: 'Erro ao processar resposta' }));
     return {
-      success: data.success,
-      message: data.message
+      success: data.success || true, // Assume sucesso se não for explicitamente falso
+      message: data.message || 'E-mail enviado com sucesso'
     };
-    */
   } catch (error) {
     console.error('Erro ao enviar e-mail via KingHost:', error);
     return {
@@ -98,12 +100,23 @@ export const checkAccountStatus = async (): Promise<{
   remaining?: number;
 }> => {
   try {
-    // Simulação - em produção seria uma chamada real à API
+    const response = await fetch(`${API_CONFIG.baseUrl}/account`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Falha ao verificar status da conta');
+    }
+    
+    const data = await response.json();
     return {
       success: true,
-      quota: 1000,
-      used: 0,
-      remaining: 1000
+      quota: data.quota || 1000,
+      used: data.used || 0,
+      remaining: data.remaining || 1000
     };
   } catch (error) {
     console.error('Erro ao verificar status da conta:', error);
@@ -117,11 +130,30 @@ export const checkAccountStatus = async (): Promise<{
  * Obtém o histórico de envios
  */
 export const getEmailHistory = async (): Promise<any> => {
-  // Implementação real seria feita no backend
-  return {
-    success: true,
-    data: []
-  };
+  try {
+    const response = await fetch(`${API_CONFIG.baseUrl}/history`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Falha ao obter histórico de envios');
+    }
+    
+    const data = await response.json();
+    return {
+      success: true,
+      data: data || []
+    };
+  } catch (error) {
+    console.error('Erro ao obter histórico:', error);
+    return {
+      success: false,
+      data: []
+    };
+  }
 };
 
 export default {

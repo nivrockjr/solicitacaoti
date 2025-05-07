@@ -1,5 +1,6 @@
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
+import kingHostMailService from './kingHostMailService';
 
 // Configuração do SMTP Transacional da KingHost
 const SMTP_CONFIG = {
@@ -15,42 +16,21 @@ const SMTP_CONFIG = {
 // Token de API para SMTP Transacional da KingHost
 const API_TOKEN = '2eeb040456e39a97c9bc30c32f641e43';
 
-// Função principal de envio de email usando a API da KingHost
+// Função principal de envio de email usando o serviço da KingHost
 export const sendEmail = async (to: string, subject: string, body: string): Promise<boolean> => {
   console.log(`Enviando email para: ${to}`);
   console.log(`Assunto: ${subject}`);
-  console.log(`Conteúdo: ${body}`);
   
   try {
-    // Simulando o envio usando fetch para a API da KingHost
-    // Em uma implementação real, isso seria feito por uma função serverless ou backend
-    console.log('Enviando email via SMTP Transacional da KingHost');
-    
-    // Simular sucesso para testes na interface
-    // Em produção, esta seria uma chamada real para a API da KingHost
-    
-    // Exemplo de código para envio real (deve ser implementado no backend):
-    /*
-    const response = await fetch('https://api.kinghost.net/mail/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`
-      },
-      body: JSON.stringify({
-        from: 'sistema@seudominio.com.br',
-        to: to,
-        subject: subject,
-        html: body,
-      })
+    // Usar o serviço da KingHost para enviar o email
+    const result = await kingHostMailService.sendMail({
+      to,
+      subject,
+      html: body,
+      fromName: 'Sistema de Solicitações de TI'
     });
     
-    const data = await response.json();
-    return data.success;
-    */
-    
-    // Simulando sucesso
-    return true;
+    return result.success;
   } catch (error) {
     console.error('Erro ao enviar email:', error);
     return false;

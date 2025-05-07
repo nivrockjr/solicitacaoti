@@ -12,7 +12,8 @@ const API_CONFIG = {
   smtpUser: '230248762c7b4076f6b27d84b2ee2387',
   smtpPassword: 'yJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMzAyNDg3NjJjN2I0MDc2ZjZiMjdkODRiMmVlMjM4NyIsImF1ZCI6ImNsaWVudGVraW5nMjA1NDc3IiwiaWF0IjoxNzQ2NTM4NTcxLjkzNTc1ODYsImp0aSI6ImE5NDk2NjY0MjA1MWNlNzFhZjVjMDNkYjI5OTIwMjMwIn0.LSBOnW733-G88-XSw8kgCT6lljzIow1ulxgeT9i1T5U',
   sslPort: 465,
-  defaultDomain: 'suporte.pqvirk.com.br' // Adicionado o subdomínio de envio padrão
+  defaultDomain: 'suporte.pqvirk.com.br', // Subdomínio de envio padrão
+  adminEmail: 'ti.mz@pqvirk.com.br' // Email administrativo para envios
 };
 
 // Interface para os parâmetros do email
@@ -46,8 +47,8 @@ export const sendMailViaKingHost = async (params: EmailParams): Promise<{ succes
     console.log('Assunto:', params.subject);
     console.log('Conteúdo:', params.html);
     
-    // Construir o endereço de email de origem usando o subdomínio configurado
-    const fromEmail = params.from || `noreply@${API_CONFIG.defaultDomain}`;
+    // Usar o email administrativo como remetente padrão quando não for especificado
+    const fromEmail = params.from || API_CONFIG.adminEmail;
     
     // Em um ambiente de produção, você deve usar uma função serverless
     // ou backend para fazer esta chamada para proteger suas credenciais

@@ -14,6 +14,9 @@ const SMTP_CONFIG = {
   }
 };
 
+// Email administrativo para envios
+const ADMIN_EMAIL = 'ti.mz@pqvirk.com.br';
+
 // Domain para emails enviados
 const EMAIL_DOMAIN = 'suporte.pqvirk.com.br';
 
@@ -31,7 +34,7 @@ export const sendEmail = async (to: string, subject: string, body: string): Prom
       to,
       subject,
       html: body,
-      from: `noreply@${EMAIL_DOMAIN}`,
+      from: ADMIN_EMAIL,
       fromName: 'Sistema de Solicitações de TI'
     });
     

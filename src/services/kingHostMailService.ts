@@ -11,7 +11,8 @@ const API_CONFIG = {
   smtpPort: 587,
   smtpUser: '230248762c7b4076f6b27d84b2ee2387',
   smtpPassword: 'yJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMzAyNDg3NjJjN2I0MDc2ZjZiMjdkODRiMmVlMjM4NyIsImF1ZCI6ImNsaWVudGVraW5nMjA1NDc3IiwiaWF0IjoxNzQ2NTM4NTcxLjkzNTc1ODYsImp0aSI6ImE5NDk2NjY0MjA1MWNlNzFhZjVjMDNkYjI5OTIwMjMwIn0.LSBOnW733-G88-XSw8kgCT6lljzIow1ulxgeT9i1T5U',
-  sslPort: 465
+  sslPort: 465,
+  defaultDomain: 'suporte.pqvirk.com.br' // Adicionado o subdomínio de envio padrão
 };
 
 // Interface para os parâmetros do email
@@ -45,6 +46,9 @@ export const sendMailViaKingHost = async (params: EmailParams): Promise<{ succes
     console.log('Assunto:', params.subject);
     console.log('Conteúdo:', params.html);
     
+    // Construir o endereço de email de origem usando o subdomínio configurado
+    const fromEmail = params.from || `noreply@${API_CONFIG.defaultDomain}`;
+    
     // Em um ambiente de produção, você deve usar uma função serverless
     // ou backend para fazer esta chamada para proteger suas credenciais
     const response = await fetch(`${API_CONFIG.baseUrl}/send`, {
@@ -54,12 +58,12 @@ export const sendMailViaKingHost = async (params: EmailParams): Promise<{ succes
         'Authorization': `Bearer ${API_CONFIG.token}`
       },
       body: JSON.stringify({
-        from: params.from || 'noreply@seudominio.com',
+        from: fromEmail,
         fromName: params.fromName || 'Sistema de TI',
         to: params.to,
         subject: params.subject,
         html: params.html,
-        replyTo: params.replyTo,
+        replyTo: params.replyTo || fromEmail,
         attachments: params.attachments
       })
     }).catch(error => {

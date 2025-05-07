@@ -1,3 +1,4 @@
+
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
 import kingHostMailService from './kingHostMailService';
@@ -13,6 +14,9 @@ const SMTP_CONFIG = {
   }
 };
 
+// Domain para emails enviados
+const EMAIL_DOMAIN = 'suporte.pqvirk.com.br';
+
 // Token de API para SMTP Transacional da KingHost
 const API_TOKEN = '2eeb040456e39a97c9bc30c32f641e43';
 
@@ -27,6 +31,7 @@ export const sendEmail = async (to: string, subject: string, body: string): Prom
       to,
       subject,
       html: body,
+      from: `noreply@${EMAIL_DOMAIN}`,
       fromName: 'Sistema de Solicitações de TI'
     });
     

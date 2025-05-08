@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { whatsapp, calendar, save } from 'lucide-react';
+import { Calendar, Plus, Save } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -31,11 +31,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { createRequest } from '@/services/apiService';
-import { StockAdjustment } from '@/types';
 
+// Define a lot entry type
+interface LotEntry {
+  id: string;
+  lotNumber: string;
+  weight: number;
+}
+
+// Updated schema to include lots array
 const formSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   department: z.string().min(1, 'Departamento é obrigatório'),
@@ -43,8 +50,6 @@ const formSchema = z.object({
   category: z.string().min(1, 'Categoria é obrigatória'),
   productName: z.string().min(1, 'Nome do produto é obrigatório'),
   cost: z.coerce.number().min(0, 'Custo deve ser maior ou igual a zero'),
-  lotNumber: z.string().min(1, 'Número do lote é obrigatório'),
-  weight: z.coerce.number().min(0, 'Peso deve ser maior ou igual a zero'),
   reason: z.string().min(5, 'Descreva o motivo do ajuste'),
   requestDate: z.date({
     required_error: "Data da solicitação é obrigatória",
@@ -56,6 +61,7 @@ const StockAdjustmentPage: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lots, setLots] = useState<LotEntry[]>([{ id: '1', lotNumber: '', weight: 0 }]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -66,14 +72,22 @@ const StockAdjustmentPage: React.FC = () => {
       category: '',
       productName: '',
       cost: 0,
-      lotNumber: '',
-      weight: 0,
       reason: '',
       requestDate: new Date(),
     },
   });
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    // Validate lots
+    if (lots.some(lot => !lot.lotNumber)) {
+      toast({
+        title: "Número de lote obrigatório",
+        description: "Por favor, preencha o número do lote para todos os itens",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -110,6 +124,10 @@ const StockAdjustmentPage: React.FC = () => {
   };
 
   const createAdjustmentDescription = (data: z.infer<typeof formSchema>): string => {
+    const lotsInfo = lots.map((lot, index) => 
+      `Lote ${index + 1}: ${lot.lotNumber}, Peso: ${lot.weight} kg`
+    ).join('\n');
+
     return `
       Nome: ${data.name}
       Setor: ${data.department}
@@ -120,10 +138,28 @@ const StockAdjustmentPage: React.FC = () => {
       Categoria: ${data.category}
       Nome do Produto: ${data.productName}
       Custo: R$ ${data.cost.toFixed(2)}
-      Número do Lote: ${data.lotNumber}
-      Peso: ${data.weight} kg
+      
+      Lotes:
+      ${lotsInfo}
+      
       Motivo: ${data.reason}
     `;
+  };
+
+  const addLot = () => {
+    setLots([...lots, { id: Date.now().toString(), lotNumber: '', weight: 0 }]);
+  };
+
+  const removeLot = (id: string) => {
+    if (lots.length > 1) {
+      setLots(lots.filter(lot => lot.id !== id));
+    }
+  };
+
+  const updateLot = (id: string, field: 'lotNumber' | 'weight', value: string | number) => {
+    setLots(lots.map(lot => 
+      lot.id === id ? { ...lot, [field]: value } : lot
+    ));
   };
 
   const sendToWhatsApp = () => {
@@ -132,6 +168,20 @@ const StockAdjustmentPage: React.FC = () => {
     if (!validateFormBeforeWhatsApp()) {
       return;
     }
+
+    // Check if lots are filled out
+    if (lots.some(lot => !lot.lotNumber)) {
+      toast({
+        title: "Número de lote obrigatório",
+        description: "Por favor, preencha o número do lote para todos os itens",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const lotsInfo = lots.map((lot, index) => 
+      `Lote ${index + 1}: ${lot.lotNumber}, Peso: ${lot.weight} kg`
+    ).join('\n');
 
     const message = `
 Genius PQVIRK - Solicitação de Ajuste de Estoque
@@ -145,8 +195,10 @@ Tipo: ${formData.adjustmentType}
 Categoria: ${formData.category}
 Nome do Produto: ${formData.productName}
 Custo: R$ ${formData.cost.toFixed(2)}
-Número do Lote: ${formData.lotNumber}
-Peso: ${formData.weight} kg
+
+Lotes:
+${lotsInfo}
+
 Motivo: ${formData.reason}
     `.trim();
 
@@ -171,6 +223,16 @@ Motivo: ${formData.reason}
   const saveAndSendToWhatsApp = async () => {
     const isFormValid = validateFormBeforeWhatsApp();
     if (!isFormValid) return;
+
+    // Check if lots are filled out
+    if (lots.some(lot => !lot.lotNumber)) {
+      toast({
+        title: "Número de lote obrigatório",
+        description: "Por favor, preencha o número do lote para todos os itens",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       await form.handleSubmit(onSubmit)();
@@ -235,11 +297,9 @@ Motivo: ${formData.reason}
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="entrada">Entrada</SelectItem>
-                      <SelectItem value="saida">Saída</SelectItem>
-                      <SelectItem value="transferencia">Transferência</SelectItem>
-                      <SelectItem value="devolucao">Devolução</SelectItem>
-                      <SelectItem value="outro">Outro</SelectItem>
+                      <SelectItem value="positivo">Positivo</SelectItem>
+                      <SelectItem value="negativo">Negativo</SelectItem>
+                      <SelectItem value="relacionamento">Relacionamento</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -263,11 +323,8 @@ Motivo: ${formData.reason}
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="materia_prima">Matéria Prima</SelectItem>
-                      <SelectItem value="embalagem">Embalagem</SelectItem>
+                      <SelectItem value="composicao">Composição</SelectItem>
                       <SelectItem value="produto_acabado">Produto Acabado</SelectItem>
-                      <SelectItem value="insumo">Insumo</SelectItem>
-                      <SelectItem value="outro">Outro</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -311,45 +368,66 @@ Motivo: ${formData.reason}
                 </FormItem>
               )}
             />
-            
-            {/* Número do Lote */}
-            <FormField
-              control={form.control}
-              name="lotNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">Número do Lote</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite o número do lote" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Peso */}
-            <FormField
-              control={form.control}
-              name="weight"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">Peso (kg)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      step="0.01" 
-                      placeholder="0" 
-                      {...field} 
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
           
+          {/* Lotes e Pesos */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Lotes e Pesos</h3>
+              <Button 
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addLot}
+                className="flex items-center gap-1"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar Lote
+              </Button>
+            </div>
+            
+            {lots.map((lot, index) => (
+              <div key={lot.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-md">
+                <div>
+                  <FormLabel htmlFor={`lot-${lot.id}`} className="text-base">
+                    Número do Lote <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Input
+                    id={`lot-${lot.id}`}
+                    placeholder="Digite o número do lote"
+                    value={lot.lotNumber}
+                    onChange={(e) => updateLot(lot.id, 'lotNumber', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <FormLabel htmlFor={`weight-${lot.id}`} className="text-base">Peso (kg)</FormLabel>
+                  <Input
+                    id={`weight-${lot.id}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    value={lot.weight.toString()}
+                    onChange={(e) => updateLot(lot.id, 'weight', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  {lots.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeLot(lot.id)}
+                      className="mt-auto"
+                    >
+                      Remover
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Motivo do Ajuste */}
           <FormField
             control={form.control}
@@ -387,12 +465,12 @@ Motivo: ${formData.reason}
                         ) : (
                           <span>Selecione uma data</span>
                         )}
-                        <calendar className="ml-auto h-4 w-4 opacity-50" />
+                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <CalendarComponent
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
@@ -420,8 +498,7 @@ Motivo: ${formData.reason}
               onClick={saveAndSendToWhatsApp}
               disabled={isSubmitting}
             >
-              <save className="mr-2 h-4 w-4" />
-              <whatsapp className="mr-2 h-4 w-4" />
+              <Save className="mr-2 h-4 w-4" />
               Salvar e enviar para o WhatsApp
             </Button>
           </div>

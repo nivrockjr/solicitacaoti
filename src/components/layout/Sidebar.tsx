@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, FilePlus, FileText, Settings, Users, FileSpreadsheet } from 'lucide-react';
+import { BarChart3, FilePlus, FileText, Settings, Users, FileSpreadsheet, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,12 @@ const Sidebar: React.FC = () => {
       title: 'Nova Solicitação',
       href: '/request/new',
       icon: <FilePlus className="h-5 w-5" />,
+      showFor: 'both',
+    },
+    {
+      title: 'Ajuste de Estoque',
+      href: '/stock-adjustment',
+      icon: <Package className="h-5 w-5" />,
       showFor: 'both',
     },
     {

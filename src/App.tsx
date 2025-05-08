@@ -22,6 +22,7 @@ import RequestDetailPage from "@/pages/Requests/RequestDetailPage";
 import ReportsPage from "@/pages/Reports/ReportsPage";
 import UsersPage from "@/pages/Users/UsersPage";
 import SettingsPage from "@/pages/Settings/SettingsPage";
+import StockAdjustmentPage from "@/pages/StockAdjustment/StockAdjustmentPage";
 import NotFound from "@/pages/NotFound";
 
 import { initEmailScheduler } from "@/services/apiService";
@@ -58,6 +59,7 @@ const App = () => {
                     <Route path="requests/my" element={<MyRequestsPage />} />
                     <Route path="requests" element={<AllRequestsPage />} />
                     <Route path="reports" element={<ReportsPage />} />
+                    <Route path="stock-adjustment" element={<StockAdjustmentPage />} />
                     <Route path="users" element={<UsersPage />} />
                     <Route path="settings" element={<SettingsPage />} />
                   </Route>

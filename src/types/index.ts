@@ -67,3 +67,20 @@ export interface Notification {
   type: 'request_created' | 'request_assigned' | 'deadline_changed' | 'request_resolved';
   requestId?: string;
 }
+
+// Tipos para o formulário de Ajuste de Estoque
+export interface StockAdjustment {
+  name: string;
+  department: string;
+  adjustmentType: string;
+  category: string;
+  productName: string;
+  cost: number;
+  lotNumber: string;
+  weight: number;
+  reason: string;
+  requestDate: string;
+}
+
+export type AdjustmentType = 'entrada' | 'saida' | 'transferencia' | 'devolucao' | 'outro';
+export type ProductCategory = 'materia_prima' | 'embalagem' | 'produto_acabado' | 'insumo' | 'outro';

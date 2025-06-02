@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
 import VirtualAssistant from '@/components/chat/VirtualAssistant';
 import { useVirtualAssistant } from '@/hooks/useVirtualAssistant';
-import { Fragment } from 'react';
 import { BarChart } from '@/components/ui/chart';
 
 const DashboardPage: React.FC = () => {
@@ -79,7 +78,7 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Total de Solicitações</CardTitle>
@@ -149,9 +148,7 @@ const DashboardPage: React.FC = () => {
               config={{
                 value: { color: 'hsl(var(--primary))' }
               }}
-            >
-              <Fragment />
-            </BarChart>
+            />
           </CardContent>
         </Card>
         
@@ -170,9 +167,7 @@ const DashboardPage: React.FC = () => {
               config={{
                 value: { color: 'hsl(var(--accent))' }
               }}
-            >
-              <Fragment />
-            </BarChart>
+            />
           </CardContent>
         </Card>
       </div>

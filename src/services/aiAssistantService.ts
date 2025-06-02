@@ -14,40 +14,40 @@ interface KnowledgeBase {
 // Base de conhecimento para problemas comuns de TI
 const knowledgeBase: KnowledgeBase = {
   categories: {
-    internet: {
-      keywords: ['internet', 'conexão', 'wifi', 'rede', 'desconectado', 'lento', 'navegador'],
+    hardware: {
+      keywords: ['pc', 'computador', 'não liga', 'não ligando', 'ligando', 'teclado', 'mouse', 'monitor', 'cpu', 'memória', 'disco', 'energia', 'fonte', 'botão'],
       responses: [
-        'Para problemas de internet:\n1. Verifique se o cabo de rede está conectado\n2. Reinicie o roteador\n3. Verifique as configurações de proxy\n4. Teste em outro dispositivo\n5. Entre em contato com o provedor se necessário'
+        'Para problemas de PC que não liga:\n\n1. Verifique se o cabo de energia está conectado corretamente\n2. Teste em outra tomada\n3. Verifique se o botão de energia da fonte está ligado\n4. Confirme se há energia na tomada\n5. Verifique conexões internas (se souber fazer)\n6. Teste sem periféricos conectados\n7. Se nada funcionar, pode ser problema na fonte de alimentação\n\nSe o problema persistir, crie uma solicitação para nosso suporte técnico!'
+      ]
+    },
+    internet: {
+      keywords: ['internet', 'conexão', 'wifi', 'rede', 'desconectado', 'lento', 'navegador', 'wi-fi'],
+      responses: [
+        'Para problemas de internet:\n\n1. Verifique se o cabo de rede está conectado\n2. Reinicie o roteador\n3. Verifique as configurações de proxy\n4. Teste em outro dispositivo\n5. Entre em contato com o provedor se necessário\n\nSe continuar com problemas, abra uma solicitação!'
       ]
     },
     email: {
-      keywords: ['email', 'outlook', 'gmail', 'correio', 'anexo', 'spam'],
+      keywords: ['email', 'outlook', 'gmail', 'correio', 'anexo', 'spam', 'e-mail'],
       responses: [
-        'Para problemas de email:\n1. Verifique suas credenciais\n2. Confirme as configurações do servidor\n3. Verifique a caixa de spam\n4. Limpe o cache do cliente de email\n5. Teste o webmail'
+        'Para problemas de email:\n\n1. Verifique suas credenciais\n2. Confirme as configurações do servidor\n3. Verifique a caixa de spam\n4. Limpe o cache do cliente de email\n5. Teste o webmail\n\nPrecisa de mais ajuda? Crie uma solicitação!'
       ]
     },
     impressora: {
-      keywords: ['impressora', 'imprimir', 'papel', 'tinta', 'toner', 'scanner'],
+      keywords: ['impressora', 'imprimir', 'papel', 'tinta', 'toner', 'scanner', 'impressão'],
       responses: [
-        'Para problemas de impressora:\n1. Verifique se há papel e tinta/toner\n2. Reinicie a impressora\n3. Verifique a conexão USB ou rede\n4. Atualize os drivers\n5. Limpe a fila de impressão'
+        'Para problemas de impressora:\n\n1. Verifique se há papel e tinta/toner\n2. Reinicie a impressora\n3. Verifique a conexão USB ou rede\n4. Atualize os drivers\n5. Limpe a fila de impressão\n\nAinda com problemas? Abra uma solicitação para nosso suporte!'
       ]
     },
     software: {
-      keywords: ['programa', 'software', 'aplicativo', 'instalar', 'atualizar', 'erro'],
+      keywords: ['programa', 'software', 'aplicativo', 'instalar', 'atualizar', 'erro', 'aplicação'],
       responses: [
-        'Para problemas de software:\n1. Reinicie o aplicativo\n2. Verifique atualizações disponíveis\n3. Execute como administrador\n4. Reinstale se necessário\n5. Verifique compatibilidade do sistema'
-      ]
-    },
-    hardware: {
-      keywords: ['computador', 'teclado', 'mouse', 'monitor', 'cpu', 'memória', 'disco'],
-      responses: [
-        'Para problemas de hardware:\n1. Verifique todas as conexões\n2. Reinicie o equipamento\n3. Teste com outro cabo/porta\n4. Verifique indicadores de energia\n5. Execute diagnósticos do sistema'
+        'Para problemas de software:\n\n1. Reinicie o aplicativo\n2. Verifique atualizações disponíveis\n3. Execute como administrador\n4. Reinstale se necessário\n5. Verifique compatibilidade do sistema\n\nPrecisa de mais suporte? Crie uma solicitação!'
       ]
     },
     senha: {
-      keywords: ['senha', 'password', 'login', 'acesso', 'bloqueado', 'esqueci'],
+      keywords: ['senha', 'password', 'login', 'acesso', 'bloqueado', 'esqueci', 'usuário'],
       responses: [
-        'Para problemas de senha:\n1. Use a opção "Esqueci minha senha"\n2. Verifique se o Caps Lock está ativado\n3. Limpe o cache do navegador\n4. Contacte o administrador para reset\n5. Verifique políticas de senha'
+        'Para problemas de senha:\n\n1. Use a opção "Esqueci minha senha"\n2. Verifique se o Caps Lock está ativado\n3. Limpe o cache do navegador\n4. Contacte o administrador para reset\n5. Verifique políticas de senha\n\nPrecisa de ajuda? Abra uma solicitação!'
       ]
     }
   }
@@ -55,6 +55,7 @@ const knowledgeBase: KnowledgeBase = {
 
 class AIAssistantService {
   async processMessage(message: string, userId?: string): Promise<string> {
+    console.log('Processing message:', message);
     const lowerMessage = message.toLowerCase();
     
     // Verificar se é uma pergunta sobre solicitações
@@ -70,10 +71,12 @@ class AIAssistantService {
     // Buscar na base de conhecimento
     const knowledgeResponse = this.searchKnowledge(lowerMessage);
     if (knowledgeResponse) {
+      console.log('Found knowledge response');
       return knowledgeResponse;
     }
     
     // Resposta padrão
+    console.log('Using default response');
     return this.getDefaultResponse();
   }
   
@@ -207,17 +210,23 @@ class AIAssistantService {
   }
   
   private searchKnowledge(message: string): string | null {
+    console.log('Searching knowledge for:', message);
+    
     for (const [category, data] of Object.entries(knowledgeBase.categories)) {
-      if (data.keywords.some(keyword => message.includes(keyword))) {
+      console.log(`Checking category: ${category}`);
+      const foundKeyword = data.keywords.find(keyword => message.includes(keyword));
+      if (foundKeyword) {
+        console.log(`Found matching keyword: ${foundKeyword} in category: ${category}`);
         return data.responses[0];
       }
     }
     
+    console.log('No knowledge match found');
     return null;
   }
   
   private getDefaultResponse(): string {
-    return `Posso ajudá-lo com:\n\n🔧 Problemas técnicos (internet, email, impressora, software)\n📋 Consulta às suas solicitações\n➕ Orientações para criar nova solicitação\n📚 Dúvidas gerais sobre TI\n\nO que você gostaria de saber?`;
+    return `Posso ajudá-lo com:\n\n🔧 Problemas técnicos (PC que não liga, internet, email, impressora, software)\n📋 Consulta às suas solicitações\n➕ Orientações para criar nova solicitação\n📚 Dúvidas gerais sobre TI\n\nO que você gostaria de saber?`;
   }
 }
 

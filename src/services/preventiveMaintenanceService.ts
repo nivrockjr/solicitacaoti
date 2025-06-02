@@ -28,6 +28,7 @@ export const createPreventiveMaintenanceRequests = async (): Promise<void> => {
         description: `Manutenção preventiva semestral - Verificação geral de equipamentos e sistemas do departamento ${user.department || 'não especificado'}.`,
         type: 'manutencao_preventiva' as const,
         priority: 'media' as const,
+        status: 'nova' as const,
         title: 'Manutenção Preventiva Semestral'
       };
       

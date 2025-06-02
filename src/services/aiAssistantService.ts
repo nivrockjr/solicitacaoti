@@ -11,43 +11,55 @@ interface KnowledgeBase {
   };
 }
 
-// Base de conhecimento para problemas comuns de TI
+// Base de conhecimento expandida para problemas de TI
 const knowledgeBase: KnowledgeBase = {
   categories: {
-    hardware: {
-      keywords: ['pc', 'computador', 'não liga', 'não ligando', 'ligando', 'teclado', 'mouse', 'monitor', 'cpu', 'memória', 'disco', 'energia', 'fonte', 'botão'],
+    hardware_pc: {
+      keywords: ['pc', 'computador', 'não liga', 'não ligando', 'ligando', 'cpu', 'gabinete', 'fonte', 'energia', 'botão power', 'botão de energia'],
       responses: [
-        'Para problemas de PC que não liga:\n\n1. Verifique se o cabo de energia está conectado corretamente\n2. Teste em outra tomada\n3. Verifique se o botão de energia da fonte está ligado\n4. Confirme se há energia na tomada\n5. Verifique conexões internas (se souber fazer)\n6. Teste sem periféricos conectados\n7. Se nada funcionar, pode ser problema na fonte de alimentação\n\nSe o problema persistir, crie uma solicitação para nosso suporte técnico!'
+        '🖥️ **PROBLEMA: PC não liga**\n\n**Diagnóstico passo a passo:**\n\n1️⃣ **Verificações básicas:**\n   • Cabo de energia conectado firmemente\n   • Tomada funcionando (teste com outro aparelho)\n   • Botão da fonte ligado (chave I/O atrás do gabinete)\n   • Cabo de energia da fonte OK\n\n2️⃣ **Teste sem periféricos:**\n   • Desconecte mouse, teclado, impressora\n   • Mantenha apenas monitor conectado\n\n3️⃣ **Sinais de vida:**\n   • LEDs acendem? Ventoinhas giram?\n   • Sons de bip na inicialização?\n\n4️⃣ **Problemas mais comuns:**\n   • Fonte queimada (40% dos casos)\n   • Memória RAM mal encaixada\n   • Cabo SATA/IDE solto\n\n⚠️ Se nada funcionar, **NÃO abra o gabinete** sem conhecimento técnico. Crie uma solicitação para nosso suporte!'
       ]
     },
-    internet: {
-      keywords: ['internet', 'conexão', 'wifi', 'rede', 'desconectado', 'lento', 'navegador', 'wi-fi'],
+    hardware_perifericos: {
+      keywords: ['teclado', 'mouse', 'monitor', 'tela', 'não funciona', 'sem imagem', 'tela preta', 'sem sinal'],
       responses: [
-        'Para problemas de internet:\n\n1. Verifique se o cabo de rede está conectado\n2. Reinicie o roteador\n3. Verifique as configurações de proxy\n4. Teste em outro dispositivo\n5. Entre em contato com o provedor se necessário\n\nSe continuar com problemas, abra uma solicitação!'
+        '⌨️🖱️ **PROBLEMAS COM PERIFÉRICOS**\n\n**TECLADO/MOUSE:**\n• Verifique conexão USB\n• Teste em outra porta USB\n• Reinicie o computador\n• Verifique pilhas (se wireless)\n\n**MONITOR:**\n• Cabo de vídeo bem conectado\n• Monitor ligado e com energia\n• Teste outro cabo VGA/HDMI/DVI\n• Verifique entrada correta (HDMI1, VGA, etc)\n• Ajuste brilho/contraste\n\n**RESOLUÇÃO:**\n• Windows + P para detectar monitores\n• Configurações > Sistema > Vídeo\n• Atualizar drivers da placa de vídeo\n\n💡 **Dica:** Sempre teste com outro cabo antes de concluir que o hardware está defeituoso!'
       ]
     },
-    email: {
-      keywords: ['email', 'outlook', 'gmail', 'correio', 'anexo', 'spam', 'e-mail'],
+    rede_internet: {
+      keywords: ['internet', 'conexão', 'wifi', 'wi-fi', 'rede', 'desconectado', 'lento', 'navegador', 'sem internet', 'não conecta'],
       responses: [
-        'Para problemas de email:\n\n1. Verifique suas credenciais\n2. Confirme as configurações do servidor\n3. Verifique a caixa de spam\n4. Limpe o cache do cliente de email\n5. Teste o webmail\n\nPrecisa de mais ajuda? Crie uma solicitação!'
+        '🌐 **PROBLEMAS DE INTERNET/REDE**\n\n**DIAGNÓSTICO RÁPIDO:**\n\n1️⃣ **Conexão cabeada:**\n   • Cabo de rede bem conectado\n   • LED da placa de rede piscando\n   • Teste outro cabo de rede\n\n2️⃣ **Wi-Fi:**\n   • Ícone de Wi-Fi visível?\n   • Senha correta da rede\n   • Proximidade do roteador\n   • Reiniciar adaptador Wi-Fi\n\n3️⃣ **Testes de conectividade:**\n   • Ping google.com no cmd\n   • Teste em outro dispositivo\n   • Navegador alternativo\n\n4️⃣ **Soluções rápidas:**\n   • Reiniciar roteador (30 segundos desligado)\n   • Windows: \"Solucionar problemas de rede\"\n   • Liberar/renovar IP: ipconfig /release e /renew\n   • DNS alternativo: 8.8.8.8 ou 1.1.1.1\n\n🔧 **Comando útil:** `ipconfig /all` para ver configurações de rede'
+      ]
+    },
+    email_comunicacao: {
+      keywords: ['email', 'outlook', 'gmail', 'correio', 'e-mail', 'anexo', 'spam', 'não recebe', 'não envia', 'configuração'],
+      responses: [
+        '📧 **PROBLEMAS DE EMAIL**\n\n**CONFIGURAÇÃO DE EMAIL:**\n\n**Outlook/Thunderbird:**\n• Servidor IMAP/POP3 correto\n• Porta e criptografia adequadas\n• Senha de aplicativo (se 2FA ativo)\n\n**Problemas comuns:**\n\n1️⃣ **Não recebe emails:**\n   • Verificar caixa de spam/lixo\n   • Confirmar espaço disponível\n   • Testar webmail (navegador)\n\n2️⃣ **Não envia emails:**\n   • Servidor SMTP configurado\n   • Autenticação habilitada\n   • Antivírus bloqueando\n\n3️⃣ **Anexos:**\n   • Limite de tamanho (25MB)\n   • Formato não bloqueado\n   • Compactar se necessário\n\n**Configurações típicas Gmail:**\n• IMAP: imap.gmail.com (993)\n• SMTP: smtp.gmail.com (587)\n• Requer senha de aplicativo'
       ]
     },
     impressora: {
-      keywords: ['impressora', 'imprimir', 'papel', 'tinta', 'toner', 'scanner', 'impressão'],
+      keywords: ['impressora', 'imprimir', 'papel', 'tinta', 'toner', 'scanner', 'impressão', 'fila', 'offline'],
       responses: [
-        'Para problemas de impressora:\n\n1. Verifique se há papel e tinta/toner\n2. Reinicie a impressora\n3. Verifique a conexão USB ou rede\n4. Atualize os drivers\n5. Limpe a fila de impressão\n\nAinda com problemas? Abra uma solicitação para nosso suporte!'
+        '🖨️ **PROBLEMAS DE IMPRESSORA**\n\n**DIAGNÓSTICO COMPLETO:**\n\n1️⃣ **Verificações físicas:**\n   • Impressora ligada e conectada\n   • Papel carregado corretamente\n   • Tinta/toner suficiente\n   • Tampa fechada\n   • Sem papel atolado\n\n2️⃣ **Conexão:**\n   • Cabo USB bem conectado\n   • Rede Wi-Fi conectada (se wireless)\n   • Status \"Online\" no Windows\n\n3️⃣ **Software:**\n   • Driver atualizado\n   • Fila de impressão limpa\n   • Impressora como padrão\n   • Teste de página\n\n4️⃣ **Soluções avançadas:**\n   • Reinstalar driver\n   • Windows Update\n   • Reiniciar spooler: services.msc\n\n**Comandos úteis:**\n• `printui /s` - Gerenciador de impressoras\n• Painel de Controle > Dispositivos > Impressoras\n\n💡 Sempre imprima página de teste primeiro!'
       ]
     },
-    software: {
-      keywords: ['programa', 'software', 'aplicativo', 'instalar', 'atualizar', 'erro', 'aplicação'],
+    software_aplicativos: {
+      keywords: ['programa', 'software', 'aplicativo', 'instalar', 'atualizar', 'erro', 'aplicação', 'não abre', 'lento', 'trava'],
       responses: [
-        'Para problemas de software:\n\n1. Reinicie o aplicativo\n2. Verifique atualizações disponíveis\n3. Execute como administrador\n4. Reinstale se necessário\n5. Verifique compatibilidade do sistema\n\nPrecisa de mais suporte? Crie uma solicitação!'
+        '💻 **PROBLEMAS DE SOFTWARE**\n\n**DIAGNÓSTICO POR SINTOMA:**\n\n1️⃣ **Programa não abre:**\n   • Executar como administrador\n   • Compatibilidade (Windows 7/8/10)\n   • Antivírus bloqueando\n   • Arquivos corrompidos\n\n2️⃣ **Programa lento/trava:**\n   • Fechar programas desnecessários\n   • Verificar uso de RAM/CPU\n   • Limpar arquivos temporários\n   • Desfragmentar HD (se não SSD)\n\n3️⃣ **Erros de instalação:**\n   • Executar como administrador\n   • Desativar antivírus temporariamente\n   • Limpar registry (ccleaner)\n   • Requisitos do sistema atendidos\n\n4️⃣ **Atualizações:**\n   • Windows Update ativo\n   • Atualizações automáticas\n   • Verificar site oficial\n\n**Ferramentas úteis:**\n• Task Manager (Ctrl+Shift+Esc)\n• msconfig - Configurações de inicialização\n• Verificador de arquivos: sfc /scannow'
       ]
     },
-    senha: {
-      keywords: ['senha', 'password', 'login', 'acesso', 'bloqueado', 'esqueci', 'usuário'],
+    senhas_acesso: {
+      keywords: ['senha', 'password', 'login', 'acesso', 'bloqueado', 'esqueci', 'usuário', 'não consigo entrar', 'bloqueio'],
       responses: [
-        'Para problemas de senha:\n\n1. Use a opção "Esqueci minha senha"\n2. Verifique se o Caps Lock está ativado\n3. Limpe o cache do navegador\n4. Contacte o administrador para reset\n5. Verifique políticas de senha\n\nPrecisa de ajuda? Abra uma solicitação!'
+        '🔐 **PROBLEMAS DE SENHA E ACESSO**\n\n**SOLUÇÕES POR SITUAÇÃO:**\n\n1️⃣ **Esqueci a senha:**\n   • Opção \"Esqueci minha senha\"\n   • Email de recuperação\n   • Pergunta de segurança\n   • Contato com administrador\n\n2️⃣ **Conta bloqueada:**\n   • Aguardar tempo de bloqueio\n   • Contatar administrador\n   • Verificar tentativas anteriores\n\n3️⃣ **Problema de digitação:**\n   • Caps Lock ativado\n   • Teclado numérico\n   • Layout do teclado (BR/US)\n   • Caracteres especiais\n\n4️⃣ **Navegador:**\n   • Limpar cache/cookies\n   • Modo privado/incógnito\n   • Gerenciador de senhas\n   • Autopreenchimento desabilitado\n\n**DICAS DE SEGURANÇA:**\n• Use senhas fortes (8+ caracteres)\n• Combine letras, números e símbolos\n• Não use informações pessoais\n• Ative autenticação de dois fatores\n\n⚠️ **NUNCA compartilhe senhas por email ou telefone!**'
+      ]
+    },
+    sistema_windows: {
+      keywords: ['windows', 'sistema', 'lento', 'erro', 'blue screen', 'tela azul', 'reinicia', 'atualização', 'boot'],
+      responses: [
+        '🪟 **PROBLEMAS DO WINDOWS**\n\n**DIAGNÓSTICO DO SISTEMA:**\n\n1️⃣ **Sistema lento:**\n   • Verificar espaço em disco (min 15%)\n   • Programas iniciando com Windows\n   • Verificar malware/vírus\n   • Limpeza de arquivos temporários\n\n2️⃣ **Erros e travamentos:**\n   • Verificar logs: Event Viewer\n   • Comando: sfc /scannow\n   • Memória RAM: mdsched.exe\n   • Disco rígido: chkdsk /f\n\n3️⃣ **Tela azul (BSOD):**\n   • Anotar código do erro\n   • Verificar hardware recente\n   • Atualizar drivers\n   • Testar memória RAM\n\n4️⃣ **Problemas de boot:**\n   • Modo de segurança (F8)\n   • Reparação automática\n   • Restauração do sistema\n   • Mídia de recuperação\n\n**MANUTENÇÃO PREVENTIVA:**\n• Windows Update automático\n• Antivírus atualizado\n• Backup regular\n• Limpeza mensal\n\n🔧 **Ferramentas úteis:** msconfig, diskpart, regedit'
       ]
     }
   }
@@ -68,14 +80,14 @@ class AIAssistantService {
       return this.handleCreateRequestQuery();
     }
     
-    // Buscar na base de conhecimento
+    // Buscar na base de conhecimento expandida
     const knowledgeResponse = this.searchKnowledge(lowerMessage);
     if (knowledgeResponse) {
       console.log('Found knowledge response');
       return knowledgeResponse;
     }
     
-    // Resposta padrão
+    // Resposta padrão melhorada
     console.log('Using default response');
     return this.getDefaultResponse();
   }
@@ -104,7 +116,7 @@ class AIAssistantService {
       const requests = await getRequests(userId);
       
       if (requests.length === 0) {
-        return 'Você não possui solicitações registradas no momento. Gostaria de criar uma nova solicitação?';
+        return '📋 **Nenhuma solicitação encontrada**\n\nVocê ainda não possui solicitações registradas.\n\n➕ **Para criar uma nova solicitação:**\n• Clique em "Nova Solicitação" no menu\n• Descreva seu problema detalhadamente\n• Nossa equipe entrará em contato em breve!';
       }
       
       // Filtrar por status se especificado
@@ -115,7 +127,7 @@ class AIAssistantService {
         );
         
         if (pendingRequests.length === 0) {
-          return 'Você não possui solicitações pendentes no momento.';
+          return '✅ **Parabéns!**\n\nVocê não possui solicitações pendentes no momento.\nTodas suas solicitações foram resolvidas!';
         }
         
         return this.formatRequestsList(pendingRequests, 'pendentes');
@@ -128,13 +140,13 @@ class AIAssistantService {
         );
         
         if (resolvedRequests.length === 0) {
-          return 'Você não possui solicitações resolvidas.';
+          return '📋 Você não possui solicitações resolvidas ainda.';
         }
         
         return this.formatRequestsList(resolvedRequests, 'resolvidas');
       }
       
-      // Mostrar resumo geral
+      // Mostrar resumo geral melhorado
       const pending = requests.filter(r => 
         r.status !== 'resolvida' && r.status !== 'fechada' && 
         r.status !== 'resolved' && r.status !== 'closed'
@@ -142,39 +154,42 @@ class AIAssistantService {
       
       const resolved = requests.length - pending;
       
-      return `Resumo das suas solicitações:\n\n📋 Total: ${requests.length}\n⏳ Pendentes: ${pending}\n✅ Resolvidas: ${resolved}\n\nGostaria de ver detalhes de alguma categoria específica?`;
+      return `📊 **RESUMO DAS SUAS SOLICITAÇÕES**\n\n📋 **Total:** ${requests.length} solicitações\n⏳ **Pendentes:** ${pending}\n✅ **Resolvidas:** ${resolved}\n\n💡 **Quer ver detalhes?**\n• Digite "pendentes" para ver abertas\n• Digite "resolvidas" para ver concluídas\n• Acesse "Minhas Solicitações" no menu para ver todas`;
       
     } catch (error) {
-      return 'Não foi possível consultar suas solicitações no momento. Tente novamente mais tarde.';
+      return '❌ **Erro ao consultar solicitações**\n\nNão foi possível acessar suas solicitações no momento.\n\n🔧 **Tente:**\n• Recarregar a página\n• Verificar sua conexão\n• Contactar suporte se persistir';
     }
   }
   
   private handleCreateRequestQuery(): string {
-    return 'Para criar uma nova solicitação:\n\n1. Clique no botão "Nova Solicitação" no menu\n2. Preencha os detalhes do problema\n3. Selecione o tipo e prioridade\n4. Anexe arquivos se necessário\n5. Envie a solicitação\n\nVocê também pode acessar diretamente através do menu lateral.';
+    return '➕ **COMO CRIAR UMA NOVA SOLICITAÇÃO**\n\n**Passo a passo:**\n\n1️⃣ **Clique em "Nova Solicitação"** no menu lateral\n\n2️⃣ **Preencha os detalhes:**\n   • Título claro e objetivo\n   • Descrição detalhada do problema\n   • Selecione tipo (Hardware, Software, etc)\n   • Defina prioridade\n\n3️⃣ **Anexe arquivos** se necessário:\n   • Screenshots do erro\n   • Logs do sistema\n   • Documentos relacionados\n\n4️⃣ **Envie a solicitação**\n\n✅ **Você receberá:**\n• Número do chamado\n• Confirmação por email\n• Atualizações sobre o progresso\n\n💡 **Dica:** Quanto mais detalhes, mais rápida será a solução!';
   }
   
   private formatRequestsList(requests: ITRequest[], type: string): string {
     const recentRequests = requests.slice(0, 5);
     
-    let response = `Suas solicitações ${type}:\n\n`;
+    let response = `📋 **SUAS SOLICITAÇÕES ${type.toUpperCase()}**\n\n`;
     
     recentRequests.forEach((request, index) => {
       const status = this.translateStatus(request.status);
       const priority = this.translatePriority(request.priority);
       const date = new Date(request.createdAt).toLocaleDateString('pt-BR');
       
-      response += `${index + 1}. ${request.title || 'Solicitação'}\n`;
-      response += `   ID: ${request.id}\n`;
-      response += `   Status: ${status}\n`;
-      response += `   Prioridade: ${priority}\n`;
-      response += `   Data: ${date}\n\n`;
+      const priorityIcon = priority === 'Alta' ? '🔴' : priority === 'Média' ? '🟡' : '🟢';
+      const statusIcon = status === 'Resolvida' ? '✅' : status === 'Em Andamento' ? '⚡' : '⏳';
+      
+      response += `${index + 1}. **${request.title || 'Solicitação'}**\n`;
+      response += `   🆔 **ID:** ${request.id}\n`;
+      response += `   ${statusIcon} **Status:** ${status}\n`;
+      response += `   ${priorityIcon} **Prioridade:** ${priority}\n`;
+      response += `   📅 **Data:** ${date}\n\n`;
     });
     
     if (requests.length > 5) {
-      response += `... e mais ${requests.length - 5} solicitações.\n\n`;
+      response += `... e mais **${requests.length - 5}** solicitações.\n\n`;
     }
     
-    response += 'Para ver mais detalhes, acesse a seção "Minhas Solicitações" no menu.';
+    response += '👆 **Para ver detalhes completos:** Acesse "Minhas Solicitações" no menu lateral.';
     
     return response;
   }
@@ -226,7 +241,7 @@ class AIAssistantService {
   }
   
   private getDefaultResponse(): string {
-    return `Posso ajudá-lo com:\n\n🔧 Problemas técnicos (PC que não liga, internet, email, impressora, software)\n📋 Consulta às suas solicitações\n➕ Orientações para criar nova solicitação\n📚 Dúvidas gerais sobre TI\n\nO que você gostaria de saber?`;
+    return `🤖 **ASSISTENTE DE TI ESPECIALIZADO**\n\n**Posso ajudar você com:**\n\n🔧 **HARDWARE:**\n• PC que não liga, periféricos, monitores\n• Problemas de impressora e scanner\n• Configuração de equipamentos\n\n🌐 **CONECTIVIDADE:**\n• Internet e Wi-Fi\n• Rede local e compartilhamento\n• VPN e acesso remoto\n\n💻 **SOFTWARE:**\n• Instalação e configuração\n• Erros e travamentos\n• Atualizações e compatibilidade\n\n📧 **COMUNICAÇÃO:**\n• Configuração de email\n• Problemas de envio/recebimento\n• Outlook, Gmail, etc.\n\n🔐 **SEGURANÇA:**\n• Senhas e acessos\n• Antivírus e proteção\n• Backup e recuperação\n\n📋 **SOLICITAÇÕES:**\n• Consultar status dos chamados\n• Orientações para nova solicitação\n\n💡 **COMO USAR:**\nDescreva seu problema específico e eu darei orientações detalhadas passo a passo!`;
   }
 }
 

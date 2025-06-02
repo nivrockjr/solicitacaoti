@@ -76,10 +76,13 @@ const DashboardPage: React.FC = () => {
           <Button 
             variant={isVisible ? "default" : "outline"} 
             onClick={toggleVisibility}
-            className="relative"
+            className={`relative ${isVisible 
+              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700' 
+              : 'border-blue-600 text-blue-600 hover:bg-blue-50'
+            }`}
           >
             <Bot className="h-4 w-4 mr-2" />
-            Assistente Virtual
+            Assistente de TI
             {!isVisible && (
               <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
             )}
@@ -222,9 +225,9 @@ const DashboardPage: React.FC = () => {
         </CardFooter>
       </Card>
 
-      {/* Virtual Assistant - More Prominent Positioning */}
+      {/* Virtual Assistant - Enhanced positioning */}
       {isVisible && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
           <VirtualAssistant 
             isMinimized={isMinimized}
             onToggleMinimize={toggleMinimize}

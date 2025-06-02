@@ -354,14 +354,15 @@ function getPayloadConfigFromPayload(
     : config[key as keyof typeof config]
 }
 
-// Add BarChart component
+// Fixed BarChart component that doesn't require children
 const BarChart = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof ChartContainer> & {
+  React.ComponentProps<"div"> & {
     data: any[]
     index: string
     categories: string[]
     colors?: string[]
+    config: ChartConfig
     valueFormatter?: (value: number) => string
     yAxisWidth?: number
   }
@@ -372,23 +373,16 @@ const BarChart = React.forwardRef<
       index,
       categories,
       colors,
+      config,
       valueFormatter = (value: number) => `${value}`,
       yAxisWidth = 40,
+      className,
       ...props
     },
     ref
   ) => {
-    const config = React.useMemo(() => {
-      return categories.reduce<ChartConfig>((acc, category, i) => {
-        acc[category] = {
-          color: colors?.[i] ?? `hsl(var(--chart-${i}))`,
-        }
-        return acc
-      }, {})
-    }, [categories, colors])
-
     return (
-      <ChartContainer ref={ref} {...props} config={config}>
+      <ChartContainer ref={ref} config={config} className={className} {...props}>
         <RechartsPrimitive.BarChart data={data}>
           <RechartsPrimitive.XAxis
             dataKey={index}
@@ -438,6 +432,5 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
-  BarChart, // Export the BarChart component
+  BarChart,
 }
-

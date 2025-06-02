@@ -15,7 +15,15 @@ const DashboardPage: React.FC = () => {
   const [requests, setRequests] = useState<ITRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const { isVisible, isMinimized, toggleVisibility, toggleMinimize } = useVirtualAssistant();
+  const { 
+    isVisible, 
+    isMinimized, 
+    toggleVisibility, 
+    toggleMinimize, 
+    close,
+    setIsVisible,
+    setIsMinimized 
+  } = useVirtualAssistant();
   
   useEffect(() => {
     const fetchRequests = async () => {
@@ -220,10 +228,7 @@ const DashboardPage: React.FC = () => {
           <VirtualAssistant 
             isMinimized={isMinimized}
             onToggleMinimize={toggleMinimize}
-            onClose={() => {
-              setIsVisible(false);
-              setIsMinimized(true);
-            }}
+            onClose={close}
           />
         </div>
       )}

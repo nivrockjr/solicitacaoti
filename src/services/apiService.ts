@@ -11,6 +11,7 @@ import {
   isPreventiveMaintenanceDate 
 } from './preventiveMaintenanceService';
 import { sendEmail } from './emailService';
+import { aiAssistantService } from './aiAssistantService';
 
 // Re-export all the functionality
 export {
@@ -49,5 +50,8 @@ export {
   isPreventiveMaintenanceDate,
   
   // Email Service
-  sendEmail
+  sendEmail,
+  
+  // AI Assistant
+  aiAssistantService
 };

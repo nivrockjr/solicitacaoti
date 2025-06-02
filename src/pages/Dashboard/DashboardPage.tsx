@@ -1,13 +1,14 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowUp, CheckCircle2, Clock, FilePlus, Hourglass } from 'lucide-react';
+import { ArrowRight, ArrowUp, CheckCircle2, Clock, FilePlus, Hourglass, Bot } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ITRequest } from '@/types';
 import { getRequests } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
+import VirtualAssistant from '@/components/chat/VirtualAssistant';
+import { useVirtualAssistant } from '@/hooks/useVirtualAssistant';
 import { Fragment } from 'react';
 import { BarChart } from '@/components/ui/chart';
 
@@ -15,6 +16,7 @@ const DashboardPage: React.FC = () => {
   const [requests, setRequests] = useState<ITRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { isVisible, isMinimized, toggleVisibility, toggleMinimize } = useVirtualAssistant();
   
   useEffect(() => {
     const fetchRequests = async () => {
@@ -63,12 +65,18 @@ const DashboardPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
-        <Button asChild>
-          <Link to="/request/new">
-            <FilePlus className="h-4 w-4 mr-2" />
-            Nova Solicitação
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={toggleVisibility}>
+            <Bot className="h-4 w-4 mr-2" />
+            Assistente Virtual
+          </Button>
+          <Button asChild>
+            <Link to="/request/new">
+              <FilePlus className="h-4 w-4 mr-2" />
+              Nova Solicitação
+            </Link>
+          </Button>
+        </div>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -203,6 +211,16 @@ const DashboardPage: React.FC = () => {
           </Button>
         </CardFooter>
       </Card>
+
+      {/* Virtual Assistant */}
+      {isVisible && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <VirtualAssistant 
+            isMinimized={isMinimized}
+            onToggleMinimize={toggleMinimize}
+          />
+        </div>
+      )}
     </div>
   );
 };

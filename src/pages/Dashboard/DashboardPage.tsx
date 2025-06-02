@@ -65,9 +65,16 @@ const DashboardPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={toggleVisibility}>
+          <Button 
+            variant={isVisible ? "default" : "outline"} 
+            onClick={toggleVisibility}
+            className="relative"
+          >
             <Bot className="h-4 w-4 mr-2" />
             Assistente Virtual
+            {!isVisible && (
+              <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+            )}
           </Button>
           <Button asChild>
             <Link to="/request/new">
@@ -207,12 +214,16 @@ const DashboardPage: React.FC = () => {
         </CardFooter>
       </Card>
 
-      {/* Virtual Assistant */}
+      {/* Virtual Assistant - More Prominent Positioning */}
       {isVisible && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-6 right-6 z-50">
           <VirtualAssistant 
             isMinimized={isMinimized}
             onToggleMinimize={toggleMinimize}
+            onClose={() => {
+              setIsVisible(false);
+              setIsMinimized(true);
+            }}
           />
         </div>
       )}

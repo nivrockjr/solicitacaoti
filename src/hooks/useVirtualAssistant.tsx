@@ -31,12 +31,20 @@ export const useVirtualAssistant = () => {
     setIsMinimized(false);
   };
 
+  const close = () => {
+    setIsVisible(false);
+    setIsMinimized(true);
+  };
+
   return {
     isVisible,
     isMinimized,
     toggleVisibility,
     toggleMinimize,
     hide,
-    show
+    show,
+    close,
+    setIsVisible,
+    setIsMinimized
   };
 };

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Minimize2, Maximize2 } from 'lucide-react';
+import { Send, Bot, User, Minimize2, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,11 +18,13 @@ interface Message {
 interface VirtualAssistantProps {
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
+  onClose?: () => void;
 }
 
 const VirtualAssistant: React.FC<VirtualAssistantProps> = ({ 
   isMinimized = false, 
-  onToggleMinimize 
+  onToggleMinimize,
+  onClose 
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -93,34 +95,48 @@ const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
 
   if (isMinimized) {
     return (
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={onToggleMinimize}
-          className="rounded-full h-12 w-12 shadow-lg"
+          className="rounded-full h-16 w-16 shadow-2xl bg-primary hover:bg-primary/90 animate-pulse"
           size="icon"
         >
-          <Bot className="h-6 w-6" />
+          <Bot className="h-8 w-8" />
         </Button>
+        <div className="absolute -top-2 -right-2 h-4 w-4 bg-green-500 rounded-full animate-ping"></div>
+        <div className="absolute -top-12 right-0 bg-primary text-primary-foreground px-3 py-1 rounded-lg text-sm whitespace-nowrap shadow-lg">
+          Assistente Virtual
+        </div>
       </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-md h-96 flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Bot className="h-4 w-4" />
-          Assistente Virtual
+    <Card className="w-full max-w-lg h-[500px] flex flex-col shadow-2xl border-2 border-primary/20 bg-background">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 bg-primary/5 border-b">
+        <CardTitle className="text-lg font-bold flex items-center gap-3">
+          <div className="relative">
+            <Bot className="h-6 w-6 text-primary" />
+            <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+          </div>
+          Assistente Virtual de TI
         </CardTitle>
-        {onToggleMinimize && (
-          <Button variant="ghost" size="icon" onClick={onToggleMinimize}>
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex gap-1">
+          {onToggleMinimize && (
+            <Button variant="ghost" size="icon" onClick={onToggleMinimize} className="h-8 w-8">
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          )}
+          {onClose && (
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-3 space-y-3">
+      <CardContent className="flex-1 flex flex-col p-4 space-y-4">
         <ScrollArea className="flex-1 pr-3" ref={scrollAreaRef}>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -129,34 +145,35 @@ const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
                 }`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                  className={`max-w-[85%] rounded-xl px-4 py-3 text-sm shadow-md ${
                     message.sender === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                      : 'bg-muted border border-border'
                   }`}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-3">
                     {message.sender === 'assistant' && (
-                      <Bot className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <Bot className="h-5 w-5 mt-0.5 flex-shrink-0 text-primary" />
                     )}
                     {message.sender === 'user' && (
-                      <User className="h-4 w-4 mt-0.5 flex-shrink-0 order-2" />
+                      <User className="h-5 w-5 mt-0.5 flex-shrink-0 order-2" />
                     )}
-                    <span className="whitespace-pre-wrap">{message.text}</span>
+                    <span className="whitespace-pre-wrap leading-relaxed">{message.text}</span>
                   </div>
                 </div>
               </div>
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-3 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4" />
+                <div className="bg-muted border border-border rounded-xl px-4 py-3 text-sm shadow-md">
+                  <div className="flex items-center gap-3">
+                    <Bot className="h-5 w-5 text-primary" />
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                     </div>
+                    <span className="text-muted-foreground">Digitando...</span>
                   </div>
                 </div>
               </div>
@@ -164,21 +181,22 @@ const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
           </div>
         </ScrollArea>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3 pt-2 border-t">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Digite sua pergunta..."
+            placeholder="Digite sua pergunta sobre TI..."
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 h-12 text-base"
           />
           <Button 
             onClick={handleSendMessage} 
             disabled={!input.trim() || isLoading}
             size="icon"
+            className="h-12 w-12"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5" />
           </Button>
         </div>
       </CardContent>

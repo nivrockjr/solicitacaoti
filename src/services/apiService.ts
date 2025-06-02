@@ -5,6 +5,11 @@ import { getRequests, getRequestById, createRequest, updateRequest, uploadFile }
 import { getHolidays, addHoliday } from './holidayService';
 import { getNotifications, markNotificationAsRead } from './notificationService';
 import { initEmailScheduler, checkRequestDeadlines, sendAdminDailyDigestEmails } from './emailSchedulerService';
+import { 
+  checkAndCreatePreventiveMaintenanceRequests, 
+  createPreventiveMaintenanceRequests, 
+  isPreventiveMaintenanceDate 
+} from './preventiveMaintenanceService';
 import { sendEmail } from './emailService';
 
 // Re-export all the functionality
@@ -37,6 +42,11 @@ export {
   initEmailScheduler,
   checkRequestDeadlines,
   sendAdminDailyDigestEmails,
+  
+  // Preventive Maintenance
+  checkAndCreatePreventiveMaintenanceRequests,
+  createPreventiveMaintenanceRequests,
+  isPreventiveMaintenanceDate,
   
   // Email Service
   sendEmail

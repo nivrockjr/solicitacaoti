@@ -7,6 +7,7 @@ import {
   generateDeadlineAlertEmail,
   generateAdminDailyDigestEmail 
 } from './emailService';
+import { checkAndCreatePreventiveMaintenanceRequests } from './preventiveMaintenanceService';
 
 // For checking request deadlines
 export const checkRequestDeadlines = async (): Promise<void> => {
@@ -49,6 +50,17 @@ export const sendAdminDailyDigestEmails = async (): Promise<void> => {
   }
 };
 
+// Função para verificações diárias (deadlines e manutenção preventiva)
+const performDailyChecks = async (): Promise<void> => {
+  console.log('Executando verificações diárias...');
+  
+  // Verificar prazos de solicitações
+  await checkRequestDeadlines().catch(console.error);
+  
+  // Verificar se é data de manutenção preventiva
+  await checkAndCreatePreventiveMaintenanceRequests().catch(console.error);
+};
+
 // Simulate email scheduler initialization
 let emailSchedulerInitialized = false;
 
@@ -57,11 +69,14 @@ export const initEmailScheduler = (): void => {
   
   console.log('Initializing email scheduler...');
   
-  // Check for request deadlines every hour
+  // Check for request deadlines and preventive maintenance every hour
   setInterval(() => {
-    console.log('Checking request deadlines...');
-    checkRequestDeadlines().catch(console.error);
+    console.log('Checking request deadlines and preventive maintenance...');
+    performDailyChecks().catch(console.error);
   }, 60 * 60 * 1000); // 1 hour
+  
+  // Execução inicial para verificar se hoje é uma data especial
+  performDailyChecks().catch(console.error);
   
   // Morning digest (8 AM)
   const scheduleMorningDigest = () => {

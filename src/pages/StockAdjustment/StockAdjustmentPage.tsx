@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,9 +56,15 @@ const StockAdjustmentPage: React.FC = () => {
     
     try {
       const stockAdjustment: StockAdjustment = {
-        ...data,
         name: profile.name,
         department: profile.department || '',
+        adjustmentType: data.adjustmentType as AdjustmentType,
+        category: data.category as ProductCategory,
+        productName: data.productName,
+        cost: data.cost,
+        lotNumber: data.lotNumber,
+        weight: data.weight,
+        reason: data.reason,
         requestDate: new Date().toISOString(),
       };
 

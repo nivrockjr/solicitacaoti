@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search, SlidersHorizontal } from 'lucide-react';
@@ -128,7 +127,12 @@ const AllRequestsPage: React.FC = () => {
       'inventory': 'Inventário',
       'system': 'Sistema',
       'emergency': 'Emergência',
-      'other': 'Outro'
+      'other': 'Outro',
+      'hardware': 'Hardware',
+      'software': 'Software',
+      'network': 'Rede',
+      'access': 'Acesso',
+      'maintenance': 'Manutenção'
     };
     
     return typeMap[type] || type;
@@ -141,7 +145,8 @@ const AllRequestsPage: React.FC = () => {
       'low': 'Baixa',
       'alta': 'Alta',
       'media': 'Média',
-      'baixa': 'Baixa'
+      'baixa': 'Baixa',
+      'urgent': 'Urgente'
     };
     
     return priorityMap[priority] || priority;

@@ -73,9 +73,9 @@ export const getChatHistory = async (conversationId: string): Promise<ChatMessag
 
     if (error) throw error;
 
-    // Safely parse the conversation data
+    // Safely parse the conversation data with proper type casting
     if (data?.conversation_data && Array.isArray(data.conversation_data)) {
-      return data.conversation_data as ChatMessage[];
+      return (data.conversation_data as unknown as ChatMessage[]) || [];
     }
     
     return [];

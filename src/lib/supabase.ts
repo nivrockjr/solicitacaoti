@@ -1,26 +1,14 @@
 
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
-// Obtém as variáveis de ambiente de conexão do Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://dsbisyrolqgrzooksheo.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzYmlzeXJvbHFncnpvb2tzaGVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMjk5NDAsImV4cCI6MjA2NDkwNTk0MH0.G0OtdrVX04fPLjiV7EPUqPvJZm2EdgETsa0CrQd13r0";
 
-// Verifica se as variáveis de ambiente estão definidas
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    'Erro: Variáveis de ambiente do Supabase não configuradas. ' +
-    'Por favor, defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.'
-  );
-}
-
-// Cria o cliente do Supabase com valores padrão para desenvolvimento
-// Isso permite que o aplicativo seja carregado mesmo sem as variáveis definidas
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder-url.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-);
-
-// Função para verificar se o Supabase está configurado corretamente
-export const isSupabaseConfigured = () => {
-  return !!supabaseUrl && !!supabaseAnonKey;
-};
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});

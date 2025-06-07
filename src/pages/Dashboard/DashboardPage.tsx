@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowUp, CheckCircle2, Clock, FilePlus, Hourglass, Bot } from 'lucide-react';
@@ -7,29 +8,34 @@ import { ITRequest } from '@/types';
 import { getRequests } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
-import VirtualAssistant from '@/components/chat/VirtualAssistant';
+import EnhancedVirtualAssistant from '@/components/chat/EnhancedVirtualAssistant';
 import { useVirtualAssistant } from '@/hooks/useVirtualAssistant';
 import { BarChart } from '@/components/ui/chart';
 
 const DashboardPage: React.FC = () => {
   const [requests, setRequests] = useState<ITRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { profile, isAuthenticated } = useAuth();
   const { 
     isVisible, 
     isMinimized, 
     toggleVisibility, 
     toggleMinimize, 
-    close,
-    setIsVisible,
-    setIsMinimized 
+    close 
   } = useVirtualAssistant();
   
   useEffect(() => {
     const fetchRequests = async () => {
+      if (!isAuthenticated) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        const fetchedRequests = await getRequests(user?.role === 'admin' ? undefined : user?.id);
+        const fetchedRequests = await getRequests(
+          profile?.role === 'admin' || profile?.role === 'technician' ? undefined : profile?.id
+        );
         setRequests(fetchedRequests);
       } catch (error) {
         console.error('Error fetching requests:', error);
@@ -39,26 +45,48 @@ const DashboardPage: React.FC = () => {
     };
     
     fetchRequests();
-  }, [user]);
+  }, [isAuthenticated, profile]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Bem-vindo ao Sistema de TI</h2>
+          <p className="text-muted-foreground mb-6">Faça login para acessar o painel</p>
+          <Button asChild>
+            <Link to="/auth/login">Fazer Login</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   // Request statistics
   const totalRequests = requests.length;
-  const pendingRequests = requests.filter(r => r.status !== 'resolved' && r.status !== 'closed').length;
-  const resolvedRequests = requests.filter(r => r.status === 'resolved' || r.status === 'closed').length;
-  const highPriorityRequests = requests.filter(r => r.priority === 'high' && r.status !== 'resolved' && r.status !== 'closed').length;
+  const pendingRequests = requests.filter(r => 
+    r.status !== 'resolved' && r.status !== 'closed'
+  ).length;
+  const resolvedRequests = requests.filter(r => 
+    r.status === 'resolved' || r.status === 'closed'
+  ).length;
+  const highPriorityRequests = requests.filter(r => 
+    (r.priority === 'high' || r.priority === 'urgent') && 
+    r.status !== 'resolved' && r.status !== 'closed'
+  ).length;
   
   // Recent requests
   const recentRequests = [...requests]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
   
-  // Chart data (simplified for demo)
+  // Chart data
   const chartData = [
-    { name: 'Inventário', value: requests.filter(r => r.type === 'inventory').length },
+    { name: 'Hardware', value: requests.filter(r => r.type === 'hardware').length },
+    { name: 'Software', value: requests.filter(r => r.type === 'software').length },
+    { name: 'Rede', value: requests.filter(r => r.type === 'network').length },
     { name: 'Sistema', value: requests.filter(r => r.type === 'system').length },
-    { name: 'Emergência', value: requests.filter(r => r.type === 'emergency').length },
     { name: 'Outros', value: requests.filter(r => r.type === 'other').length },
-  ];
+  ].filter(item => item.value > 0);
   
   const statusData = [
     { name: 'Novo', value: requests.filter(r => r.status === 'new').length },
@@ -66,12 +94,14 @@ const DashboardPage: React.FC = () => {
     { name: 'Em Progresso', value: requests.filter(r => r.status === 'in_progress').length },
     { name: 'Resolvido', value: requests.filter(r => r.status === 'resolved').length },
     { name: 'Fechado', value: requests.filter(r => r.status === 'closed').length },
-  ];
+  ].filter(item => item.value > 0);
   
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Painel {profile?.name && `- Bem-vindo(a), ${profile.name}`}
+        </h1>
         <div className="flex gap-2">
           <Button 
             variant={isVisible ? "default" : "outline"} 
@@ -82,7 +112,7 @@ const DashboardPage: React.FC = () => {
             }`}
           >
             <Bot className="h-4 w-4 mr-2" />
-            Assistente de TI
+            Assistente IA
             {!isVisible && (
               <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
             )}
@@ -96,7 +126,7 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Total de Solicitações</CardTitle>
@@ -105,14 +135,16 @@ const DashboardPage: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">{totalRequests}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Todas as solicitações
+              {profile?.role === 'admin' || profile?.role === 'technician' 
+                ? 'Todas as solicitações' 
+                : 'Suas solicitações'}
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Solicitações Pendentes</CardTitle>
+            <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
             <Hourglass className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
@@ -125,7 +157,7 @@ const DashboardPage: React.FC = () => {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Solicitações Resolvidas</CardTitle>
+            <CardTitle className="text-sm font-medium">Resolvidas</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -150,50 +182,59 @@ const DashboardPage: React.FC = () => {
         </Card>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Tipos de Solicitação</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center">
-            <BarChart 
-              data={chartData}
-              index="name"
-              categories={['value']}
-              colors={['hsl(var(--primary))']}
-              valueFormatter={(value: number) => String(value)}
-              className="w-full aspect-[4/3]"
-              config={{
-                value: { color: 'hsl(var(--primary))' }
-              }}
-            />
-          </CardContent>
-        </Card>
-        
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Status das Solicitações</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center">
-            <BarChart 
-              data={statusData}
-              index="name"
-              categories={['value']}
-              colors={['hsl(var(--accent))']}
-              valueFormatter={(value: number) => String(value)}
-              className="w-full aspect-[4/3]"
-              config={{
-                value: { color: 'hsl(var(--accent))' }
-              }}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      {(chartData.length > 0 || statusData.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {chartData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Tipos de Solicitação</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px] flex items-center justify-center">
+                <BarChart 
+                  data={chartData}
+                  index="name"
+                  categories={['value']}
+                  colors={['hsl(var(--primary))']}
+                  valueFormatter={(value: number) => String(value)}
+                  className="w-full aspect-[4/3]"
+                  config={{
+                    value: { color: 'hsl(var(--primary))' }
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
+          
+          {statusData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Status das Solicitações</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px] flex items-center justify-center">
+                <BarChart 
+                  data={statusData}
+                  index="name"
+                  categories={['value']}
+                  colors={['hsl(var(--accent))']}
+                  valueFormatter={(value: number) => String(value)}
+                  className="w-full aspect-[4/3]"
+                  config={{
+                    value: { color: 'hsl(var(--accent))' }
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
       
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Solicitações Recentes</CardTitle>
-          <Link to={user?.role === 'admin' ? '/requests' : '/requests/my'} className="text-sm text-muted-foreground hover:text-foreground flex items-center">
+          <Link 
+            to={profile?.role === 'admin' || profile?.role === 'technician' ? '/requests' : '/requests/my'} 
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center"
+          >
             Ver todas
             <ArrowRight className="h-4 w-4 ml-1" />
           </Link>
@@ -225,10 +266,10 @@ const DashboardPage: React.FC = () => {
         </CardFooter>
       </Card>
 
-      {/* Virtual Assistant - Enhanced positioning */}
-      {isVisible && (
-        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
-          <VirtualAssistant 
+      {/* Enhanced Virtual Assistant */}
+      {isVisible && isAuthenticated && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <EnhancedVirtualAssistant 
             isMinimized={isMinimized}
             onToggleMinimize={toggleMinimize}
             onClose={close}

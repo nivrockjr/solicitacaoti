@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -13,7 +14,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/lib/supabase';
 import EmailSetupHelper from '@/components/email/EmailSetupHelper';
-import { isSupabaseConfigured } from '@/lib/supabase';
 
 const EmailSettingsSchema = z.object({
   emailNotifications: z.boolean(),
@@ -26,7 +26,7 @@ const EmailSettingsSchema = z.object({
 type EmailSettings = z.infer<typeof EmailSettingsSchema>;
 
 const SettingsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   const [showEmailSettings, setShowEmailSettings] = useState(false);
@@ -38,78 +38,24 @@ const SettingsPage: React.FC = () => {
       emailNotifications: true,
       browserNotifications: true,
       whatsappNotifications: false,
-      emailAccount: user?.email || '',
+      emailAccount: profile?.email || '',
       emailPassword: '',
     },
   });
 
-  // Carregar configurações salvas do Supabase
-  useEffect(() => {
-    if (!user) return;
-
-    const loadUserSettings = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Erro ao carregar configurações:', error);
-          return;
-        }
-
-        if (data) {
-          form.reset({
-            emailNotifications: data.email_notifications || true,
-            browserNotifications: data.browser_notifications || true,
-            whatsappNotifications: data.whatsapp_notifications || false,
-            emailAccount: data.email_account || user?.email || '',
-            emailPassword: '',
-          });
-          
-          if (data.email_notifications) {
-            setShowEmailSettings(true);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao carregar configurações:', error);
-      }
-    };
-
-    loadUserSettings();
-  }, [user, form]);
-
   const onSubmit = async (data: EmailSettings) => {
-    if (!user) return;
+    if (!profile) return;
     
     setIsLoading(true);
     
     try {
-      // Salvar configurações no Supabase
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          email_notifications: data.emailNotifications,
-          browser_notifications: data.browserNotifications,
-          whatsapp_notifications: data.whatsappNotifications,
-          email_account: data.emailAccount,
-          // Só envie a senha se foi informada
-          ...(data.emailPassword ? { email_password: data.emailPassword } : {})
-        }, { onConflict: 'user_id' });
-
-      if (error) {
-        throw error;
-      }
-      
-      // Atualiza configurações de SMTP no Supabase Edge Function como secrets
-      if (data.emailNotifications && data.emailAccount && data.emailPassword) {
-        // Isso seria uma chamada administrativa que atualizaria as variáveis de ambiente
-        // Na implementação real, isso seria feito pelo administrador via Dashboard do Supabase
-        console.log('Configurações de SMTP atualizadas para:', data.emailAccount);
-      }
+      // For now, just save to localStorage since user_settings table doesn't exist
+      localStorage.setItem('userSettings', JSON.stringify({
+        emailNotifications: data.emailNotifications,
+        browserNotifications: data.browserNotifications,
+        whatsappNotifications: data.whatsappNotifications,
+        emailAccount: data.emailAccount,
+      }));
       
       toast({
         title: 'Configurações Salvas',
@@ -150,32 +96,20 @@ const SettingsPage: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="space-y-1">
               <Label>Nome</Label>
-              <p className="text-sm font-medium">{user?.name}</p>
+              <p className="text-sm font-medium">{profile?.name}</p>
             </div>
             <div className="space-y-1">
               <Label>Email</Label>
-              <p className="text-sm font-medium">{user?.email}</p>
+              <p className="text-sm font-medium">{profile?.email}</p>
             </div>
             <div className="space-y-1">
               <Label>Função</Label>
-              <p className="text-sm font-medium">{user?.role === 'admin' ? 'Administrador' : 'Solicitante'}</p>
+              <p className="text-sm font-medium">{profile?.role === 'admin' ? 'Administrador' : 'Solicitante'}</p>
             </div>
-            {user?.department && (
+            {profile?.department && (
               <div className="space-y-1">
                 <Label>Departamento</Label>
-                <p className="text-sm font-medium">{user.department}</p>
-              </div>
-            )}
-            {user?.position && (
-              <div className="space-y-1">
-                <Label>Unidade</Label>
-                <p className="text-sm font-medium">{user.position}</p>
-              </div>
-            )}
-            {user?.whatsapp && (
-              <div className="space-y-1">
-                <Label>WhatsApp</Label>
-                <p className="text-sm font-medium">{user.whatsapp}</p>
+                <p className="text-sm font-medium">{profile.department}</p>
               </div>
             )}
           </CardContent>

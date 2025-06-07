@@ -17,8 +17,10 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -40,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
+          // Defer profile fetching to avoid blocking
           setTimeout(async () => {
             try {
               const { data: profileData, error } = await supabase
@@ -64,11 +66,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (createError) {
                   console.error('Error creating profile:', createError);
-                } else {
-                  setProfile(newProfile);
+                } else if (newProfile) {
+                  setProfile({
+                    id: newProfile.id,
+                    email: newProfile.email,
+                    name: newProfile.name,
+                    role: newProfile.role as 'user' | 'admin' | 'technician',
+                    department: newProfile.department
+                  });
                 }
               } else if (!error && profileData) {
-                setProfile(profileData);
+                setProfile({
+                  id: profileData.id,
+                  email: profileData.email,
+                  name: profileData.name,
+                  role: profileData.role as 'user' | 'admin' | 'technician',
+                  department: profileData.department
+                });
               }
             } catch (error) {
               console.error('Error fetching profile:', error);
@@ -117,6 +131,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   };
+
+  // Alias for backward compatibility
+  const login = signIn;
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
@@ -173,6 +190,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Alias for backward compatibility
+  const logout = signOut;
+
   return (
     <AuthContext.Provider
       value={{
@@ -180,8 +200,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         session,
         isLoading,
+        login,
         signIn,
         signUp,
+        logout,
         signOut,
         isAuthenticated: Boolean(user),
       }}

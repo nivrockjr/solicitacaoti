@@ -1,75 +1,70 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Notification } from '@/types';
-import { getNotifications, markNotificationAsRead } from '@/services/apiService';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  loading: boolean;
-  error: Error | null;
-  markAsRead: (id: string) => Promise<void>;
-  refreshNotifications: () => Promise<void>;
+  addNotification: (notification: Omit<Notification, 'id'>) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const { user, isAuthenticated } = useAuth();
-
-  const fetchNotifications = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      const userNotifications = await getNotifications(user.id);
-      setNotifications(userNotifications);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch notifications'));
-      console.error('Error fetching notifications:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchNotifications();
-      
-      // Set up polling for new notifications every minute
-      const interval = setInterval(fetchNotifications, 60000);
-      return () => clearInterval(interval);
-    } else {
-      setNotifications([]);
-    }
-  }, [isAuthenticated, user?.id]);
-
-  const markAsRead = async (id: string) => {
-    try {
-      await markNotificationAsRead(id);
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, isRead: true } : n
-      ));
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-    }
-  };
-
+  const { profile } = useAuth();
+  
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  const addNotification = (notification: Omit<Notification, 'id'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  };
+
+  const markAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+    );
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(n => ({ ...n, isRead: true }))
+    );
+  };
+
+  // Load initial notifications for authenticated users
+  useEffect(() => {
+    if (profile) {
+      // Add some sample notifications
+      setNotifications([
+        {
+          id: '1',
+          userId: profile.id,
+          title: 'Bem-vindo!',
+          message: 'Bem-vindo ao sistema de suporte de TI',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          type: 'request_created',
+        }
+      ]);
+    }
+  }, [profile]);
+
   return (
-    <NotificationContext.Provider 
+    <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
-        loading,
-        error,
+        addNotification,
         markAsRead,
-        refreshNotifications: fetchNotifications
+        markAllAsRead,
       }}
     >
       {children}
@@ -80,7 +75,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error('useNotifications deve ser usado dentro de um NotificationProvider');
   }
   return context;
 };

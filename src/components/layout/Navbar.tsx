@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Sidebar from './Sidebar';
 
 const Navbar: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { profile, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -76,8 +76,8 @@ const Navbar: React.FC = () => {
           
           <div className="flex items-center gap-2">
             <div className="hidden md:block text-right">
-              <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Requester'}</p>
+              <p className="text-sm font-medium">{profile?.name}</p>
+              <p className="text-xs text-muted-foreground">{profile?.role === 'admin' ? 'Administrator' : 'Requester'}</p>
             </div>
             
             <Button variant="ghost" size="icon" onClick={handleLogout}>

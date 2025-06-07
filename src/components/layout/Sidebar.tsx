@@ -7,8 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 const Sidebar: React.FC = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   
   const navItems = [
     {
@@ -99,11 +99,11 @@ const Sidebar: React.FC = () => {
       <div className="p-4 border-t">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-medium">
-            {user?.name.charAt(0).toUpperCase()}
+            {profile?.name?.charAt(0).toUpperCase()}
           </div>
           <div className="truncate">
-            <p className="text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <p className="text-sm font-medium truncate">{profile?.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
           </div>
         </div>
       </div>

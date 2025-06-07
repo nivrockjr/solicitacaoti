@@ -1,179 +1,164 @@
 
-import { supabase } from '@/lib/supabase';
-import { getRequests as getSupabaseRequests, createRequest as createSupabaseRequest, updateRequest as updateSupabaseRequest } from './supabaseService';
-import { ITRequest, User, Holiday, Notification } from '../types';
+import { supabase } from '@/integrations/supabase/client';
+import { ITRequest, Attachment, Comment } from '@/types';
+import { Json } from '@/integrations/supabase/types';
 
-// Re-export supabase functions
-export const getRequests = getSupabaseRequests;
-export const createRequest = createSupabaseRequest;
-export const updateRequest = updateSupabaseRequest;
-
-// Auth functions
-export const login = async (email: string, password: string): Promise<User> => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', data.user.id)
-    .single();
-
-  if (!profile) throw new Error('Perfil não encontrado');
-
-  return {
-    id: profile.id,
-    email: profile.email,
-    name: profile.name,
-    role: profile.role as 'requester' | 'admin',
-    department: profile.department,
-  };
+// Helper function to safely parse JSON fields
+const safeParseJson = (data: Json): any[] => {
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 };
 
-export const logout = async (): Promise<void> => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-};
-
-export const getCurrentUser = async (): Promise<User | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return null;
-
-  return {
-    id: profile.id,
-    email: profile.email,
-    name: profile.name,
-    role: profile.role as 'requester' | 'admin',
-    department: profile.department,
-  };
-};
-
-export const getRequestById = async (id: string): Promise<ITRequest | null> => {
+export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
   try {
-    const { data, error } = await supabase
-      .from('it_requests')
-      .select(`
-        *,
-        profiles!it_requests_user_id_fkey(name, email)
-      `)
-      .eq('id', id)
-      .single();
-
+    let query = supabase.from('it_requests').select(`
+      *,
+      profiles!it_requests_user_id_fkey(name, email)
+    `);
+    
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    
+    const { data: requests, error } = await query.order('created_at', { ascending: false });
+    
     if (error) throw error;
 
-    return {
-      id: data.id,
-      requesterId: data.user_id,
-      requesterName: data.profiles?.name || 'Usuário',
-      requesterEmail: data.profiles?.email || '',
-      title: data.title,
-      description: data.description,
-      type: data.type as any,
-      priority: data.priority as any,
-      status: data.status as any,
-      createdAt: data.created_at,
-      deadlineAt: new Date(new Date(data.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      assignedTo: data.assigned_to,
-      attachments: data.attachments || [],
-      comments: data.comments || [],
-      resolution: data.resolution_notes,
-      resolvedAt: data.resolved_at,
-    };
+    return (requests || []).map(request => ({
+      id: request.id,
+      requesterId: request.user_id,
+      requesterName: request.profiles?.name || 'Usuário',
+      requesterEmail: request.profiles?.email || '',
+      title: request.title || '',
+      description: request.description,
+      type: request.type as any,
+      priority: request.priority as any,
+      status: request.status as any,
+      createdAt: request.created_at,
+      deadlineAt: new Date(new Date(request.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      assignedTo: request.assigned_to,
+      attachments: safeParseJson(request.attachments) as Attachment[],
+      comments: safeParseJson(request.comments) as Comment[],
+      resolution: request.resolution_notes,
+      resolvedAt: request.resolved_at,
+    }));
   } catch (error) {
-    console.error('Error fetching request:', error);
-    return null;
+    console.error('Error fetching requests:', error);
+    return [];
   }
 };
 
-// Mock functions for compatibility
-export const forgotPassword = async (email: string): Promise<void> => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
-  if (error) throw error;
-};
+export const createRequest = async (requestData: Partial<ITRequest>): Promise<ITRequest> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) throw new Error('Usuário não autenticado');
 
-export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
-  throw new Error('Use signUp instead');
-};
+  const newRequest = {
+    user_id: user.id,
+    title: requestData.title || requestData.description?.substring(0, 100) || '',
+    description: requestData.description || '',
+    type: requestData.type || 'other',
+    priority: requestData.priority || 'medium',
+    status: 'new',
+    attachments: JSON.stringify(requestData.attachments || []),
+    comments: JSON.stringify([]),
+  };
 
-export const updateUser = async (id: string, updates: Partial<User>): Promise<User> => {
   const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      name: updates.name,
-      department: updates.department,
-      role: updates.role,
-    })
-    .eq('id', id)
-    .select()
+    .from('it_requests')
+    .insert(newRequest)
+    .select(`
+      *,
+      profiles!it_requests_user_id_fkey(name, email)
+    `)
     .single();
 
   if (error) throw error;
 
   return {
     id: data.id,
-    email: data.email,
-    name: data.name,
-    role: data.role as 'requester' | 'admin',
-    department: data.department,
+    requesterId: data.user_id,
+    requesterName: data.profiles?.name || 'Usuário',
+    requesterEmail: data.profiles?.email || '',
+    title: data.title,
+    description: data.description,
+    type: data.type as any,
+    priority: data.priority as any,
+    status: data.status as any,
+    createdAt: data.created_at,
+    deadlineAt: new Date(new Date(data.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    assignedTo: data.assigned_to,
+    attachments: safeParseJson(data.attachments) as Attachment[],
+    comments: safeParseJson(data.comments) as Comment[],
+    resolution: data.resolution_notes,
+    resolvedAt: data.resolved_at,
   };
 };
 
-export const updateUserPassword = async (userId: string, newPassword: string): Promise<void> => {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) throw error;
-};
-
 export const uploadFile = async (file: File): Promise<string> => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random()}.${fileExt}`;
-  const filePath = `uploads/${fileName}`;
-
-  const { error } = await supabase.storage
-    .from('attachments')
-    .upload(filePath, file);
-
-  if (error) throw error;
-
-  const { data } = supabase.storage
-    .from('attachments')
-    .getPublicUrl(filePath);
-
-  return data.publicUrl;
+  // For now, return a mock URL. In a real implementation, you would upload to Supabase Storage
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`https://example.com/uploads/${file.name}`);
+    }, 1000);
+  });
 };
 
-// Mock implementations for other functions
-export const getHolidays = async (): Promise<Holiday[]> => [];
-export const addHoliday = async (holiday: Omit<Holiday, 'id'>): Promise<Holiday> => ({
-  id: Math.random().toString(),
-  ...holiday
-});
+export const updateRequestStatus = async (id: string, status: string): Promise<void> => {
+  const updateData: any = { status };
+  
+  if (status === 'resolved') {
+    updateData.resolved_at = new Date().toISOString();
+  }
+  
+  if (status === 'closed') {
+    updateData.closed_at = new Date().toISOString();
+  }
 
-export const getNotifications = async (): Promise<Notification[]> => [];
-export const markNotificationAsRead = async (id: string): Promise<void> => {};
+  const { error } = await supabase
+    .from('it_requests')
+    .update(updateData)
+    .eq('id', id);
 
-export const initEmailScheduler = () => {};
-export const checkRequestDeadlines = async () => {};
-export const sendAdminDailyDigestEmails = async () => {};
+  if (error) throw error;
+};
 
-export const checkAndCreatePreventiveMaintenanceRequests = async () => {};
-export const createPreventiveMaintenanceRequests = async () => [];
-export const isPreventiveMaintenanceDate = () => false;
+export const addComment = async (requestId: string, comment: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Usuário não autenticado');
 
-export const sendEmail = async () => {};
+  // Get current request to append to comments
+  const { data: request, error: fetchError } = await supabase
+    .from('it_requests')
+    .select('comments')
+    .eq('id', requestId)
+    .single();
 
-export const aiAssistantService = {
-  sendMessage: async (message: string) => 'Resposta simulada'
+  if (fetchError) throw fetchError;
+
+  const currentComments = safeParseJson(request.comments);
+  const newComment = {
+    id: crypto.randomUUID(),
+    userId: user.id,
+    userName: user.user_metadata?.name || user.email || 'Usuário',
+    text: comment,
+    createdAt: new Date().toISOString(),
+  };
+
+  const updatedComments = [...currentComments, newComment];
+
+  const { error } = await supabase
+    .from('it_requests')
+    .update({ comments: JSON.stringify(updatedComments) })
+    .eq('id', requestId);
+
+  if (error) throw error;
 };

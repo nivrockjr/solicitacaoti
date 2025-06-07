@@ -1,6 +1,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { ITRequest } from '@/types';
+import { Json } from '@/integrations/supabase/types';
 
 export interface SupabaseRequest {
   id: string;
@@ -11,8 +12,8 @@ export interface SupabaseRequest {
   priority: string;
   status: string;
   assigned_to?: string;
-  attachments?: any[];
-  comments?: any[];
+  attachments?: Json;
+  comments?: Json;
   resolution_notes?: string;
   created_at: string;
   updated_at: string;
@@ -23,6 +24,12 @@ export interface SupabaseRequest {
 // Converter dados do Supabase para o formato da aplicação
 function convertSupabaseToRequest(data: SupabaseRequest, profiles: any[] = []): ITRequest {
   const userProfile = profiles.find(p => p.id === data.user_id);
+  
+  // Safely parse JSON fields
+  const attachments = Array.isArray(data.attachments) ? data.attachments : 
+                     (typeof data.attachments === 'string' ? JSON.parse(data.attachments) : []);
+  const comments = Array.isArray(data.comments) ? data.comments : 
+                   (typeof data.comments === 'string' ? JSON.parse(data.comments) : []);
   
   return {
     id: data.id,
@@ -37,8 +44,8 @@ function convertSupabaseToRequest(data: SupabaseRequest, profiles: any[] = []): 
     createdAt: data.created_at,
     deadlineAt: new Date(new Date(data.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     assignedTo: data.assigned_to,
-    attachments: data.attachments || [],
-    comments: data.comments || [],
+    attachments,
+    comments,
     resolution: data.resolution_notes,
     resolvedAt: data.resolved_at,
   };

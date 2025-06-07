@@ -36,7 +36,7 @@ const RequestForm: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { profile } = useAuth(); // Changed from user to profile
   
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -48,7 +48,7 @@ const RequestForm: React.FC = () => {
   });
   
   const onSubmit = async (values: RequestFormValues) => {
-    if (!user) return;
+    if (!profile) return; // Changed from user to profile
     
     try {
       setIsSubmitting(true);
@@ -97,9 +97,9 @@ const RequestForm: React.FC = () => {
       
       // Create the request - using description as title since title field is removed
       const newRequest = await createRequest({
-        requesterId: user.id,
-        requesterName: user.name,
-        requesterEmail: user.email,
+        requesterId: profile.id, // Changed from user to profile
+        requesterName: profile.name, // Changed from user to profile
+        requesterEmail: profile.email, // Changed from user to profile
         title: values.description.substring(0, 100), // Usar os primeiros 100 caracteres da descrição como título
         description: values.description,
         type: values.type as RequestType,

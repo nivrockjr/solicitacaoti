@@ -84,3 +84,51 @@ export interface StockAdjustment {
 
 export type AdjustmentType = 'entrada' | 'saida' | 'transferencia' | 'devolucao' | 'outro';
 export type ProductCategory = 'materia_prima' | 'embalagem' | 'produto_acabado' | 'insumo' | 'outro';
+
+// Tipos para Chat/AI Assistant
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+// Mapeamentos de tipos para exibição
+export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
+  'geral': 'Geral',
+  'sistemas': 'Sistemas',
+  'ajuste_estoque': 'Ajuste de Estoque',
+  'solicitacao_equipamento': 'Solicitação de Equipamento',
+  'manutencao_preventiva': 'Manutenção Preventiva',
+  'inventory': 'Inventário',
+  'system': 'Sistema',
+  'emergency': 'Emergência',
+  'other': 'Outro',
+  'hardware': 'Hardware',
+  'software': 'Software',
+  'network': 'Rede',
+  'access': 'Acesso',
+  'maintenance': 'Manutenção',
+};
+
+export const REQUEST_PRIORITY_LABELS: Record<RequestPriority, string> = {
+  'baixa': 'Baixa',
+  'media': 'Média',
+  'alta': 'Alta',
+  'high': 'Alta',
+  'medium': 'Média',
+  'low': 'Baixa',
+  'urgent': 'Urgente',
+};
+
+export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
+  'nova': 'Nova',
+  'atribuida': 'Atribuída',
+  'em_andamento': 'Em Andamento',
+  'resolvida': 'Resolvida',
+  'fechada': 'Fechada',
+  'new': 'Nova',
+  'assigned': 'Atribuída',
+  'in_progress': 'Em Andamento',
+  'resolved': 'Resolvida',
+  'closed': 'Fechada',
+};

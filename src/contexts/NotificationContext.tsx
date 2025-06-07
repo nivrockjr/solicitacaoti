@@ -6,15 +6,18 @@ import { useAuth } from '@/contexts/AuthContext';
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  loading: boolean;
   addNotification: (notification: Omit<Notification, 'id'>) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  refreshNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
   const { profile } = useAuth();
   
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -27,7 +30,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setNotifications(prev => [newNotification, ...prev]);
   };
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     setNotifications(prev => 
       prev.map(n => n.id === id ? { ...n, isRead: true } : n)
     );
@@ -37,6 +40,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setNotifications(prev => 
       prev.map(n => ({ ...n, isRead: true }))
     );
+  };
+
+  const refreshNotifications = async () => {
+    setLoading(true);
+    try {
+      // Here you would fetch notifications from Supabase
+      // For now, just simulate a refresh
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load initial notifications for authenticated users
@@ -62,9 +78,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       value={{
         notifications,
         unreadCount,
+        loading,
         addNotification,
         markAsRead,
         markAllAsRead,
+        refreshNotifications,
       }}
     >
       {children}

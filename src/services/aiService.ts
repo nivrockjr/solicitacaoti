@@ -1,60 +1,80 @@
 
-import { supabase } from '@/lib/supabase';
+import { ChatMessage } from '@/types';
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-export interface AIResponse {
+export interface ChatRequest {
   message: string;
+  userId: string;
   conversationId?: string;
 }
 
-export const sendMessageToAI = async (
-  message: string, 
-  conversationId?: string
-): Promise<AIResponse> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('ai-assistant', {
-      body: {
-        message,
-        conversationId
-      }
-    });
+export interface ChatResponse {
+  response: string;
+  conversationId: string;
+  suggestions?: string[];
+}
 
-    if (error) throw error;
+export const sendChatMessage = async (request: ChatRequest): Promise<ChatResponse> => {
+  try {
+    const { data, error } = await fetch('/api/ai-assistant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    }).then(res => res.json());
+
+    if (error) throw new Error(error);
 
     return data;
   } catch (error) {
-    console.error('Error calling AI assistant:', error);
-    throw new Error('Erro ao comunicar com o assistente. Tente novamente.');
+    console.error('Error sending chat message:', error);
+    throw error;
   }
 };
 
-export const getUserConversations = async () => {
+export const getChatHistory = async (conversationId: string): Promise<ChatMessage[]> => {
   try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
     const { data, error } = await supabase
       .from('ai_conversations')
-      .select('id, last_message_at, conversation_data')
-      .order('last_message_at', { ascending: false })
-      .limit(10);
+      .select('conversation_data')
+      .eq('id', conversationId)
+      .single();
 
     if (error) throw error;
 
-    return data?.map(conv => ({
-      id: conv.id,
-      lastMessage: conv.last_message_at,
-      preview: getConversationPreview(conv.conversation_data as ChatMessage[])
-    })) || [];
+    // Safely parse the conversation data
+    if (data?.conversation_data && Array.isArray(data.conversation_data)) {
+      return data.conversation_data as ChatMessage[];
+    }
+    
+    return [];
   } catch (error) {
-    console.error('Error fetching conversations:', error);
+    console.error('Error fetching chat history:', error);
     return [];
   }
 };
 
-function getConversationPreview(messages: ChatMessage[]): string {
-  const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-  return lastUserMessage?.content.slice(0, 50) + '...' || 'Nova conversa';
-}
+export const createConversation = async (userId: string): Promise<string> => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data, error } = await supabase
+      .from('ai_conversations')
+      .insert({
+        user_id: userId,
+        conversation_data: [],
+        last_message_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    return data.id;
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    throw error;
+  }
+};

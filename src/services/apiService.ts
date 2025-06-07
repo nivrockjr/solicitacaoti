@@ -34,8 +34,8 @@ export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
     return (requests || []).map(request => ({
       id: request.id,
       requesterId: request.user_id,
-      requesterName: request.profiles?.name || 'Usuário',
-      requesterEmail: request.profiles?.email || '',
+      requesterName: (request.profiles as any)?.name || 'Usuário',
+      requesterEmail: (request.profiles as any)?.email || '',
       title: request.title || '',
       description: request.description,
       type: request.type as any,

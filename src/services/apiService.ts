@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ITRequest, Attachment, Comment } from '@/types';
 import { Json } from '@/integrations/supabase/types';
@@ -73,8 +72,8 @@ export const getRequestById = async (id: string): Promise<ITRequest | null> => {
     return {
       id: request.id,
       requesterId: request.user_id,
-      requesterName: request.profiles?.name || 'Usuário',
-      requesterEmail: request.profiles?.email || '',
+      requesterName: (request.profiles as any)?.name || 'Usuário',
+      requesterEmail: (request.profiles as any)?.email || '',
       title: request.title || '',
       description: request.description,
       type: request.type as any,
@@ -124,8 +123,8 @@ export const createRequest = async (requestData: Partial<ITRequest>): Promise<IT
   return {
     id: data.id,
     requesterId: data.user_id,
-    requesterName: data.profiles?.name || 'Usuário',
-    requesterEmail: data.profiles?.email || '',
+    requesterName: (data.profiles as any)?.name || 'Usuário',
+    requesterEmail: (data.profiles as any)?.email || '',
     title: data.title,
     description: data.description,
     type: data.type as any,
@@ -166,8 +165,8 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   return {
     id: data.id,
     requesterId: data.user_id,
-    requesterName: data.profiles?.name || 'Usuário',
-    requesterEmail: data.profiles?.email || '',
+    requesterName: (data.profiles as any)?.name || 'Usuário',
+    requesterEmail: (data.profiles as any)?.email || '',
     title: data.title,
     description: data.description,
     type: data.type as any,

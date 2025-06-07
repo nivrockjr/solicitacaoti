@@ -219,7 +219,8 @@ class AIAssistantService {
       'media': 'Média',
       'medium': 'Média',
       'alta': 'Alta',
-      'high': 'Alta'
+      'high': 'Alta',
+      'urgent': 'Urgente'
     };
     
     return priorityMap[priority] || priority;

@@ -56,6 +56,44 @@ export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
   }
 };
 
+export const getRequestById = async (id: string): Promise<ITRequest | null> => {
+  try {
+    const { data: request, error } = await supabase
+      .from('it_requests')
+      .select(`
+        *,
+        profiles!it_requests_user_id_fkey(name, email)
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    if (!request) return null;
+
+    return {
+      id: request.id,
+      requesterId: request.user_id,
+      requesterName: request.profiles?.name || 'Usuário',
+      requesterEmail: request.profiles?.email || '',
+      title: request.title || '',
+      description: request.description,
+      type: request.type as any,
+      priority: request.priority as any,
+      status: request.status as any,
+      createdAt: request.created_at,
+      deadlineAt: new Date(new Date(request.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      assignedTo: request.assigned_to,
+      attachments: safeParseJson(request.attachments) as Attachment[],
+      comments: safeParseJson(request.comments) as Comment[],
+      resolution: request.resolution_notes,
+      resolvedAt: request.resolved_at,
+    };
+  } catch (error) {
+    console.error('Error fetching request:', error);
+    return null;
+  }
+};
+
 export const createRequest = async (requestData: Partial<ITRequest>): Promise<ITRequest> => {
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -75,6 +113,48 @@ export const createRequest = async (requestData: Partial<ITRequest>): Promise<IT
   const { data, error } = await supabase
     .from('it_requests')
     .insert(newRequest)
+    .select(`
+      *,
+      profiles!it_requests_user_id_fkey(name, email)
+    `)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    requesterId: data.user_id,
+    requesterName: data.profiles?.name || 'Usuário',
+    requesterEmail: data.profiles?.email || '',
+    title: data.title,
+    description: data.description,
+    type: data.type as any,
+    priority: data.priority as any,
+    status: data.status as any,
+    createdAt: data.created_at,
+    deadlineAt: new Date(new Date(data.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    assignedTo: data.assigned_to,
+    attachments: safeParseJson(data.attachments) as Attachment[],
+    comments: safeParseJson(data.comments) as Comment[],
+    resolution: data.resolution_notes,
+    resolvedAt: data.resolved_at,
+  };
+};
+
+export const updateRequest = async (id: string, updates: Partial<ITRequest>): Promise<ITRequest> => {
+  const updateData: any = {};
+  
+  if (updates.status) updateData.status = updates.status;
+  if (updates.assignedTo) updateData.assigned_to = updates.assignedTo;
+  if (updates.resolution) updateData.resolution_notes = updates.resolution;
+  if (updates.comments) updateData.comments = JSON.stringify(updates.comments);
+  if (updates.status === 'resolved') updateData.resolved_at = new Date().toISOString();
+  if (updates.status === 'closed') updateData.closed_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('it_requests')
+    .update(updateData)
+    .eq('id', id)
     .select(`
       *,
       profiles!it_requests_user_id_fkey(name, email)
@@ -161,4 +241,32 @@ export const addComment = async (requestId: string, comment: string): Promise<vo
     .eq('id', requestId);
 
   if (error) throw error;
+};
+
+// Mock functions for backwards compatibility
+export const initEmailScheduler = () => {
+  console.log('Email scheduler initialized (mock)');
+};
+
+export const forgotPassword = async (email: string) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+};
+
+export const createUser = async (userData: any) => {
+  // Mock implementation
+  console.log('Create user:', userData);
+  return { id: 'mock-id', ...userData };
+};
+
+export const updateUser = async (id: string, userData: any) => {
+  // Mock implementation
+  console.log('Update user:', id, userData);
+  return { id, ...userData };
+};
+
+export const updateUserPassword = async (id: string, password: string) => {
+  // Mock implementation
+  console.log('Update password for user:', id);
+  return { success: true };
 };

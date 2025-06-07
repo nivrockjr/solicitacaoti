@@ -7,7 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { sendMessageToAI, ChatMessage } from '@/services/aiService';
+import { sendMessageToAI } from '@/services/aiService';
+import { ChatMessage } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedVirtualAssistantProps {

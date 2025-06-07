@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format, isAfter } from 'date-fns';
@@ -19,7 +18,7 @@ const RequestDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -42,7 +41,7 @@ const RequestDetailPage: React.FC = () => {
         }
         
         // Check if the user has permission to view the request
-        if (user?.role !== 'admin' && fetchedRequest.requesterId !== user?.id) {
+        if (profile?.role !== 'admin' && fetchedRequest.requesterId !== profile?.id) {
           toast({
             title: 'Acesso Negado',
             description: 'Você não tem permissão para visualizar esta solicitação.',
@@ -66,18 +65,18 @@ const RequestDetailPage: React.FC = () => {
     };
     
     fetchRequest();
-  }, [id, toast, navigate, user]);
+  }, [id, toast, navigate, profile]);
   
   const handleAddComment = async () => {
-    if (!request || !id || !user || !comment.trim()) return;
+    if (!request || !id || !profile || !comment.trim()) return;
     
     try {
       setSubmitting(true);
       
       const newComment: Comment = {
         id: crypto.randomUUID(),
-        userId: user.id,
-        userName: user.name,
+        userId: profile.id,
+        userName: profile.name,
         text: comment.trim(),
         createdAt: new Date().toISOString(),
       };
@@ -117,7 +116,7 @@ const RequestDetailPage: React.FC = () => {
       // If resolving, add resolution details
       if (newStatus === 'resolved' && !request.resolvedAt) {
         updates.resolvedAt = new Date().toISOString();
-        updates.resolution = `Resolvido por ${user?.name}`;
+        updates.resolution = `Resolvido por ${profile?.name}`;
       }
       
       const updatedRequest = await updateRequest(id, updates);
@@ -254,7 +253,7 @@ const RequestDetailPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
         </div>
         
-        {user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
+        {profile?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
           <div className="flex gap-2">
             {(request.status === 'new' || request.status === 'nova') && (
               <Button onClick={() => handleStatusChange('assigned')} variant="outline" disabled={submitting}>
@@ -272,7 +271,7 @@ const RequestDetailPage: React.FC = () => {
           </div>
         )}
         
-        {user?.role === 'admin' && (request.status === 'resolved' || request.status === 'resolvida') && (
+        {profile?.role === 'admin' && (request.status === 'resolved' || request.status === 'resolvida') && (
           <Button onClick={() => handleStatusChange('closed')} variant="outline" disabled={submitting}>
             Encerrar Solicitação
           </Button>
@@ -468,7 +467,7 @@ const RequestDetailPage: React.FC = () => {
                 <p className="font-medium">{format(new Date(request.createdAt), 'dd/MM/yyyy HH:mm')}</p>
               </div>
               
-              {(user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada') && (
+              {(profile?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada') && (
                 <>
                   <Separator />
                   <div className="space-y-2">

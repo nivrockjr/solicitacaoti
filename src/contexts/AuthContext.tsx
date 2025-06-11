@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 
 interface UserProfile {
@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -53,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
               if (error && error.code === 'PGRST116') {
                 // Profile doesn't exist, create one
+                console.log('Creating new profile for user:', session.user.id);
                 const { data: newProfile, error: createError } = await supabase
                   .from('profiles')
                   .insert({
@@ -66,7 +68,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (createError) {
                   console.error('Error creating profile:', createError);
+                  toast({
+                    title: "Erro ao criar perfil",
+                    description: createError.message,
+                    variant: "destructive",
+                  });
                 } else if (newProfile) {
+                  console.log('Profile created successfully:', newProfile);
                   setProfile({
                     id: newProfile.id,
                     email: newProfile.email,
@@ -76,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   });
                 }
               } else if (!error && profileData) {
+                console.log('Profile loaded:', profileData);
                 setProfile({
                   id: profileData.id,
                   email: profileData.email,
@@ -83,9 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   role: profileData.role as 'user' | 'admin' | 'technician',
                   department: profileData.department
                 });
+              } else if (error) {
+                console.error('Error fetching profile:', error);
               }
             } catch (error) {
-              console.error('Error fetching profile:', error);
+              console.error('Error in profile handling:', error);
             }
           }, 0);
         } else {
@@ -98,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
@@ -121,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Bem-vindo de volta!",
       });
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Erro no login",
         description: error.message,
@@ -158,6 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Verifique seu email para confirmar a conta.",
       });
     } catch (error: any) {
+      console.error('Signup error:', error);
       toast({
         title: "Erro no cadastro",
         description: error.message,
@@ -180,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Até logo!",
       });
     } catch (error: any) {
+      console.error('Logout error:', error);
       toast({
         title: "Erro no logout",
         description: error.message,

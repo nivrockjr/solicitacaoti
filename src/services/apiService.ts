@@ -18,6 +18,7 @@ const safeParseJson = (data: Json): any[] => {
 
 export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
   try {
+    console.log('Fetching requests for user:', userId);
     let query = supabase.from('it_requests').select(`
       *,
       profiles!it_requests_user_id_fkey(name, email)
@@ -29,8 +30,12 @@ export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
     
     const { data: requests, error } = await query.order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching requests:', error);
+      throw error;
+    }
 
+    console.log('Fetched requests:', requests?.length || 0);
     return (requests || []).map(request => ({
       id: request.id,
       requesterId: request.user_id,
@@ -57,6 +62,7 @@ export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
 
 export const getRequestById = async (id: string): Promise<ITRequest | null> => {
   try {
+    console.log('Fetching request by ID:', id);
     const { data: request, error } = await supabase
       .from('it_requests')
       .select(`
@@ -66,7 +72,10 @@ export const getRequestById = async (id: string): Promise<ITRequest | null> => {
       .eq('id', id)
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching request by ID:', error);
+      throw error;
+    }
     if (!request) return null;
 
     return {
@@ -98,6 +107,8 @@ export const createRequest = async (requestData: Partial<ITRequest>): Promise<IT
   
   if (!user) throw new Error('Usuário não autenticado');
 
+  console.log('Creating request for user:', user.id, requestData);
+
   const newRequest = {
     user_id: user.id,
     title: requestData.title || requestData.description?.substring(0, 100) || '',
@@ -118,7 +129,12 @@ export const createRequest = async (requestData: Partial<ITRequest>): Promise<IT
     `)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating request:', error);
+    throw error;
+  }
+
+  console.log('Request created successfully:', data);
 
   return {
     id: data.id,

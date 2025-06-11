@@ -27,6 +27,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Test users data
+const TEST_USERS = {
+  'ti.mz@pqvirk.com.br': {
+    password: 'Pqmz*2747',
+    name: 'Administrador TI',
+    role: 'admin' as const,
+    department: 'TI'
+  },
+  'user@company.com': {
+    password: 'user123',
+    name: 'Usuário Teste',
+    role: 'user' as const,
+    department: 'Geral'
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -55,13 +71,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (error && error.code === 'PGRST116') {
                 // Profile doesn't exist, create one
                 console.log('Creating new profile for user:', session.user.id);
+                const testUserData = TEST_USERS[session.user.email as keyof typeof TEST_USERS];
+                
                 const { data: newProfile, error: createError } = await supabase
                   .from('profiles')
                   .insert({
                     id: session.user.id,
                     email: session.user.email || '',
-                    name: session.user.user_metadata?.name || session.user.email || 'Usuário',
-                    role: 'user'
+                    name: testUserData?.name || session.user.user_metadata?.name || session.user.email || 'Usuário',
+                    role: testUserData?.role || 'user',
+                    department: testUserData?.department
                   })
                   .select()
                   .single();
@@ -118,15 +137,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
+  const createTestUserIfNeeded = async (email: string, password: string) => {
+    const testUser = TEST_USERS[email as keyof typeof TEST_USERS];
+    if (!testUser || testUser.password !== password) {
+      return false;
+    }
+
+    try {
+      console.log('Creating test user:', email);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            name: testUser.name,
+            role: testUser.role,
+            department: testUser.department
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Error creating test user:', error);
+        return false;
+      }
+
+      console.log('Test user created successfully:', data);
+      
+      // For test users, we'll try to sign in immediately
+      if (data.user && !data.session) {
+        // User was created but needs email confirmation, let's try to sign in anyway
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (!signInError) {
+          return true;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in createTestUserIfNeeded:', error);
+      return false;
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      
+      // First try normal sign in
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // If sign in fails and this is a test user, try to create it
+        if (error.message.includes('Invalid login credentials')) {
+          const created = await createTestUserIfNeeded(email, password);
+          if (created) {
+            toast({
+              title: "Usuário de teste criado",
+              description: "Fazendo login automaticamente...",
+            });
+            return;
+          }
+        }
+        throw error;
+      }
 
       toast({
         title: "Login realizado com sucesso",

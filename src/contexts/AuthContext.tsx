@@ -53,49 +53,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserProfile = async (userId: string, userEmail: string) => {
     try {
       console.log('Fetching profile for user:', userId);
-      const { data: profileData, error } = await supabase
+      
+      let profileData;
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist, create one
+      if (error) {
+        console.error('Error fetching profile:', error);
+        profileData = null;
+      } else {
+        profileData = data;
+      }
+
+      if (!profileData) {
+        // Create profile for test users or default profile
         console.log('Creating new profile for user:', userId);
         const testUserData = TEST_USERS[userEmail as keyof typeof TEST_USERS];
         
+        const newProfileData = {
+          id: userId,
+          email: userEmail || '',
+          name: testUserData?.name || userEmail?.split('@')[0] || 'Usuário',
+          role: testUserData?.role || 'user',
+          department: testUserData?.department
+        };
+
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({
-            id: userId,
-            email: userEmail || '',
-            name: testUserData?.name || userEmail || 'Usuário',
-            role: testUserData?.role || 'user',
-            department: testUserData?.department
-          })
+          .insert(newProfileData)
           .select()
-          .single();
+          .maybeSingle();
 
         if (createError) {
-          console.error('Error creating profile:', createError);
-          toast({
-            title: "Erro ao criar perfil",
-            description: createError.message,
-            variant: "destructive",
-          });
-          return null;
-        } else if (newProfile) {
-          console.log('Profile created successfully:', newProfile);
+          console.warn('Could not create profile, using default:', createError);
+          // Use a default profile if creation fails
           return {
-            id: newProfile.id,
-            email: newProfile.email,
-            name: newProfile.name,
-            role: newProfile.role as 'user' | 'admin' | 'technician',
-            department: newProfile.department
+            id: userId,
+            email: userEmail || '',
+            name: testUserData?.name || 'Usuário',
+            role: testUserData?.role || 'user',
+            department: testUserData?.department
           };
+        } else {
+          profileData = newProfile;
         }
-      } else if (!error && profileData) {
-        console.log('Profile loaded:', profileData);
+      }
+
+      if (profileData) {
         return {
           id: profileData.id,
           email: profileData.email,
@@ -103,53 +110,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: profileData.role as 'user' | 'admin' | 'technician',
           department: profileData.department
         };
-      } else if (error) {
-        console.error('Error fetching profile:', error);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
     }
-    return null;
+    
+    // Fallback profile to prevent app from breaking
+    const testUserData = TEST_USERS[userEmail as keyof typeof TEST_USERS];
+    return {
+      id: userId,
+      email: userEmail || '',
+      name: testUserData?.name || 'Usuário',
+      role: testUserData?.role || 'user',
+      department: testUserData?.department
+    };
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         console.log('Auth state changed:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch profile immediately for better UX
-          const profile = await fetchUserProfile(session.user.id, session.user.email || '');
-          setProfile(profile);
+          try {
+            const profile = await fetchUserProfile(session.user.id, session.user.email || '');
+            if (mounted) {
+              setProfile(profile);
+            }
+          } catch (error) {
+            console.error('Error fetching profile on auth change:', error);
+            if (mounted) {
+              setProfile(null);
+            }
+          }
         } else {
-          setProfile(null);
+          if (mounted) {
+            setProfile(null);
+          }
         }
         
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     );
 
     // Check for existing session
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Initial session check:', session?.user?.id);
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id, session.user.email || '');
-        setProfile(profile);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        console.log('Initial session check:', session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id, session.user.email || '');
+          if (mounted) {
+            setProfile(profile);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
-      
-      setIsLoading(false);
     };
 
     initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const createTestUserIfNeeded = async (email: string, password: string) => {
@@ -173,26 +216,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      if (error) {
+      if (error && !error.message.includes('already registered')) {
         console.error('Error creating test user:', error);
         return false;
       }
 
-      console.log('Test user created successfully:', data);
-      
-      // For test users, we'll try to sign in immediately
-      if (data.user && !data.session) {
-        // User was created but needs email confirmation, let's try to sign in anyway
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (!signInError) {
-          return true;
-        }
-      }
-      
       return true;
     } catch (error) {
       console.error('Error in createTestUserIfNeeded:', error);
@@ -204,21 +232,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      // First try normal sign in
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        // If sign in fails and this is a test user, try to create it
         if (error.message.includes('Invalid login credentials')) {
           const created = await createTestUserIfNeeded(email, password);
           if (created) {
             toast({
               title: "Usuário de teste criado",
-              description: "Fazendo login automaticamente...",
+              description: "Tentando fazer login...",
             });
+            // Try to sign in again after creating
+            const { error: retryError } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            if (retryError) throw retryError;
             return;
           }
         }
@@ -227,13 +259,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       toast({
         title: "Login realizado com sucesso",
-        description: "Bem-vindo de volta!",
+        description: "Bem-vindo!",
       });
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: error.message || 'Erro desconhecido',
         variant: "destructive",
       });
       throw error;
@@ -242,7 +274,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Alias for backward compatibility
   const login = signIn;
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -302,7 +333,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Alias for backward compatibility
   const logout = signOut;
 
   return (

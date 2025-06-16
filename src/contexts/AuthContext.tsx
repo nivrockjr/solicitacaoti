@@ -10,6 +10,7 @@ interface UserProfile {
   name: string;
   role: 'user' | 'admin' | 'technician';
   department?: string;
+  isSuperAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -27,13 +28,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Test users data
+// Test users data with super admin
 const TEST_USERS = {
   'ti.mz@pqvirk.com.br': {
     password: 'Pqmz*2747',
     name: 'Administrador TI',
     role: 'admin' as const,
-    department: 'TI'
+    department: 'TI',
+    isSuperAdmin: true
   },
   'user@company.com': {
     password: 'user123',
@@ -52,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string, userEmail: string) => {
     try {
-      console.log('Fetching profile for user:', userId);
+      console.log('Fetching profile for user:', userId, userEmail);
       
       let profileData;
       const { data, error } = await supabase
@@ -89,26 +91,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (createError) {
           console.warn('Could not create profile, using default:', createError);
-          // Use a default profile if creation fails
-          return {
-            id: userId,
-            email: userEmail || '',
-            name: testUserData?.name || 'Usuário',
-            role: testUserData?.role || 'user',
-            department: testUserData?.department
-          };
         } else {
           profileData = newProfile;
         }
       }
 
       if (profileData) {
+        const testUserData = TEST_USERS[userEmail as keyof typeof TEST_USERS];
         return {
           id: profileData.id,
           email: profileData.email,
           name: profileData.name,
           role: profileData.role as 'user' | 'admin' | 'technician',
-          department: profileData.department
+          department: profileData.department,
+          isSuperAdmin: userEmail === 'ti.mz@pqvirk.com.br' || testUserData?.isSuperAdmin || false
         };
       }
     } catch (error) {
@@ -122,7 +118,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: userEmail || '',
       name: testUserData?.name || 'Usuário',
       role: testUserData?.role || 'user',
-      department: testUserData?.department
+      department: testUserData?.department,
+      isSuperAdmin: userEmail === 'ti.mz@pqvirk.com.br' || testUserData?.isSuperAdmin || false
     };
   };
 
@@ -211,7 +208,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             name: testUser.name,
             role: testUser.role,
-            department: testUser.department
+            department: testUser.department,
+            isSuperAdmin: testUser.isSuperAdmin || false
           }
         }
       });
@@ -257,9 +255,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
+      const welcomeMessage = email === 'ti.mz@pqvirk.com.br' ? 
+        'Bem-vindo, Super Administrador!' : 'Bem-vindo!';
+      
       toast({
         title: "Login realizado com sucesso",
-        description: "Bem-vindo!",
+        description: welcomeMessage,
       });
     } catch (error: any) {
       console.error('Login error:', error);

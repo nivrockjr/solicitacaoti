@@ -50,6 +50,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  const fetchUserProfile = async (userId: string, userEmail: string) => {
+    try {
+      console.log('Fetching profile for user:', userId);
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create one
+        console.log('Creating new profile for user:', userId);
+        const testUserData = TEST_USERS[userEmail as keyof typeof TEST_USERS];
+        
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: userEmail || '',
+            name: testUserData?.name || userEmail || 'Usuário',
+            role: testUserData?.role || 'user',
+            department: testUserData?.department
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          toast({
+            title: "Erro ao criar perfil",
+            description: createError.message,
+            variant: "destructive",
+          });
+          return null;
+        } else if (newProfile) {
+          console.log('Profile created successfully:', newProfile);
+          return {
+            id: newProfile.id,
+            email: newProfile.email,
+            name: newProfile.name,
+            role: newProfile.role as 'user' | 'admin' | 'technician',
+            department: newProfile.department
+          };
+        }
+      } else if (!error && profileData) {
+        console.log('Profile loaded:', profileData);
+        return {
+          id: profileData.id,
+          email: profileData.email,
+          name: profileData.name,
+          role: profileData.role as 'user' | 'admin' | 'technician',
+          department: profileData.department
+        };
+      } else if (error) {
+        console.error('Error fetching profile:', error);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+    }
+    return null;
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -59,65 +121,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetching to avoid blocking
-          setTimeout(async () => {
-            try {
-              const { data: profileData, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-              if (error && error.code === 'PGRST116') {
-                // Profile doesn't exist, create one
-                console.log('Creating new profile for user:', session.user.id);
-                const testUserData = TEST_USERS[session.user.email as keyof typeof TEST_USERS];
-                
-                const { data: newProfile, error: createError } = await supabase
-                  .from('profiles')
-                  .insert({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    name: testUserData?.name || session.user.user_metadata?.name || session.user.email || 'Usuário',
-                    role: testUserData?.role || 'user',
-                    department: testUserData?.department
-                  })
-                  .select()
-                  .single();
-
-                if (createError) {
-                  console.error('Error creating profile:', createError);
-                  toast({
-                    title: "Erro ao criar perfil",
-                    description: createError.message,
-                    variant: "destructive",
-                  });
-                } else if (newProfile) {
-                  console.log('Profile created successfully:', newProfile);
-                  setProfile({
-                    id: newProfile.id,
-                    email: newProfile.email,
-                    name: newProfile.name,
-                    role: newProfile.role as 'user' | 'admin' | 'technician',
-                    department: newProfile.department
-                  });
-                }
-              } else if (!error && profileData) {
-                console.log('Profile loaded:', profileData);
-                setProfile({
-                  id: profileData.id,
-                  email: profileData.email,
-                  name: profileData.name,
-                  role: profileData.role as 'user' | 'admin' | 'technician',
-                  department: profileData.department
-                });
-              } else if (error) {
-                console.error('Error fetching profile:', error);
-              }
-            } catch (error) {
-              console.error('Error in profile handling:', error);
-            }
-          }, 0);
+          // Fetch profile immediately for better UX
+          const profile = await fetchUserProfile(session.user.id, session.user.email || '');
+          setProfile(profile);
         } else {
           setProfile(null);
         }
@@ -127,12 +133,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       console.log('Initial session check:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user.id, session.user.email || '');
+        setProfile(profile);
+      }
+      
       setIsLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);

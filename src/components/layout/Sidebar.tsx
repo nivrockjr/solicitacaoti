@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, FilePlus, FileText, Settings, Users, FileSpreadsheet, Package, Shield } from 'lucide-react';
+import { BarChart3, FilePlus, FileText, Settings, Users, FileSpreadsheet, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 const Sidebar: React.FC = () => {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
-  const isSuperAdmin = profile?.isSuperAdmin;
   
   const navItems = [
     {
@@ -73,12 +72,7 @@ const Sidebar: React.FC = () => {
       <div className="p-6">
         <h2 className="text-lg font-semibold">Suporte TI</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {isSuperAdmin ? (
-            <span className="flex items-center gap-1 text-yellow-600">
-              <Shield className="h-3 w-3" />
-              Super Administrador
-            </span>
-          ) : isAdmin ? 'Portal do Administrador' : 'Portal do Solicitante'}
+          {isAdmin ? 'Portal do Administrador' : 'Portal do Solicitante'}
         </p>
       </div>
       
@@ -104,19 +98,12 @@ const Sidebar: React.FC = () => {
       
       <div className="p-4 border-t">
         <div className="flex items-center gap-3">
-          <div className={cn(
-            "h-9 w-9 rounded-full flex items-center justify-center text-primary-foreground font-medium",
-            isSuperAdmin ? "bg-yellow-600" : "bg-primary"
-          )}>
-            {isSuperAdmin && <Shield className="h-4 w-4" />}
-            {!isSuperAdmin && profile?.name?.charAt(0).toUpperCase()}
+          <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-medium">
+            {profile?.name?.charAt(0).toUpperCase()}
           </div>
           <div className="truncate">
             <p className="text-sm font-medium truncate">{profile?.name}</p>
             <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
-            {isSuperAdmin && (
-              <p className="text-xs text-yellow-600 truncate">Acesso Total</p>
-            )}
           </div>
         </div>
       </div>

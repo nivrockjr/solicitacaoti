@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ITRequest, Attachment, Comment } from '@/types';
 import { Json } from '@/integrations/supabase/types';
@@ -17,28 +16,15 @@ const safeParseJson = (data: Json): any[] => {
   return [];
 };
 
-// Helper function to check if user is super admin
-const isSuperAdmin = async (): Promise<boolean> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.email === 'ti.mz@pqvirk.com.br';
-  } catch {
-    return false;
-  }
-};
-
 export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
   try {
     console.log('Fetching requests for user:', userId);
-    const superAdmin = await isSuperAdmin();
-    
     let query = supabase.from('it_requests').select(`
       *,
       profiles!it_requests_user_id_fkey(name, email)
     `);
     
-    // Super admin can see all requests, regular users only their own
-    if (userId && !superAdmin) {
+    if (userId) {
       query = query.eq('user_id', userId);
     }
     
@@ -49,7 +35,7 @@ export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
       throw error;
     }
 
-    console.log('Fetched requests:', requests?.length || 0, 'Super admin access:', superAdmin);
+    console.log('Fetched requests:', requests?.length || 0);
     return (requests || []).map(request => ({
       id: request.id,
       requesterId: request.user_id,

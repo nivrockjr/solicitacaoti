@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchUserProfile = async (userId: string, userEmail: string) => {
+  const fetchUserProfile = async (userId: string, userEmail: string): Promise<UserProfile> => {
     try {
       console.log('Fetching profile for user:', userId, userEmail);
       
@@ -140,21 +140,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const profile = await fetchUserProfile(session.user.id, session.user.email || '');
             if (mounted) {
               setProfile(profile);
+              setIsLoading(false);
             }
           } catch (error) {
             console.error('Error fetching profile on auth change:', error);
             if (mounted) {
               setProfile(null);
+              setIsLoading(false);
             }
           }
         } else {
           if (mounted) {
             setProfile(null);
+            setIsLoading(false);
           }
-        }
-        
-        if (mounted) {
-          setIsLoading(false);
         }
       }
     );

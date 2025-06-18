@@ -25,18 +25,14 @@ import SettingsPage from "@/pages/Settings/SettingsPage";
 import StockAdjustmentPage from "@/pages/StockAdjustment/StockAdjustmentPage";
 import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
+import { initEmailScheduler } from "@/services/apiService";
+
+const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    console.log('App initialized');
+    // Initialize email scheduler when the app starts
+    initEmailScheduler();
   }, []);
 
   return (

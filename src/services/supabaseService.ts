@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { ITRequest } from '@/types';
 import { Json } from '@/integrations/supabase/types';
 
@@ -27,9 +27,9 @@ function convertSupabaseToRequest(data: SupabaseRequest, profiles: any[] = []): 
   
   // Safely parse JSON fields
   const attachments = Array.isArray(data.attachments) ? data.attachments : 
-                     (typeof data.attachments === 'string' ? JSON.parse(data.attachments || '[]') : []);
+                     (typeof data.attachments === 'string' ? JSON.parse(data.attachments) : []);
   const comments = Array.isArray(data.comments) ? data.comments : 
-                   (typeof data.comments === 'string' ? JSON.parse(data.comments || '[]') : []);
+                   (typeof data.comments === 'string' ? JSON.parse(data.comments) : []);
   
   return {
     id: data.id,
@@ -61,31 +61,18 @@ export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
     
     const { data: requests, error: requestsError } = await query.order('created_at', { ascending: false });
     
-    if (requestsError) {
-      console.error('Error fetching requests:', requestsError);
-      throw requestsError;
-    }
+    if (requestsError) throw requestsError;
 
     // Buscar perfis dos usuários para obter nomes e emails
     const userIds = [...new Set(requests?.map(r => r.user_id) || [])];
-    
-    if (userIds.length === 0) {
-      return [];
-    }
-
-    const { data: profiles, error: profilesError } = await supabase
+    const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name, email')
       .in('id', userIds);
 
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
-      // Continue without profiles data rather than failing completely
-    }
-
     return (requests || []).map(req => convertSupabaseToRequest(req, profiles || []));
   } catch (error) {
-    console.error('Error in getRequests:', error);
+    console.error('Error fetching requests:', error);
     return [];
   }
 };
@@ -126,7 +113,7 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   const updateData: any = {};
   
   if (updates.status) updateData.status = updates.status;
-  if (updates.assignedTo !== undefined) updateData.assigned_to = updates.assignedTo;
+  if (updates.assignedTo) updateData.assigned_to = updates.assignedTo;
   if (updates.resolution) updateData.resolution_notes = updates.resolution;
   if (updates.status === 'resolved') updateData.resolved_at = new Date().toISOString();
   if (updates.status === 'closed') updateData.closed_at = new Date().toISOString();

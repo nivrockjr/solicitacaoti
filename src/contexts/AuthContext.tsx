@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +40,8 @@ const TEST_USERS = {
     password: 'user123',
     name: 'Usuário Teste',
     role: 'user' as const,
-    department: 'Geral'
+    department: 'Geral',
+    isSuperAdmin: false
   }
 };
 
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: profileData.name,
           role: profileData.role as 'user' | 'admin' | 'technician',
           department: profileData.department,
-          isSuperAdmin: userEmail === 'ti.mz@pqvirk.com.br' || testUserData?.isSuperAdmin || false
+          isSuperAdmin: userEmail === 'ti.mz@pqvirk.com.br' || (testUserData?.isSuperAdmin === true) || false
         };
       }
     } catch (error) {
@@ -119,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: testUserData?.name || 'Usuário',
       role: testUserData?.role || 'user',
       department: testUserData?.department,
-      isSuperAdmin: userEmail === 'ti.mz@pqvirk.com.br' || testUserData?.isSuperAdmin || false
+      isSuperAdmin: userEmail === 'ti.mz@pqvirk.com.br' || (testUserData?.isSuperAdmin === true) || false
     };
   };
 

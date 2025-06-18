@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,9 +40,10 @@ const UsersPage: React.FC = () => {
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const { toast } = useToast();
-  const { user: currentUser } = useAuth();
+  const { profile } = useAuth();
   
-  const isAdmin = currentUser?.role === 'admin';
+  // Super admin tem acesso total, admin regular também tem acesso
+  const hasAccess = profile?.isSuperAdmin || profile?.role === 'admin';
   
   const userForm = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -87,11 +87,10 @@ const UsersPage: React.FC = () => {
   
   const handleCreateUser = async (values: UserFormValues) => {
     try {
-      // Aqui garantimos que role é sempre enviado, mesmo se estiver undefined no form
       const userData: Omit<User, 'id'> = {
         name: values.name,
         email: values.email,
-        role: values.role, // Já é obrigatório pelo schema
+        role: values.role,
         department: values.department,
         position: values.position,
         whatsapp: values.whatsapp
@@ -170,12 +169,15 @@ const UsersPage: React.FC = () => {
     });
   };
   
-  if (!isAdmin) {
+  if (!hasAccess) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Acesso Negado</h1>
           <p className="text-muted-foreground">Você não tem permissão para acessar esta página.</p>
+          <p className="text-xs mt-2 text-muted-foreground">
+            Profile: {profile?.email} | Role: {profile?.role} | Super Admin: {profile?.isSuperAdmin ? 'Sim' : 'Não'}
+          </p>
         </div>
       </div>
     );
@@ -184,7 +186,12 @@ const UsersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
+          {profile?.isSuperAdmin && (
+            <p className="text-sm text-yellow-600 mt-1">Acesso Total de Super Administrador</p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

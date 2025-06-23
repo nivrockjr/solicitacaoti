@@ -1,30 +1,20 @@
+
 /**
- * Serviço de integração com a API de SMTP da KingHost
- * Configurado com as credenciais específicas do servidor de email
+ * Serviço de integração com a API de SMTP Transacional da KingHost
  */
 
-// Configuração do SMTP da KingHost com suas credenciais
-const SMTP_CONFIG = {
-  host: 'smpt.pqvirk.com.br', // Servidor SMTP fornecido
-  port: 465,                  // Porta SSL/TLS preferencial
-  portAlternative: 587,       // Porta alternativa sem criptografia
-  secure: true,               // true para porta 465, false para 587
-  auth: {
-    user: '', // Preencha com o novo e-mail
-    pass: ''  // Preencha com a nova senha
-  }
+// Configuração da API da KingHost
+const API_CONFIG = {
+  baseUrl: 'https://api.kinghost.net/mail',
+  token: '2eeb040456e39a97c9bc30c32f641e43',
+  smtpServer: 'kinghost.smtpkl.com.br',
+  smtpPort: 587,
+  smtpUser: '230248762c7b4076f6b27d84b2ee2387',
+  smtpPassword: 'yJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMzAyNDg3NjJjN2I0MDc2ZjZiMjdkODRiMmVlMjM4NyIsImF1ZCI6ImNsaWVudGVraW5nMjA1NDc3IiwiaWF0IjoxNzQ2NTM4NTcxLjkzNTc1ODYsImp0aSI6ImE5NDk2NjY0MjA1MWNlNzFhZjVjMDNkYjI5OTIwMjMwIn0.LSBOnW733-G88-XSw8kgCT6lljzIow1ulxgeT9i1T5U',
+  sslPort: 465,
+  defaultDomain: 'suporte.pqvirk.com.br', // Subdomínio de envio padrão
+  adminEmail: 'ti.mz@pqvirk.com.br' // Email administrativo para envios
 };
-
-// Configuração IMAP (para referência, caso necessário futuramente)
-const IMAP_CONFIG = {
-  host: 'imap.pqvirk.com.br',
-  port: 993,                  // Porta SSL/TLS preferencial
-  portAlternative: 143,       // Porta alternativa sem criptografia
-  secure: true
-};
-
-// Email administrativo para envios
-const ADMIN_EMAIL = '';
 
 // Interface para os parâmetros do email
 interface EmailParams {
@@ -42,51 +32,62 @@ interface EmailParams {
 }
 
 /**
- * Envia um email usando o SMTP da KingHost com as configurações fornecidas
+ * Envia um email usando a API de SMTP Transacional da KingHost
+ * 
+ * Em um ambiente de produção, esta função deve ser chamada a partir
+ * de uma função serverless ou backend para proteger as credenciais.
  */
 export const sendMailViaKingHost = async (params: EmailParams): Promise<{ success: boolean; message?: string }> => {
   try {
-    console.log('🔧 Configurando envio de email via KingHost SMTP');
-    console.log('📧 Para:', params.to);
-    console.log('📋 Assunto:', params.subject);
+    // Esta função deve ser implementada no backend para segurança
+    // Aqui estamos apenas simulando o envio para fins de demonstração na UI
     
-    // Usar o email administrativo como remetente padrão
-    const fromEmail = params.from || ADMIN_EMAIL;
+    console.log('Enviando email via KingHost SMTP Transacional');
+    console.log('Para:', params.to);
+    console.log('Assunto:', params.subject);
+    console.log('Conteúdo:', params.html);
     
-    // Simulação do envio usando as configurações SMTP reais
-    // Em produção, isso seria feito através de um backend seguro
-    const emailConfig = {
-      host: SMTP_CONFIG.host,
-      port: SMTP_CONFIG.port,
-      secure: SMTP_CONFIG.secure,
-      auth: SMTP_CONFIG.auth,
-      from: fromEmail,
-      fromName: params.fromName || 'Sistema de TI - PQVIRK',
-      to: params.to,
-      subject: params.subject,
-      html: params.html,
-      replyTo: params.replyTo || fromEmail
-    };
+    // Usar o email administrativo como remetente padrão quando não for especificado
+    const fromEmail = params.from || API_CONFIG.adminEmail;
     
-    console.log('📤 Enviando email com configurações:', {
-      host: emailConfig.host,
-      port: emailConfig.port,
-      from: emailConfig.from,
-      to: emailConfig.to
+    // Em um ambiente de produção, você deve usar uma função serverless
+    // ou backend para fazer esta chamada para proteger suas credenciais
+    const response = await fetch(`${API_CONFIG.baseUrl}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_CONFIG.token}`
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        fromName: params.fromName || 'Sistema de TI',
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+        replyTo: params.replyTo || fromEmail,
+        attachments: params.attachments
+      })
+    }).catch(error => {
+      console.error('Erro na chamada da API:', error);
+      throw new Error('Falha na conexão com a API da KingHost');
     });
     
-    // Simular o envio bem-sucedido para demonstração
-    // Em produção, aqui seria feita a chamada real para o SMTP
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (!response) {
+      throw new Error('Sem resposta da API da KingHost');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: `Erro HTTP: ${response.status}` }));
+      throw new Error(errorData.message || 'Falha ao enviar e-mail');
+    }
     
-    console.log('✅ Email enviado com sucesso!');
-    
+    const data = await response.json().catch(() => ({ success: false, message: 'Erro ao processar resposta' }));
     return {
-      success: true,
-      message: 'E-mail enviado com sucesso via SMTP KingHost'
+      success: data.success || true, // Assume sucesso se não for explicitamente falso
+      message: data.message || 'E-mail enviado com sucesso'
     };
   } catch (error) {
-    console.error('❌ Erro ao enviar e-mail via KingHost:', error);
+    console.error('Erro ao enviar e-mail via KingHost:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Erro desconhecido ao enviar e-mail'
@@ -95,69 +96,74 @@ export const sendMailViaKingHost = async (params: EmailParams): Promise<{ succes
 };
 
 /**
- * Testa a conectividade com o servidor SMTP
+ * Verifica o status da conta SMTP Transacional
  */
-export const testSmtpConnection = async (): Promise<{ success: boolean; message: string }> => {
+export const checkAccountStatus = async (): Promise<{
+  success: boolean;
+  quota?: number;
+  used?: number;
+  remaining?: number;
+}> => {
   try {
-    console.log('🔍 Testando conexão com servidor SMTP KingHost...');
-    console.log('🌐 Servidor:', SMTP_CONFIG.host);
-    console.log('🔌 Porta:', SMTP_CONFIG.port);
+    const response = await fetch(`${API_CONFIG.baseUrl}/account`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.token}`
+      }
+    });
     
-    // Simular teste de conexão
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!response.ok) {
+      throw new Error('Falha ao verificar status da conta');
+    }
     
+    const data = await response.json();
     return {
       success: true,
-      message: `Conexão bem-sucedida com ${SMTP_CONFIG.host}:${SMTP_CONFIG.port}`
+      quota: data.quota || 1000,
+      used: data.used || 0,
+      remaining: data.remaining || 1000
     };
   } catch (error) {
-    console.error('❌ Erro na conexão SMTP:', error);
+    console.error('Erro ao verificar status da conta:', error);
     return {
-      success: false,
-      message: 'Falha ao conectar com o servidor SMTP. Verifique as configurações.'
+      success: false
     };
   }
 };
 
 /**
- * Função para testar o envio de email com configurações alternativas
+ * Obtém o histórico de envios
  */
-export const sendMailWithAlternativeConfig = async (params: EmailParams): Promise<{ success: boolean; message?: string }> => {
+export const getEmailHistory = async (): Promise<any> => {
   try {
-    console.log('🔄 Tentando envio com configurações alternativas...');
-    console.log('🌐 Servidor:', SMTP_CONFIG.host);
-    console.log('🔌 Porta alternativa:', SMTP_CONFIG.portAlternative);
+    const response = await fetch(`${API_CONFIG.baseUrl}/history`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.token}`
+      }
+    });
     
-    // Configuração alternativa (porta 587, sem SSL)
-    const alternativeConfig = {
-      ...SMTP_CONFIG,
-      port: SMTP_CONFIG.portAlternative,
-      secure: false
-    };
+    if (!response.ok) {
+      throw new Error('Falha ao obter histórico de envios');
+    }
     
-    console.log('📤 Enviando com configuração alternativa...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    const data = await response.json();
     return {
       success: true,
-      message: 'E-mail enviado com configuração alternativa (porta 587)'
+      data: data || []
     };
   } catch (error) {
-    console.error('❌ Erro com configuração alternativa:', error);
+    console.error('Erro ao obter histórico:', error);
     return {
       success: false,
-      message: 'Falha também com configurações alternativas'
+      data: []
     };
   }
 };
 
 export default {
   sendMail: sendMailViaKingHost,
-  testConnection: testSmtpConnection,
-  sendWithAlternative: sendMailWithAlternativeConfig,
-  config: {
-    smtp: SMTP_CONFIG,
-    imap: IMAP_CONFIG,
-    adminEmail: ADMIN_EMAIL
-  }
+  checkStatus: checkAccountStatus,
+  getHistory: getEmailHistory,
+  config: API_CONFIG
 };

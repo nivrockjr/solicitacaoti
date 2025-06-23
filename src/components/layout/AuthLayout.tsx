@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +24,8 @@ const AuthLayout: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Solicitação de TI</h1>
+          <h1 className="text-3xl font-bold text-primary">IT Request Tracker</h1>
+          <p className="text-muted-foreground mt-2">Manage IT requests efficiently</p>
         </div>
         <Outlet />
       </div>

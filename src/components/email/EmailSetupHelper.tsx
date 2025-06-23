@@ -12,6 +12,8 @@ import kingHostMailService from "@/services/kingHostMailService";
 const EmailSetupHelper: React.FC = () => {
   const [testEmail, setTestEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<any>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const { toast } = useToast();
   
@@ -70,6 +72,36 @@ const EmailSetupHelper: React.FC = () => {
     }
   };
 
+  const handleCheckStatus = async () => {
+    setIsCheckingStatus(true);
+    try {
+      const status = await kingHostMailService.checkStatus();
+      setAccountStatus(status);
+      
+      if (status.success) {
+        toast({
+          title: "Status da conta",
+          description: `Quota: ${status.quota}, Usado: ${status.used}, Restante: ${status.remaining}`,
+        });
+      } else {
+        toast({
+          title: "Falha ao verificar status",
+          description: "Não foi possível verificar o status da conta.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao verificar status:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao verificar o status da conta.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -95,47 +127,74 @@ const EmailSetupHelper: React.FC = () => {
             <h3 className="text-sm font-medium">Servidor SMTP Configurado</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
-                <span><strong>Servidor:</strong> {smtpConfig.smtp.host}</span>
+                <span><strong>Servidor:</strong> {smtpConfig.smtpServer}</span>
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  onClick={() => handleCopy(smtpConfig.smtp.host, 'host')}
+                  onClick={() => handleCopy(smtpConfig.smtpServer, 'host')}
                 >
                   {copied === 'host' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
 
               <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
-                <span><strong>Usuário:</strong> {smtpConfig.smtp.auth.user}</span>
+                <span><strong>Usuário:</strong> {smtpConfig.smtpUser}</span>
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  onClick={() => handleCopy(smtpConfig.smtp.auth.user, 'user')}
+                  onClick={() => handleCopy(smtpConfig.smtpUser, 'user')}
                 >
                   {copied === 'user' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
 
               <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
-                <span><strong>Porta:</strong> {smtpConfig.smtp.port} (SMTP)</span>
+                <span><strong>Porta:</strong> {smtpConfig.smtpPort} (SMTP)</span>
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  onClick={() => handleCopy(smtpConfig.smtp.port.toString(), 'port')}
+                  onClick={() => handleCopy(smtpConfig.smtpPort.toString(), 'port')}
                 >
                   {copied === 'port' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
 
               <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
-                <span><strong>Porta Alternativa:</strong> {smtpConfig.smtp.portAlternative}</span>
+                <span><strong>SSL/TLS:</strong> {smtpConfig.sslPort}</span>
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  onClick={() => handleCopy(smtpConfig.smtp.portAlternative.toString(), 'ssl')}
+                  onClick={() => handleCopy(smtpConfig.sslPort.toString(), 'ssl')}
                 >
                   {copied === 'ssl' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Ações</h3>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Button 
+                  onClick={handleCheckStatus} 
+                  variant="outline"
+                  disabled={isCheckingStatus}
+                  className="w-full"
+                >
+                  {isCheckingStatus ? "Verificando..." : "Verificar Status da Conta"}
+                </Button>
+              </div>
+              
+              <div>
+                {accountStatus && accountStatus.success && (
+                  <div className="bg-muted/50 p-2 rounded text-center">
+                    <div className="text-xs">Quota: <span className="font-medium">{accountStatus.quota}</span></div>
+                    <div className="text-xs">Usado: <span className="font-medium">{accountStatus.used}</span></div>
+                    <div className="text-xs">Restante: <span className="font-medium">{accountStatus.remaining}</span></div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

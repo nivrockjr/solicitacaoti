@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format, isAfter } from 'date-fns';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { ITRequest, Comment } from '@/types';
+import { getRequestById, updateRequest } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,34 +19,131 @@ const RequestDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
   useEffect(() => {
-    setRequest(null);
-    setLoading(false);
-    // toast({
-    //   title: 'Funcionalidade indisponível',
-    //   description: 'Detalhamento de solicitação não está implementado nesta versão.',
-    //   variant: 'destructive',
-    // });
-  }, [id, toast, navigate, profile]);
+    const fetchRequest = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const fetchedRequest = await getRequestById(id);
+        
+        if (!fetchedRequest) {
+          toast({
+            title: 'Solicitação Não Encontrada',
+            description: `A solicitação #${id} não existe ou você não tem permissão para visualizá-la.`,
+            variant: 'destructive',
+          });
+          navigate('/dashboard');
+          return;
+        }
+        
+        // Check if the user has permission to view the request
+        if (user?.role !== 'admin' && fetchedRequest.requesterId !== user?.id) {
+          toast({
+            title: 'Acesso Negado',
+            description: 'Você não tem permissão para visualizar esta solicitação.',
+            variant: 'destructive',
+          });
+          navigate('/dashboard');
+          return;
+        }
+        
+        setRequest(fetchedRequest);
+      } catch (error) {
+        console.error('Erro ao buscar solicitação:', error);
+        toast({
+          title: 'Erro',
+          description: 'Falha ao carregar a solicitação. Por favor, tente novamente.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRequest();
+  }, [id, toast, navigate, user]);
   
   const handleAddComment = async () => {
-    toast({
-      title: 'Funcionalidade indisponível',
-      description: 'Adicionar comentário não está implementado nesta versão.',
-      variant: 'destructive',
-    });
+    if (!request || !id || !user || !comment.trim()) return;
+    
+    try {
+      setSubmitting(true);
+      
+      const newComment: Comment = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: user.name,
+        text: comment.trim(),
+        createdAt: new Date().toISOString(),
+      };
+      
+      const updatedRequest = await updateRequest(id, {
+        comments: [...(request.comments || []), newComment],
+      });
+      
+      setRequest(updatedRequest);
+      setComment('');
+      toast({
+        title: 'Comentário Adicionado',
+        description: 'Seu comentário foi adicionado à solicitação.',
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+      toast({
+        title: 'Erro',
+        description: 'Falha ao adicionar comentário. Por favor, tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   const handleStatusChange = async (newStatus: string) => {
-    toast({
-      title: 'Funcionalidade indisponível',
-      description: 'Alteração de status não está implementada nesta versão.',
-      variant: 'destructive',
-    });
+    if (!request || !id) return;
+    
+    try {
+      setSubmitting(true);
+      
+      let updates: Partial<ITRequest> = {
+        status: newStatus as any,
+      };
+      
+      // If resolving, add resolution details
+      if (newStatus === 'resolved' && !request.resolvedAt) {
+        updates.resolvedAt = new Date().toISOString();
+        updates.resolution = `Resolvido por ${user?.name}`;
+      }
+      
+      const updatedRequest = await updateRequest(id, updates);
+      setRequest(updatedRequest);
+      
+      const statusMessages = {
+        'assigned': 'ATRIBUÍDA',
+        'in_progress': 'EM ANDAMENTO',
+        'resolved': 'RESOLVIDA',
+        'closed': 'FECHADA'
+      };
+      
+      toast({
+        title: 'Status Atualizado',
+        description: `Status da solicitação alterado para ${statusMessages[newStatus as keyof typeof statusMessages] || newStatus.toUpperCase()}`,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      toast({
+        title: 'Erro',
+        description: 'Falha ao atualizar status. Por favor, tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   const getStatusColor = (status: string) => {
@@ -155,7 +254,7 @@ const RequestDetailPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
         </div>
         
-        {profile?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
+        {user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
           <div className="flex gap-2">
             {(request.status === 'new' || request.status === 'nova') && (
               <Button onClick={() => handleStatusChange('assigned')} variant="outline" disabled={submitting}>
@@ -173,7 +272,7 @@ const RequestDetailPage: React.FC = () => {
           </div>
         )}
         
-        {profile?.role === 'admin' && (request.status === 'resolved' || request.status === 'resolvida') && (
+        {user?.role === 'admin' && (request.status === 'resolved' || request.status === 'resolvida') && (
           <Button onClick={() => handleStatusChange('closed')} variant="outline" disabled={submitting}>
             Encerrar Solicitação
           </Button>
@@ -369,7 +468,7 @@ const RequestDetailPage: React.FC = () => {
                 <p className="font-medium">{format(new Date(request.createdAt), 'dd/MM/yyyy HH:mm')}</p>
               </div>
               
-              {(profile?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada') && (
+              {(user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada') && (
                 <>
                   <Separator />
                   <div className="space-y-2">

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search, SlidersHorizontal } from 'lucide-react';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ITRequest, RequestPriority, RequestStatus, RequestType } from '@/types';
+import { getRequests } from '@/services/apiService';
 import RequestCard from '@/components/requests/RequestCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,14 +29,19 @@ const AllRequestsPage: React.FC = () => {
   });
   
   useEffect(() => {
-    setRequests([]);
-    setLoading(false);
-    // Exibir aviso de funcionalidade indisponível
-    // toast({
-    //   title: 'Funcionalidade indisponível',
-    //   description: 'Busca de solicitações não está implementada nesta versão.',
-    //   variant: 'destructive',
-    // });
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        const fetchedRequests = await getRequests();
+        setRequests(fetchedRequests);
+      } catch (error) {
+        console.error('Erro ao buscar solicitações:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRequests();
   }, []);
   
   const normalizeStatus = (status: RequestStatus | 'all'): string[] => {
@@ -121,12 +128,7 @@ const AllRequestsPage: React.FC = () => {
       'inventory': 'Inventário',
       'system': 'Sistema',
       'emergency': 'Emergência',
-      'other': 'Outro',
-      'hardware': 'Hardware',
-      'software': 'Software',
-      'network': 'Rede',
-      'access': 'Acesso',
-      'maintenance': 'Manutenção'
+      'other': 'Outro'
     };
     
     return typeMap[type] || type;
@@ -139,8 +141,7 @@ const AllRequestsPage: React.FC = () => {
       'low': 'Baixa',
       'alta': 'Alta',
       'media': 'Média',
-      'baixa': 'Baixa',
-      'urgent': 'Urgente'
+      'baixa': 'Baixa'
     };
     
     return priorityMap[priority] || priority;

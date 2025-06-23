@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { forgotPassword } from '@/services/apiService';
 import { useToast } from '@/hooks/use-toast';
 
 const forgotPasswordSchema = z.object({
@@ -32,11 +34,23 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackToLogin }
   });
 
   const onSubmit = async (data: ForgotPasswordFormValues) => {
-    toast({
-      title: "Funcionalidade indisponível",
-      description: "Recuperação de senha não está implementada nesta versão.",
-      variant: "destructive",
-    });
+    try {
+      setIsLoading(true);
+      await forgotPassword(data.email);
+      setIsSubmitted(true);
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for instructions to reset your password",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

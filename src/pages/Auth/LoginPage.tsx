@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
@@ -13,6 +14,22 @@ const LoginPage: React.FC = () => {
       ) : (
         <>
           <LoginForm onForgotPassword={() => setShowForgotPassword(true)} />
+          
+          <Card className="mt-6 bg-muted/50">
+            <CardContent className="pt-6">
+              <h3 className="text-center font-medium mb-2">Credenciais de Teste</h3>
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="font-medium">Perfil Admin:</div>
+                  <div>ti.mz@pqvirk.com.br / Pqmz*2747</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="font-medium">Perfil Solicitante:</div>
+                  <div>user@company.com / user123</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </>

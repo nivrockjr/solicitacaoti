@@ -1,9 +1,17 @@
-import { Notification } from '../types';
 
-// TODO: Refatorar para buscar notificações reais do Supabase
+import { Notification } from '../types';
+import { delay } from './utils';
+import { mockNotifications } from './mockData';
+
+// Helper function for deep cloning objects - moved from utils to avoid circular dependency
+const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+// In-memory data store
+let notifications = cloneDeep(mockNotifications);
 
 export const getNotifications = async (userId: string): Promise<Notification[]> => {
-  throw new Error('Função não implementada. Integração removida.');
+  await delay(200);
+  return notifications.filter(n => n.userId === userId);
 };
 
 export const markNotificationAsRead = async (id: string): Promise<Notification> => {

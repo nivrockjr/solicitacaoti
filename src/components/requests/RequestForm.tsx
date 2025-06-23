@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { RequestType, RequestPriority } from '@/types';
+import { createRequest, uploadFile } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -35,7 +36,7 @@ const RequestForm: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { profile } = useAuth(); // Changed from user to profile
+  const { user } = useAuth();
   
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -47,12 +48,82 @@ const RequestForm: React.FC = () => {
   });
   
   const onSubmit = async (values: RequestFormValues) => {
-    toast({
-      title: 'Funcionalidade indisponível',
-      description: 'Envio de solicitações não está implementado nesta versão.',
-      variant: 'destructive',
-    });
-    setIsSubmitting(false);
+    if (!user) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Upload files first (if any)
+      const attachments = [];
+      
+      for (const file of files) {
+        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+        
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const currentProgress = prev[file.name] || 0;
+            if (currentProgress < 90) {
+              return { ...prev, [file.name]: currentProgress + 10 };
+            }
+            return prev;
+          });
+        }, 300);
+        
+        try {
+          const fileUrl = await uploadFile(file);
+          
+          attachments.push({
+            id: crypto.randomUUID(),
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            fileUrl,
+            uploadedAt: new Date().toISOString(),
+          });
+          
+          setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+          clearInterval(progressInterval);
+        } catch (error) {
+          clearInterval(progressInterval);
+          console.error('File upload error:', error);
+          toast({
+            title: 'Erro ao Enviar Arquivo',
+            description: `Falha ao enviar ${file.name}`,
+            variant: 'destructive',
+          });
+        }
+      }
+      
+      // Create the request - using description as title since title field is removed
+      const newRequest = await createRequest({
+        requesterId: user.id,
+        requesterName: user.name,
+        requesterEmail: user.email,
+        title: values.description.substring(0, 100), // Usar os primeiros 100 caracteres da descrição como título
+        description: values.description,
+        type: values.type as RequestType,
+        priority: values.priority as RequestPriority,
+        status: 'nova',
+        attachments,
+      });
+      
+      toast({
+        title: 'Solicitação Enviada',
+        description: `Sua solicitação #${newRequest.id} foi enviada com sucesso`,
+      });
+      
+      navigate(`/request/${newRequest.id}`);
+    } catch (error) {
+      console.error('Submit request error:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível enviar a solicitação. Por favor, tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

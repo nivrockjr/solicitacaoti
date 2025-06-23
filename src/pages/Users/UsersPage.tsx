@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Edit, UserPlus, Key } from 'lucide-react';
+import { mockUsers } from '@/services/mockData';
 import { User } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -13,6 +15,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { createUser, updateUser, updateUserPassword } from '@/services/apiService';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -33,7 +36,7 @@ type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 const UsersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>(mockUsers);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -82,36 +85,72 @@ const UsersPage: React.FC = () => {
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Buscar usuários reais do Supabase ao carregar a página
-  useEffect(() => {
-    // Integração removida. Substitua por nova integração.
-    setUsers([]);
-  }, []);
-  
-  // TODO: Implementar criação de usuário via nova integração
   const handleCreateUser = async (values: UserFormValues) => {
-    toast({
-      title: 'Funcionalidade em desenvolvimento',
-      description: 'A criação de usuários deve ser feita via nova integração.',
-      variant: 'destructive',
-    });
+    try {
+      // Aqui garantimos que role é sempre enviado, mesmo se estiver undefined no form
+      const userData: Omit<User, 'id'> = {
+        name: values.name,
+        email: values.email,
+        role: values.role, // Já é obrigatório pelo schema
+        department: values.department,
+        position: values.position,
+        whatsapp: values.whatsapp
+      };
+      
+      const newUser = await createUser(userData);
+      setUsers([...users, newUser]);
+      userForm.reset();
+      toast({
+        title: 'Usuário Criado',
+        description: `${newUser.name} foi criado com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao criar usuário',
+        variant: 'destructive',
+      });
+    }
   };
   
-  // TODO: Implementar edição de usuário via nova integração
   const handleEditUser = async (values: UserFormValues) => {
-    toast({
-      title: 'Funcionalidade em desenvolvimento',
-      description: 'A edição de usuários deve ser feita via nova integração.',
-      variant: 'destructive',
-    });
+    if (!selectedUserForEdit) return;
+    
+    try {
+      const updatedUser = await updateUser(selectedUserForEdit.id, values);
+      setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
+      setSelectedUserForEdit(null);
+      toast({
+        title: 'Usuário Atualizado',
+        description: `${updatedUser.name} foi atualizado com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao atualizar usuário',
+        variant: 'destructive',
+      });
+    }
   };
   
   const handlePasswordChange = async (values: PasswordFormValues) => {
-    toast({
-      title: 'Funcionalidade indisponível',
-      description: 'Alteração de senha não está implementada nesta versão.',
-      variant: 'destructive',
-    });
+    if (!selectedUser) return;
+    
+    try {
+      await updateUserPassword(selectedUser.id, values.password);
+      passwordForm.reset();
+      setShowPasswordForm(false);
+      toast({
+        title: 'Senha Alterada',
+        description: `A senha de ${selectedUser.name} foi alterada com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao alterar senha',
+        variant: 'destructive',
+      });
+    }
   };
   
   const openPasswordForm = (user: User) => {

@@ -1,5 +1,8 @@
+
 import { ITRequest, RequestType, RequestPriority } from '../types';
 import { delay, cloneDeep, createNotification, addBusinessDays } from './utils';
+import { mockRequests } from './mockData';
+import { users } from './authService';
 import { 
   sendEmail, 
   generateRequestConfirmationEmail, 
@@ -7,15 +10,22 @@ import {
   generateNewRequestAlertEmail 
 } from './emailService';
 
-// TODO: Refatorar este serviço para usar apenas Supabase
-// Todas as funções abaixo devem ser reimplementadas para buscar dados reais do Supabase
+// In-memory data store
+let requests = cloneDeep(mockRequests);
 
 export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
-  throw new Error('Função não implementada. Integração removida.');
+  await delay(300);
+  
+  if (userId) {
+    return requests.filter(r => r.requesterId === userId);
+  }
+  
+  return requests;
 };
 
 export const getRequestById = async (id: string): Promise<ITRequest | undefined> => {
-  throw new Error('Função não implementada. Use Supabase para buscar requisições.');
+  await delay(200);
+  return requests.find(r => r.id === id);
 };
 
 export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' | 'deadlineAt'>): Promise<ITRequest> => {

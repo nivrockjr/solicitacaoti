@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search } from 'lucide-react';
@@ -7,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ITRequest } from '@/types';
-import { getRequests } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
 
@@ -18,21 +16,14 @@ const MyRequestsPage: React.FC = () => {
   const { user } = useAuth();
   
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        const fetchedRequests = await getRequests(user.id);
-        setRequests(fetchedRequests);
-      } catch (error) {
-        console.error('Erro ao buscar solicitações:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchRequests();
+    setRequests([]);
+    setLoading(false);
+    // Exibir aviso de funcionalidade indisponível
+    // toast({
+    //   title: 'Funcionalidade indisponível',
+    //   description: 'Busca de solicitações não está implementada nesta versão.',
+    //   variant: 'destructive',
+    // });
   }, [user]);
   
   const activeRequests = requests.filter(

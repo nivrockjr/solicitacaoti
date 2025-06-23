@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -8,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { getRequests } from '@/services/apiService';
 import { ITRequest, RequestType, RequestPriority, RequestStatus } from '@/types';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { exportToPdf, exportToExcel } from '@/components/reports/exportUtils';
@@ -21,10 +19,7 @@ const ReportsPage = () => {
     endDate: null as Date | null,
   });
 
-  const { data: allRequests = [], isLoading } = useQuery({
-    queryKey: ['requests'],
-    queryFn: () => getRequests(),
-  });
+  const { data: allRequests = [], isLoading } = { data: [], isLoading: false };
 
   // Aplicar filtros às solicitações
   const filteredRequests = allRequests.filter((request: ITRequest) => {

@@ -1,4 +1,3 @@
-
 /**
  * Serviço de integração com a API de SMTP da KingHost
  * Configurado com as credenciais específicas do servidor de email
@@ -11,8 +10,8 @@ const SMTP_CONFIG = {
   portAlternative: 587,       // Porta alternativa sem criptografia
   secure: true,               // true para porta 465, false para 587
   auth: {
-    user: 'ti.mz@pqvirk.com.br',
-    pass: 'Pqmz*2747'
+    user: '', // Preencha com o novo e-mail
+    pass: ''  // Preencha com a nova senha
   }
 };
 
@@ -25,7 +24,7 @@ const IMAP_CONFIG = {
 };
 
 // Email administrativo para envios
-const ADMIN_EMAIL = 'ti.mz@pqvirk.com.br';
+const ADMIN_EMAIL = '';
 
 // Interface para os parâmetros do email
 interface EmailParams {

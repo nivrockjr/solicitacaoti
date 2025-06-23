@@ -13,8 +13,6 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, updateUser, updateUserPassword } from '@/services/apiService';
-import { supabase } from '@/integrations/supabase/client';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -86,53 +84,34 @@ const UsersPage: React.FC = () => {
   
   // Buscar usuários reais do Supabase ao carregar a página
   useEffect(() => {
-    const fetchUsers = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, role, department, position, whatsapp');
-      if (!error && data) {
-        setUsers(data);
-      }
-    };
-    fetchUsers();
+    // Integração removida. Substitua por nova integração.
+    setUsers([]);
   }, []);
   
-  // TODO: Implementar criação de usuário via Supabase
+  // TODO: Implementar criação de usuário via nova integração
   const handleCreateUser = async (values: UserFormValues) => {
     toast({
       title: 'Funcionalidade em desenvolvimento',
-      description: 'A criação de usuários deve ser feita via Supabase.',
+      description: 'A criação de usuários deve ser feita via nova integração.',
       variant: 'destructive',
     });
   };
   
-  // TODO: Implementar edição de usuário via Supabase
+  // TODO: Implementar edição de usuário via nova integração
   const handleEditUser = async (values: UserFormValues) => {
     toast({
       title: 'Funcionalidade em desenvolvimento',
-      description: 'A edição de usuários deve ser feita via Supabase.',
+      description: 'A edição de usuários deve ser feita via nova integração.',
       variant: 'destructive',
     });
   };
   
   const handlePasswordChange = async (values: PasswordFormValues) => {
-    if (!selectedUser) return;
-    
-    try {
-      await updateUserPassword(selectedUser.id, values.password);
-      passwordForm.reset();
-      setShowPasswordForm(false);
-      toast({
-        title: 'Senha Alterada',
-        description: `A senha de ${selectedUser.name} foi alterada com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao alterar senha',
-        variant: 'destructive',
-      });
-    }
+    toast({
+      title: 'Funcionalidade indisponível',
+      description: 'Alteração de senha não está implementada nesta versão.',
+      variant: 'destructive',
+    });
   };
   
   const openPasswordForm = (user: User) => {

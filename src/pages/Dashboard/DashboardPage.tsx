@@ -1,11 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowUp, CheckCircle2, Clock, FilePlus, Hourglass, Bot } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ITRequest } from '@/types';
-import { getRequests } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
 import EnhancedVirtualAssistant from '@/components/chat/EnhancedVirtualAssistant';
@@ -25,26 +23,14 @@ const DashboardPage: React.FC = () => {
   } = useVirtualAssistant();
   
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const fetchedRequests = await getRequests(
-          profile?.role === 'admin' || profile?.role === 'technician' ? undefined : profile?.id
-        );
-        setRequests(fetchedRequests);
-      } catch (error) {
-        console.error('Error fetching requests:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchRequests();
+    setRequests([]);
+    setLoading(false);
+    // Exibir aviso de funcionalidade indisponível
+    // toast({
+    //   title: 'Funcionalidade indisponível',
+    //   description: 'Busca de solicitações não está implementada nesta versão.',
+    //   variant: 'destructive',
+    // });
   }, [isAuthenticated, profile]);
 
   if (!isAuthenticated) {

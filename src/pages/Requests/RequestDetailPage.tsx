@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { ITRequest, Comment } from '@/types';
-import { getRequestById, updateRequest } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -23,126 +22,29 @@ const RequestDetailPage: React.FC = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    const fetchRequest = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        const fetchedRequest = await getRequestById(id);
-        
-        if (!fetchedRequest) {
-          toast({
-            title: 'Solicitação Não Encontrada',
-            description: `A solicitação #${id} não existe ou você não tem permissão para visualizá-la.`,
-            variant: 'destructive',
-          });
-          navigate('/dashboard');
-          return;
-        }
-        
-        // Check if the user has permission to view the request
-        if (profile?.role !== 'admin' && fetchedRequest.requesterId !== profile?.id) {
-          toast({
-            title: 'Acesso Negado',
-            description: 'Você não tem permissão para visualizar esta solicitação.',
-            variant: 'destructive',
-          });
-          navigate('/dashboard');
-          return;
-        }
-        
-        setRequest(fetchedRequest);
-      } catch (error) {
-        console.error('Erro ao buscar solicitação:', error);
-        toast({
-          title: 'Erro',
-          description: 'Falha ao carregar a solicitação. Por favor, tente novamente.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchRequest();
+    setRequest(null);
+    setLoading(false);
+    // toast({
+    //   title: 'Funcionalidade indisponível',
+    //   description: 'Detalhamento de solicitação não está implementado nesta versão.',
+    //   variant: 'destructive',
+    // });
   }, [id, toast, navigate, profile]);
   
   const handleAddComment = async () => {
-    if (!request || !id || !profile || !comment.trim()) return;
-    
-    try {
-      setSubmitting(true);
-      
-      const newComment: Comment = {
-        id: crypto.randomUUID(),
-        userId: profile.id,
-        userName: profile.name,
-        text: comment.trim(),
-        createdAt: new Date().toISOString(),
-      };
-      
-      const updatedRequest = await updateRequest(id, {
-        comments: [...(request.comments || []), newComment],
-      });
-      
-      setRequest(updatedRequest);
-      setComment('');
-      toast({
-        title: 'Comentário Adicionado',
-        description: 'Seu comentário foi adicionado à solicitação.',
-      });
-    } catch (error) {
-      console.error('Erro ao adicionar comentário:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao adicionar comentário. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
+    toast({
+      title: 'Funcionalidade indisponível',
+      description: 'Adicionar comentário não está implementado nesta versão.',
+      variant: 'destructive',
+    });
   };
   
   const handleStatusChange = async (newStatus: string) => {
-    if (!request || !id) return;
-    
-    try {
-      setSubmitting(true);
-      
-      let updates: Partial<ITRequest> = {
-        status: newStatus as any,
-      };
-      
-      // If resolving, add resolution details
-      if (newStatus === 'resolved' && !request.resolvedAt) {
-        updates.resolvedAt = new Date().toISOString();
-        updates.resolution = `Resolvido por ${profile?.name}`;
-      }
-      
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      
-      const statusMessages = {
-        'assigned': 'ATRIBUÍDA',
-        'in_progress': 'EM ANDAMENTO',
-        'resolved': 'RESOLVIDA',
-        'closed': 'FECHADA'
-      };
-      
-      toast({
-        title: 'Status Atualizado',
-        description: `Status da solicitação alterado para ${statusMessages[newStatus as keyof typeof statusMessages] || newStatus.toUpperCase()}`,
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao atualizar status. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
+    toast({
+      title: 'Funcionalidade indisponível',
+      description: 'Alteração de status não está implementada nesta versão.',
+      variant: 'destructive',
+    });
   };
   
   const getStatusColor = (status: string) => {

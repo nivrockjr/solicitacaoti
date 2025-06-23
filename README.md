@@ -1,4 +1,3 @@
-
 # IT Request Tracker
 
 Um sistema completo de gerenciamento de solicitações de TI desenvolvido em React com TypeScript, projetado para otimizar o fluxo de trabalho de suporte técnico.
@@ -130,16 +129,6 @@ yarn dev
 Abra [http://localhost:5173](http://localhost:5173) no seu navegador.
 
 ## 🔐 Autenticação
-
-### Credenciais Padrão
-
-**Administrador:**
-- Email: `ti.mz@pqvirk.com.br`
-- Senha: `admin123`
-
-**Usuário Regular:**
-- Email: `user@company.com`
-- Senha: `user123`
 
 ### Níveis de Acesso
 

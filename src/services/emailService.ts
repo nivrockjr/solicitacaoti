@@ -8,13 +8,13 @@ const SMTP_CONFIG = {
   port: 465,       // Porta SSL/TLS preferencial
   secure: true,    // true para porta 465
   auth: {
-    user: 'ti.mz@pqvirk.com.br',
-    pass: 'Pqmz*2747'
+    user: '', // Preencha com o novo e-mail
+    pass: ''  // Preencha com a nova senha
   }
 };
 
 // Email administrativo para envios
-const ADMIN_EMAIL = 'ti.mz@pqvirk.com.br';
+const ADMIN_EMAIL = '';
 
 // Função principal de envio de email usando suas configurações
 export const sendEmail = async (to: string, subject: string, body: string): Promise<boolean> => {

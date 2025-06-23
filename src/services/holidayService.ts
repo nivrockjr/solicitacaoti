@@ -1,12 +1,10 @@
-
 import { Holiday } from '../types';
-import { mockHolidays } from './mockData';
 
 // Helper function for deep cloning objects
 const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 // In-memory data store
-let holidays = cloneDeep(mockHolidays);
+let holidays: Holiday[] = [];
 
 export const getHolidays = async (): Promise<Holiday[]> => {
   await delay(300);

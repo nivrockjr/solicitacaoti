@@ -1,11 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Edit, UserPlus, Key } from 'lucide-react';
-import { mockUsers } from '@/services/mockData';
 import { User } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -16,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
 import { createUser, updateUser, updateUserPassword } from '@/services/apiService';
+import { supabase } from '@/integrations/supabase/client';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -36,7 +35,7 @@ type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 const UsersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -85,52 +84,35 @@ const UsersPage: React.FC = () => {
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
+  // Buscar usuários reais do Supabase ao carregar a página
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email, role, department, position, whatsapp');
+      if (!error && data) {
+        setUsers(data);
+      }
+    };
+    fetchUsers();
+  }, []);
+  
+  // TODO: Implementar criação de usuário via Supabase
   const handleCreateUser = async (values: UserFormValues) => {
-    try {
-      // Aqui garantimos que role é sempre enviado, mesmo se estiver undefined no form
-      const userData: Omit<User, 'id'> = {
-        name: values.name,
-        email: values.email,
-        role: values.role, // Já é obrigatório pelo schema
-        department: values.department,
-        position: values.position,
-        whatsapp: values.whatsapp
-      };
-      
-      const newUser = await createUser(userData);
-      setUsers([...users, newUser]);
-      userForm.reset();
-      toast({
-        title: 'Usuário Criado',
-        description: `${newUser.name} foi criado com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao criar usuário',
-        variant: 'destructive',
-      });
-    }
+    toast({
+      title: 'Funcionalidade em desenvolvimento',
+      description: 'A criação de usuários deve ser feita via Supabase.',
+      variant: 'destructive',
+    });
   };
   
+  // TODO: Implementar edição de usuário via Supabase
   const handleEditUser = async (values: UserFormValues) => {
-    if (!selectedUserForEdit) return;
-    
-    try {
-      const updatedUser = await updateUser(selectedUserForEdit.id, values);
-      setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
-      setSelectedUserForEdit(null);
-      toast({
-        title: 'Usuário Atualizado',
-        description: `${updatedUser.name} foi atualizado com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao atualizar usuário',
-        variant: 'destructive',
-      });
-    }
+    toast({
+      title: 'Funcionalidade em desenvolvimento',
+      description: 'A edição de usuários deve ser feita via Supabase.',
+      variant: 'destructive',
+    });
   };
   
   const handlePasswordChange = async (values: PasswordFormValues) => {

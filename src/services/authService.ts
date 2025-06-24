@@ -1,4 +1,3 @@
-
 import { User } from '../types';
 import { delay, cloneDeep } from './utils';
 import { mockUsers, mockPasswords } from './mockData';
@@ -12,7 +11,7 @@ export const login = async (email: string, password: string): Promise<User> => {
   await delay(500);
   
   // Update the admin email to match what's shown on the login page
-  if (email === "ti.mz@pqvirk.com.br") {
+  if (email === "admin@company.com") {
     const adminUser = users.find(u => u.id === "1");
     if (adminUser && password === mockPasswords["1"]) {
       // Update the admin user's email

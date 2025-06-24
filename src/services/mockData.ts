@@ -1,16 +1,15 @@
-
 import { User, ITRequest, Holiday, Notification } from "../types";
 
 // Mock users
 export const mockUsers: User[] = [
   {
     id: "1",
-    email: "ti.mz@pqvirk.com.br", // Updated email to match login screen
+    email: "admin@company.com", // Atualizado para novo admin
     name: "Administrador",
     role: "admin",
     department: "TI",
     position: "Administrador de Sistema",
-    whatsapp: "+55 11 99999-9999" // Added WhatsApp field
+    whatsapp: "+55 11 99999-9999"
   },
   {
     id: "2",
@@ -25,7 +24,7 @@ export const mockUsers: User[] = [
 
 // Mock passwords (normally would be stored securely, hashed)
 export const mockPasswords: Record<string, string> = {
-  "1": "Pqmz*2747",  // Admin user password - ti.mz@pqvirk.com.br
+  "1": "admin123",  // Nova senha admin@company.com
   "2": "user123",   // Regular user password - user@company.com
 };
 

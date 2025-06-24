@@ -1,4 +1,3 @@
-
 /**
  * Serviço de integração com a API de SMTP Transacional da KingHost
  */
@@ -13,7 +12,7 @@ const API_CONFIG = {
   smtpPassword: 'yJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMzAyNDg3NjJjN2I0MDc2ZjZiMjdkODRiMmVlMjM4NyIsImF1ZCI6ImNsaWVudGVraW5nMjA1NDc3IiwiaWF0IjoxNzQ2NTM4NTcxLjkzNTc1ODYsImp0aSI6ImE5NDk2NjY0MjA1MWNlNzFhZjVjMDNkYjI5OTIwMjMwIn0.LSBOnW733-G88-XSw8kgCT6lljzIow1ulxgeT9i1T5U',
   sslPort: 465,
   defaultDomain: 'suporte.pqvirk.com.br', // Subdomínio de envio padrão
-  adminEmail: 'ti.mz@pqvirk.com.br' // Email administrativo para envios
+  adminEmail: 'admin@company.com' // Email administrativo para envios
 };
 
 // Interface para os parâmetros do email

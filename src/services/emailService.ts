@@ -1,4 +1,3 @@
-
 import { User, ITRequest, RequestStatus } from '../types';
 import { format } from 'date-fns';
 import kingHostMailService from './kingHostMailService';
@@ -15,7 +14,7 @@ const SMTP_CONFIG = {
 };
 
 // Email administrativo para envios
-const ADMIN_EMAIL = 'ti.mz@pqvirk.com.br';
+const ADMIN_EMAIL = 'admin@company.com';
 
 // Domain para emails enviados
 const EMAIL_DOMAIN = 'suporte.pqvirk.com.br';
@@ -81,7 +80,7 @@ export const generateStatusUpdateEmail = (request: ITRequest, oldStatus: Request
   const body = `
     <h2>Atualização de Solicitação</h2>
     <p>Olá ${request.requesterName},</p>
-    <p>Sua solicitaç��o de TI teve uma atualização de status.</p>
+    <p>Sua solicitação de TI teve uma atualização de status.</p>
     
     <h3>Detalhes da Solicitação:</h3>
     <ul>

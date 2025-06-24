@@ -12,6 +12,7 @@ import { getRequests } from '@/services/apiService';
 import { ITRequest, RequestType, RequestPriority, RequestStatus } from '@/types';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { exportToPdf, exportToExcel } from '@/components/reports/exportUtils';
+import { differenceInHours } from 'date-fns';
 
 const ReportsPage = () => {
   const [filters, setFilters] = useState({
@@ -71,6 +72,26 @@ const ReportsPage = () => {
 
   const handleExportToExcel = () => {
     exportToExcel(filteredRequests, filters);
+  };
+
+  // Função para calcular o tempo médio de resolução
+  const calculateAverageResolutionTime = (requests: ITRequest[], filterByType?: string, filterByTechnician?: string) => {
+    const resolvedRequests = requests.filter(req => 
+      (req.status === 'resolvida' || req.status === 'resolved') &&
+      req.resolvedAt &&
+      (!filterByType || req.type === filterByType) &&
+      (!filterByTechnician || req.assignedTo === filterByTechnician)
+    );
+    
+    if (resolvedRequests.length === 0) return 0;
+    
+    const totalHours = resolvedRequests.reduce((sum, req) => {
+      const createdDate = new Date(req.createdAt);
+      const resolvedDate = new Date(req.resolvedAt!);
+      return sum + differenceInHours(resolvedDate, createdDate);
+    }, 0);
+    
+    return totalHours / resolvedRequests.length;
   };
 
   return (
@@ -182,4 +203,76 @@ function getPriorityLabel(priority: RequestPriority): string {
   return priorityLabels[priority] || priority;
 }
 
+// Adicionar componente de métricas de tempo médio
+const ResolutionTimeMetrics = ({ requests }: { requests: ITRequest[] }) => {
+  const adminUsers = users.filter(u => u.role === 'admin');
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Tempo Médio de Resolução</CardTitle>
+        <CardDescription>Tempo médio (em horas) para resolver solicitações</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium mb-2">Por Tipo de Solicitação</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {['geral', 'sistemas', 'ajuste_estoque', 'solicitacao_equipamento', 'manutencao_preventiva'].map(type => (
+                <div key={type} className="bg-muted/40 p-3 rounded">
+                  <p className="text-sm font-medium">{getRequestTypeText(type)}</p>
+                  <p className="text-2xl font-bold">
+                    {calculateAverageResolutionTime(requests, type).toFixed(1)}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">horas</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <h3 className="text-sm font-medium mb-2">Por Técnico Responsável</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {adminUsers.map(admin => (
+                <div key={admin.id} className="bg-muted/40 p-3 rounded">
+                  <p className="text-sm font-medium">{admin.name}</p>
+                  <p className="text-2xl font-bold">
+                    {calculateAverageResolutionTime(requests, undefined, admin.id).toFixed(1)}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">horas</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default ReportsPage;
+
+// Adicionar o componente na página de relatórios
+return (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
+      <div className="flex gap-2">
+        {/* ... existing code ... */}
+      </div>
+    </div>
+    
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* ... existing code ... */}
+    </div>
+    
+    <div className="grid gap-6 md:grid-cols-2">
+      {/* ... existing code ... */}
+      <ResolutionTimeMetrics requests={filteredRequests} />
+    </div>
+    
+    {/* ... existing code ... */}
+  </div>
+);

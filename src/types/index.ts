@@ -27,11 +27,17 @@ export interface ITRequest {
   createdAt: string;
   deadlineAt: string;
   assignedTo?: string;
+  assignedToName?: string;
   attachments?: Attachment[];
   comments?: Comment[];
   resolution?: string;
   resolvedAt?: string;
-  title?: string; // Mantido como opcional para compatibilidade com dados existentes
+  // title?: string; // Removido conforme solicitado
+  needsApproval?: boolean;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedByName?: string;
+  rating?: number;
 }
 
 export interface Attachment {
@@ -64,7 +70,7 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
-  type: 'request_created' | 'request_assigned' | 'deadline_changed' | 'request_resolved';
+  type: 'request_created' | 'request_assigned' | 'deadline_changed' | 'request_resolved' | 'request_reminder';
   requestId?: string;
 }
 

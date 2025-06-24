@@ -8,6 +8,8 @@ import {
   generateAdminDailyDigestEmail 
 } from './emailService';
 import { checkAndCreatePreventiveMaintenanceRequests } from './preventiveMaintenanceService';
+import { createReminderNotifications } from './notificationService';
+import { differenceInDays } from 'date-fns';
 
 // For checking request deadlines
 export const checkRequestDeadlines = async (): Promise<void> => {
@@ -50,12 +52,52 @@ export const sendAdminDailyDigestEmails = async (): Promise<void> => {
   }
 };
 
-// Função para verificações diárias (deadlines e manutenção preventiva)
+// Verificar solicitações sem atividade recente
+export const checkInactiveRequests = async (): Promise<void> => {
+  const now = new Date();
+  
+  for (const request of requests) {
+    // Ignorar solicitações resolvidas ou fechadas
+    if (request.status === 'resolvida' || request.status === 'fechada' || 
+        request.status === 'resolved' || request.status === 'closed') continue;
+    
+    // Verificar se a solicitação tem um responsável atribuído
+    if (!request.assignedTo) continue;
+    
+    // Calcular dias desde a última atividade (criação ou último comentário)
+    let lastActivityDate = new Date(request.createdAt);
+    
+    if (request.comments && request.comments.length > 0) {
+      const lastComment = request.comments.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0];
+      
+      lastActivityDate = new Date(lastComment.createdAt);
+    }
+    
+    const daysSinceLastActivity = differenceInDays(now, lastActivityDate);
+    
+    // Criar lembretes para solicitações sem atividade há mais de 3 dias
+    if (daysSinceLastActivity >= 3) {
+      createReminderNotifications(
+        request.id, 
+        request.assignedTo, 
+        request.requesterId,
+        daysSinceLastActivity
+      );
+    }
+  }
+};
+
+// Função para verificações diárias (deadlines, manutenção preventiva e solicitações inativas)
 const performDailyChecks = async (): Promise<void> => {
   console.log('Executando verificações diárias...');
   
   // Verificar prazos de solicitações
   await checkRequestDeadlines().catch(console.error);
+  
+  // Verificar solicitações sem atividade
+  await checkInactiveRequests().catch(console.error);
   
   // Verificar se é data de manutenção preventiva
   await checkAndCreatePreventiveMaintenanceRequests().catch(console.error);

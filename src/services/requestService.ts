@@ -114,10 +114,21 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
       createNotification({
         userId: oldRequest.requesterId,
         title: "Solicitação Atribuída",
-        message: `Sua solicitação ${id} foi atribuída a um técnico`,
+        message: `Sua solicitação ${id} foi atribuída a ${updates.assignedToName || 'um técnico'}`,
         type: "request_assigned",
         requestId: id
       });
+      
+      // Notificar o técnico responsável se houver um assignedTo
+      if (updates.assignedTo) {
+        createNotification({
+          userId: updates.assignedTo,
+          title: "Nova Solicitação Atribuída",
+          message: `A solicitação ${id} foi atribuída a você`,
+          type: "request_assigned",
+          requestId: id
+        });
+      }
     } else if (updates.status === 'resolvida') {
       createNotification({
         userId: oldRequest.requesterId,

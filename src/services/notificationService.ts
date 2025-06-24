@@ -1,4 +1,5 @@
 
+// Adicionar novos tipos de notificação
 import { Notification } from '../types';
 import { delay } from './utils';
 import { mockNotifications } from './mockData';
@@ -39,6 +40,27 @@ export const createNotification = (notification: Omit<Notification, 'id' | 'isRe
   notifications.push(newNotification);
   
   return newNotification;
+};
+
+// Função para criar lembretes automáticos para solicitações sem atividade
+export const createReminderNotifications = (requestId: string, assignedTo: string, requesterId: string, daysSinceLastActivity: number): void => {
+  // Notificar o técnico responsável
+  createNotification({
+    userId: assignedTo,
+    title: "Lembrete de Solicitação",
+    message: `A solicitação ${requestId} está sem atividade há ${daysSinceLastActivity} dias. Por favor, verifique o status.`,
+    type: "request_reminder",
+    requestId
+  });
+  
+  // Notificar o solicitante
+  createNotification({
+    userId: requesterId,
+    title: "Atualização de Solicitação",
+    message: `Sua solicitação ${requestId} está sendo acompanhada. Um lembrete foi enviado ao técnico responsável.`,
+    type: "request_reminder",
+    requestId
+  });
 };
 
 // Export notifications for use in other services

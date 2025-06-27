@@ -1,11 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Edit, UserPlus, Key } from 'lucide-react';
-import { mockUsers } from '@/services/mockData';
 import { User } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -15,7 +13,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, updateUser, updateUserPassword } from '@/services/apiService';
+import { createUser, updateUser, updateUserPassword, forgotPassword } from '@/services/apiService';
+import { supabase } from '@/lib/supabase';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -36,7 +35,7 @@ type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 const UsersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -76,6 +75,43 @@ const UsersPage: React.FC = () => {
     },
   });
   
+  useEffect(() => {
+    const fetchUsers = async () => {
+      let data = [];
+      let error = null;
+      if (isAdmin) {
+        // Admin: busca todos os usuários via função RPC
+        const rpcResult = await supabase.rpc('admin_list_users');
+        data = rpcResult.data;
+        error = rpcResult.error;
+      } else if (currentUser) {
+        // Usuário comum: busca apenas o próprio registro
+        const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
+        data = result.data;
+        error = result.error;
+      }
+      if (!error && data) setUsers(data);
+      else setUsers([]);
+    };
+    fetchUsers();
+  }, [isAdmin, currentUser]);
+  
+  const refreshUsers = async () => {
+    let data = [];
+    let error = null;
+    if (isAdmin) {
+      const rpcResult = await supabase.rpc('admin_list_users');
+      data = rpcResult.data;
+      error = rpcResult.error;
+    } else if (currentUser) {
+      const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
+      data = result.data;
+      error = result.error;
+    }
+    if (!error && data) setUsers(data);
+    else setUsers([]);
+  };
+  
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,22 +123,16 @@ const UsersPage: React.FC = () => {
   
   const handleCreateUser = async (values: UserFormValues) => {
     try {
-      // Aqui garantimos que role é sempre enviado, mesmo se estiver undefined no form
-      const userData: Omit<User, 'id'> = {
-        name: values.name,
-        email: values.email,
-        role: values.role, // Já é obrigatório pelo schema
-        department: values.department,
-        position: values.position,
-        whatsapp: values.whatsapp
+      const userData: Omit<User, 'id'> & { password: string } = {
+        ...values,
+        password: 'senha123',
       };
-      
-      const newUser = await createUser(userData);
-      setUsers([...users, newUser]);
+      await createUser(userData);
+      await refreshUsers();
       userForm.reset();
       toast({
         title: 'Usuário Criado',
-        description: `${newUser.name} foi criado com sucesso.`,
+        description: `${values.name} foi criado com sucesso.`,
       });
     } catch (error) {
       toast({
@@ -115,14 +145,13 @@ const UsersPage: React.FC = () => {
   
   const handleEditUser = async (values: UserFormValues) => {
     if (!selectedUserForEdit) return;
-    
     try {
-      const updatedUser = await updateUser(selectedUserForEdit.id, values);
-      setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
+      await updateUser(selectedUserForEdit.id, values);
+      await refreshUsers();
       setSelectedUserForEdit(null);
       toast({
         title: 'Usuário Atualizado',
-        description: `${updatedUser.name} foi atualizado com sucesso.`,
+        description: `${values.name} foi atualizado com sucesso.`,
       });
     } catch (error) {
       toast({
@@ -168,6 +197,25 @@ const UsersPage: React.FC = () => {
       position: user.position || '',
       whatsapp: user.whatsapp || '',
     });
+  };
+  
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este usuário?')) return;
+    try {
+      const { error } = await supabase.from('usuarios').delete().eq('id', userId);
+      if (error) throw error;
+      await refreshUsers();
+      toast({
+        title: 'Usuário Excluído',
+        description: 'O usuário foi excluído com sucesso.'
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao excluir usuário',
+        variant: 'destructive',
+      });
+    }
   };
   
   if (!isAdmin) {
@@ -360,14 +408,30 @@ const UsersPage: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="p-4 align-middle text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openPasswordForm(user)}
-                          title="Alterar Senha"
-                        >
-                          <Key className="h-4 w-4" />
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Enviar link de redefinição de senha"
+                            onClick={async () => {
+                              try {
+                                await forgotPassword(user.email);
+                                toast({
+                                  title: 'E-mail enviado',
+                                  description: `Link de redefinição de senha enviado para ${user.email}`,
+                                });
+                              } catch (error) {
+                                toast({
+                                  title: 'Erro',
+                                  description: error instanceof Error ? error.message : 'Erro ao enviar e-mail de redefinição',
+                                  variant: 'destructive',
+                                });
+                              }
+                            }}
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -376,6 +440,19 @@ const UsersPage: React.FC = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Excluir Usuário"
+                            onClick={() => handleDeleteUser(user.id)}
+                            style={{ color: 'red' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -385,40 +462,6 @@ const UsersPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-      
-      {/* Dialog para alteração de senha */}
-      <Dialog open={showPasswordForm} onOpenChange={setShowPasswordForm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Alterar Senha</DialogTitle>
-            <DialogDescription>
-              {selectedUser && `Defina uma nova senha para ${selectedUser.name}.`}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4">
-              <FormField
-                control={passwordForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nova Senha</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowPasswordForm(false)}>Cancelar</Button>
-                <Button type="submit">Salvar</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
       
       {/* Dialog para edição de usuário */}
       <Dialog open={!!selectedUserForEdit} onOpenChange={(open) => !open && setSelectedUserForEdit(null)}>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, LogOut, Menu, Sun, Moon } from 'lucide-react';
@@ -41,7 +40,7 @@ const Navbar: React.FC = () => {
           </Sheet>
         )}
         
-        <h1 className="text-xl font-semibold text-foreground">IT Request Tracker</h1>
+        {/* <h1 className="text-xl font-semibold text-foreground">Solicitação de TI</h1> */}
         
         <div className="ml-auto flex items-center space-x-2">
           <Button 

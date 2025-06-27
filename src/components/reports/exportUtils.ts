@@ -1,4 +1,3 @@
-
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -148,11 +147,11 @@ export function exportToExcel(requests: ITRequest[], filters: any) {
   // Preparar os dados para o Excel
   const worksheetData = requests.map(request => ({
     'ID': request.id,
-    'Solicitante': request.requesterName,
-    'Data': format(new Date(request.createdAt), 'dd/MM/yyyy'),
-    'Tipo': translateRequestType(request.type),
-    'Vencimento': format(new Date(request.deadlineAt), 'dd/MM/yyyy'),
-    'Prioridade': translatePriority(request.priority),
+    'Solicitante': request.requestername,
+    'Data': format(new Date(request.createdat!), 'dd/MM/yyyy'),
+    'Tipo': translateRequestType(request.type!),
+    'Vencimento': format(new Date(request.deadlineat!), 'dd/MM/yyyy'),
+    'Prioridade': translatePriority(request.priority!),
     'Descrição': request.description
   }));
   

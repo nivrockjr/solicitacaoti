@@ -91,7 +91,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-medium leading-tight line-clamp-1">
-              {request.title || request.description.substring(0, 50)}
+              {request.description?.substring(0, 50)}
             </h3>
             <p className="text-xs text-muted-foreground">Solicitação #{request.id}</p>
           </div>
@@ -113,7 +113,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>Vence em {format(new Date(request.deadlineAt), 'dd/MM/yyyy, HH:mm')}</span>
+            <span>Vence em {format(new Date(request.deadlineat!), 'dd/MM/yyyy, HH:mm')}</span>
           </div>
         </div>
       </CardContent>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -96,10 +95,10 @@ const StockAdjustmentPage: React.FC = () => {
         requesterId: user?.id || '',
         requesterName: data.name,
         requesterEmail: user?.email || '',
-        title: `Solicitação de Ajuste de Estoque: ${data.productName}`,
+        title: `Ajuste de Estoque - ${data.name}`,
         description: createAdjustmentDescription(data),
         type: 'ajuste_estoque' as const,
-        priority: 'media' as const,
+        priority: 'alta' as const,
         status: 'nova' as const,
       };
 
@@ -115,7 +114,7 @@ const StockAdjustmentPage: React.FC = () => {
       console.error('Erro ao enviar solicitação:', error);
       toast({
         title: 'Erro',
-        description: 'Ocorreu um erro ao enviar sua solicitação. Tente novamente.',
+        description: `Ocorreu um erro ao enviar sua solicitação: ${error instanceof Error ? error.message : String(error)}`,
         variant: 'destructive',
       });
     } finally {

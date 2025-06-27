@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format, isAfter } from 'date-fns';
-import { ArrowLeft, Calendar, Clock, FileText, PaperclipIcon, Send, User, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, FileText, PaperclipIcon, Send, User as UserIcon, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,10 +10,11 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { getRequestById, updateRequest } from '@/services/requestService';
-import { ITRequest } from '@/types';
-import { users } from '@/services/authService';
+import { getRequestById, updateRequest, deleteRequest } from '@/services/requestService';
+import { ITRequest, User } from '@/types';
+// import { users } from '@/services/authService';
 import { Comment } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +48,7 @@ const RequestDetailPage: React.FC = () => {
         }
         
         // Check if the user has permission to view the request
-        if (user?.role !== 'admin' && fetchedRequest.requesterId !== user?.id) {
+        if (user?.role !== 'admin' && fetchedRequest.requesterid !== user?.id) {
           toast({
             title: 'Acesso Negado',
             description: 'Você não tem permissão para visualizar esta solicitação.',
@@ -76,9 +76,20 @@ const RequestDetailPage: React.FC = () => {
   
   // Adicionar este novo useEffect para carregar os administradores
   useEffect(() => {
-    // Filtrar usuários administradores da lista de usuários importada
-    const admins = users.filter(u => u.role === 'admin');
-    setAdminUsers(admins);
+    const fetchAdmins = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('role', 'admin');
+        if (error) throw error;
+        setAdminUsers(data || []);
+      } catch (err) {
+        console.error('Erro ao buscar administradores:', err);
+        setAdminUsers([]);
+      }
+    };
+    fetchAdmins();
   }, []);
   const handleAddComment = async () => {
     if (!request || !id || !user || !comment.trim()) return;
@@ -127,8 +138,8 @@ const RequestDetailPage: React.FC = () => {
       };
       
       // If resolving, add resolution details
-      if (newStatus === 'resolved' && !request.resolvedAt) {
-        updates.resolvedAt = new Date().toISOString();
+      if (newStatus === 'resolved' && !request.resolvedat) {
+        updates.resolvedat = new Date().toISOString();
         updates.resolution = `Resolvido por ${user?.name}`;
       }
       
@@ -253,9 +264,9 @@ const RequestDetailPage: React.FC = () => {
       setSubmitting(true);
       
       const updates: Partial<ITRequest> = {
-        approvalStatus: isApproved ? 'approved' : 'rejected',
-        approvedBy: user.id,
-        approvedByName: user.name
+        approvalstatus: isApproved ? 'approved' : 'rejected',
+        approvedby: user.id,
+        approvedbyname: user.name
       };
       
       // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
@@ -298,9 +309,9 @@ const RequestDetailPage: React.FC = () => {
       }
       
       const updates: Partial<ITRequest> = {
+        assignedto: selectedTechnician,
+        assignedtoname: technician?.name || null,
         status: 'assigned',
-        assignedTo: selectedTechnician,
-        assignedToName: technician.name
       };
       
       const updatedRequest = await updateRequest(id, updates);
@@ -328,11 +339,7 @@ const RequestDetailPage: React.FC = () => {
     try {
       setSubmitting(true);
       
-      const updates: Partial<ITRequest> = {
-        rating
-      };
-      
-      const updatedRequest = await updateRequest(id, updates);
+      const updatedRequest = await updateRequest(id, { rating });
       setRequest(updatedRequest);
       
       toast({
@@ -344,6 +351,37 @@ const RequestDetailPage: React.FC = () => {
       toast({
         title: 'Erro',
         description: 'Falha ao enviar avaliação. Por favor, tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  // Função para excluir solicitação
+  const handleDeleteRequest = async () => {
+    if (!request || !id || !user) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta solicitação? Esta ação não poderá ser desfeita.')) return;
+    try {
+      setSubmitting(true);
+      const success = await deleteRequest(id);
+      if (success) {
+        toast({
+          title: 'Solicitação Excluída',
+          description: 'A solicitação foi excluída com sucesso.',
+        });
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para excluir esta solicitação.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Falha ao excluir a solicitação. Por favor, tente novamente.',
         variant: 'destructive',
       });
     } finally {
@@ -383,30 +421,32 @@ const RequestDetailPage: React.FC = () => {
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
         </div>
-        
-        {user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
-          <div className="flex gap-2">
-            {(request.status === 'new' || request.status === 'nova') && (
-              <Button onClick={() => handleStatusChange('assigned')} variant="outline" disabled={submitting}>
-                Atribuir
-              </Button>
-            )}
-            {(request.status === 'assigned' || request.status === 'atribuida' || request.status === 'new' || request.status === 'nova') && (
-              <Button onClick={() => handleStatusChange('in_progress')} variant="outline" disabled={submitting}>
-                Iniciar Progresso
-              </Button>
-            )}
-            <Button onClick={() => handleStatusChange('resolved')} disabled={submitting}>
-              Resolver
+        <div className="flex gap-2">
+          {/* Botão de exclusão para admin e solicitante */}
+          {(user?.role === 'admin' || user?.id === request.requesterid) && (
+            <Button onClick={handleDeleteRequest} variant="destructive" disabled={submitting}>
+              Excluir Solicitação
             </Button>
-          </div>
-        )}
-        
-        {user?.role === 'admin' && (request.status === 'resolved' || request.status === 'resolvida') && (
-          <Button onClick={() => handleStatusChange('closed')} variant="outline" disabled={submitting}>
-            Encerrar Solicitação
-          </Button>
-        )}
+          )}
+          {/* Botões de status para admin */}
+          {user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
+            <>
+              {(request.status === 'new' || request.status === 'nova') && (
+                <Button onClick={() => handleStatusChange('assigned')} variant="outline" disabled={submitting}>
+                  Atribuir
+                </Button>
+              )}
+              {(request.status === 'assigned' || request.status === 'atribuida' || request.status === 'new' || request.status === 'nova') && (
+                <Button onClick={() => handleStatusChange('in_progress')} variant="outline" disabled={submitting}>
+                  Iniciar Progresso
+                </Button>
+              )}
+              <Button onClick={() => handleStatusChange('resolved')} disabled={submitting}>
+                Resolver
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       
       <div className="grid gap-6 lg:grid-cols-3">
@@ -416,7 +456,7 @@ const RequestDetailPage: React.FC = () => {
             <CardHeader className="flex flex-col md:flex-row justify-between md:items-start gap-4">
               <div>
                 <CardTitle className="text-xl mb-1">
-                  {request.title || request.description.substring(0, 50)}
+                  {request.description.substring(0, 50)}
                 </CardTitle>
                 <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
@@ -426,7 +466,7 @@ const RequestDetailPage: React.FC = () => {
                   <span className="hidden sm:inline">•</span>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>Criada em {format(new Date(request.createdAt), 'dd/MM/yyyy')}</span>
+                    <span>Criada em {format(new Date(request.createdat), 'dd/MM/yyyy')}</span>
                   </div>
                 </div>
               </div>
@@ -450,9 +490,9 @@ const RequestDetailPage: React.FC = () => {
                   <h3 className="text-sm font-medium mb-2">Resolução</h3>
                   <div className="bg-muted/40 p-3 rounded text-sm whitespace-pre-wrap border-l-4 border-green-500">
                     <p>{request.resolution}</p>
-                    {request.resolvedAt && (
+                    {request.resolvedat && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        Resolvida em {format(new Date(request.resolvedAt), 'dd/MM/yyyy HH:mm')}
+                        Resolvida em {format(new Date(request.resolvedat), 'dd/MM/yyyy HH:mm')}
                       </p>
                     )}
                   </div>
@@ -503,9 +543,9 @@ const RequestDetailPage: React.FC = () => {
                       <div key={comment.id} className="bg-muted/40 p-3 rounded">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 text-sm">
-                            <User className="h-4 w-4 text-muted-foreground" />
+                            <UserIcon className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">Atribuído a:</span>
-                            <span>{request.assignedToName || 'Não atribuído'}</span>
+                            <span>{request.assignedtoname || 'Não atribuído'}</span>
                           </div>
                           <time className="text-xs text-muted-foreground">
                             {format(new Date(comment.createdAt), 'dd/MM HH:mm')}
@@ -555,15 +595,15 @@ const RequestDetailPage: React.FC = () => {
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Prazo</p>
                 <div className="flex items-center gap-2">
-                  <Clock className={`h-4 w-4 ${isDeadlinePassed(request.deadlineAt) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' ? 'text-destructive' : ''}`} />
-                  <p className={`font-medium ${getDeadlineColorClass(request.deadlineAt)}`}>
-                    {format(new Date(request.deadlineAt), 'dd/MM/yyyy HH:mm')}
+                  <Clock className={`h-4 w-4 ${isDeadlinePassed(request.deadlineat) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' ? 'text-destructive' : ''}`} />
+                  <p className={`font-medium ${getDeadlineColorClass(request.deadlineat)}`}>
+                    {format(new Date(request.deadlineat), 'dd/MM/yyyy HH:mm')}
                   </p>
                 </div>
-                {isDeadlinePassed(request.deadlineAt) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' && (
+                {isDeadlinePassed(request.deadlineat) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' && (
                   <p className="text-xs text-destructive">Prazo expirado</p>
                 )}
-                {!isDeadlinePassed(request.deadlineAt) && getDeadlineColorClass(request.deadlineAt).includes('amber') && (
+                {!isDeadlinePassed(request.deadlineat) && getDeadlineColorClass(request.deadlineat).includes('amber') && (
                   <p className="text-xs text-amber-500">Prazo próximo do vencimento</p>
                 )}
               </div>
@@ -573,18 +613,18 @@ const RequestDetailPage: React.FC = () => {
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Solicitante</p>
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
+                  <UserIcon className="h-4 w-4" />
                   <div>
-                    <p className="font-medium">{request.requesterName}</p>
-                    <p className="text-xs text-muted-foreground">{request.requesterEmail}</p>
+                    <p className="font-medium">{request.requestername}</p>
+                    <p className="text-xs text-muted-foreground">{request.requesteremail}</p>
                   </div>
                 </div>
               </div>
               
-              {request.assignedTo && (
+              {request.assignedto && (
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Atribuído a</p>
-                  <p className="font-medium">{request.assignedToName || 'Equipe de Suporte'}</p>
+                  <p className="font-medium">{request.assignedtoname || 'Equipe de Suporte'}</p>
                 </div>
               )}
               
@@ -597,7 +637,7 @@ const RequestDetailPage: React.FC = () => {
               
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Criada em</p>
-                <p className="font-medium">{format(new Date(request.createdAt), 'dd/MM/yyyy HH:mm')}</p>
+                <p className="font-medium">{format(new Date(request.createdat), 'dd/MM/yyyy HH:mm')}</p>
               </div>
               
               {(user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada') && (
@@ -609,7 +649,7 @@ const RequestDetailPage: React.FC = () => {
                       {/* Aprovação para solicitações de equipamentos e sistemas */}
                       {(request.type === 'solicitacao_equipamento' || request.type === 'sistemas') && 
                        (request.status === 'new' || request.status === 'nova') && 
-                       (!request.approvalStatus || request.approvalStatus === 'pending') && (
+                       (!request.approvalstatus || request.approvalstatus === 'pending') && (
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground">Esta solicitação requer aprovação</p>
                           <div className="flex gap-2">
@@ -638,7 +678,7 @@ const RequestDetailPage: React.FC = () => {
                       {/* Atribuição a um técnico específico */}
                       {(request.status === 'new' || request.status === 'nova' || 
                         ((request.type === 'solicitacao_equipamento' || request.type === 'sistemas') && 
-                         request.approvalStatus === 'approved')) && (
+                         request.approvalstatus === 'approved')) && (
                         <div className="space-y-2">
                           <div className="flex flex-col gap-2">
                             <Select 
@@ -667,912 +707,16 @@ const RequestDetailPage: React.FC = () => {
                           </div>
                         </div>
                       )}
-                      
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Sistema de Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ? 'A solicitação foi aprovada com sucesso.'
-                              : 'A solicitação foi rejeitada.',
-                          });
-                        } catch (error) {
-                          console.error('Erro ao processar aprovação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      
-                      // Implementar a função handleAssignToTechnician
-                      const handleAssignToTechnician = async () => {
-                        if (!request || !id || !selectedTechnician) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          // Encontrar o nome do técnico selecionado
-                          const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-                          if (!technician) {
-                            throw new Error('Técnico não encontrado');
-                          }
-                          
-                          const updates: Partial<ITRequest> = {
-                            status: 'assigned',
-                            assignedTo: selectedTechnician,
-                            assignedToName: technician.name
-                          };
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: 'Solicitação Atribuída',
-                            description: `A solicitação foi atribuída a ${technician.name}.`,
-                          });
-                        } catch (error) {
-                          console.error('Erro ao atribuir solicitação:', error);
-                          toast({
-                            title: 'Erro',
-                            description: 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setSubmitting(false);
-                        }
-                      };
-                      {/* Avaliação */}
-                      {request.status === 'resolved' && request.requesterId === user?.id && !request.rating && (
-                        <div className="space-y-2 mt-4">
-                          <p className="text-sm font-medium">Como você avalia a resolução desta solicitação?</p>
-                          <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Button 
-                                key={star}
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleRating(star)}
-                                disabled={submitting}
-                              >
-                                <Star className={`h-6 w-6 ${request.rating && request.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* Implementar a função handleApproval
-                      const handleApproval = async (isApproved: boolean) => {
-                        if (!request || !id || !user) return;
-                        
-                        try {
-                          setSubmitting(true);
-                          
-                          const updates: Partial<ITRequest> = {
-                            approvalStatus: isApproved ? 'approved' : 'rejected',
-                            approvedBy: user.id,
-                            approvedByName: user.name
-                          };
-                          
-                          // Se for aprovado e for uma solicitação de equipamento ou sistemas, manter como nova
-                          // Caso contrário, se for aprovado, mudar para atribuída
-                          if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
-                            updates.status = 'assigned';
-                          }
-                          
-                          const updatedRequest = await updateRequest(id, updates);
-                          setRequest(updatedRequest);
-                          
-                          toast({
-                            title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-                            description: isApproved 
-                              ?
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RequestDetailPage;

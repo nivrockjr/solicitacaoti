@@ -12,7 +12,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/lib/supabase';
-import EmailSetupHelper from '@/components/email/EmailSetupHelper';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const EmailSettingsSchema = z.object({
@@ -25,21 +24,22 @@ const EmailSettingsSchema = z.object({
 
 type EmailSettings = z.infer<typeof EmailSettingsSchema>;
 
+const NotificationSettingsSchema = z.object({
+  browserNotifications: z.boolean(),
+});
+
+type NotificationSettings = z.infer<typeof NotificationSettingsSchema>;
+
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
-  const [showEmailSettings, setShowEmailSettings] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const form = useForm<EmailSettings>({
-    resolver: zodResolver(EmailSettingsSchema),
+  const form = useForm<NotificationSettings>({
+    resolver: zodResolver(NotificationSettingsSchema),
     defaultValues: {
-      emailNotifications: true,
       browserNotifications: true,
-      whatsappNotifications: false,
-      emailAccount: user?.email || '',
-      emailPassword: '',
     },
   });
 
@@ -52,26 +52,37 @@ const SettingsPage: React.FC = () => {
         const { data, error } = await supabase
           .from('user_settings')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .single();
 
-        if (error) {
-          console.error('Erro ao carregar configurações:', error);
+        if (error && error.code === 'PGRST116') {
+          // Não existe registro, criar um novo padrão
+          const { error: insertError } = await supabase
+            .from('user_settings')
+            .insert({ id: user.id, theme: 'light', notifications_enabled: true, language: 'pt' });
+          if (insertError && insertError.code !== '23505') {
+            // Só exibe erro se NÃO for duplicidade
+            console.error('Erro ao criar configurações padrão:', insertError);
+            return;
+          }
+          // Buscar novamente após criar (ou se já existe)
+          const { data: newData } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (newData) {
+            form.reset({
+              browserNotifications: newData.notifications_enabled ?? true,
+            });
+          }
           return;
         }
 
         if (data) {
           form.reset({
-            emailNotifications: data.email_notifications || true,
-            browserNotifications: data.browser_notifications || true,
-            whatsappNotifications: data.whatsapp_notifications || false,
-            emailAccount: data.email_account || user?.email || '',
-            emailPassword: '',
+            browserNotifications: data.notifications_enabled ?? true,
           });
-          
-          if (data.email_notifications) {
-            setShowEmailSettings(true);
-          }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -81,7 +92,7 @@ const SettingsPage: React.FC = () => {
     loadUserSettings();
   }, [user, form]);
 
-  const onSubmit = async (data: EmailSettings) => {
+  const onSubmit = async (data: NotificationSettings) => {
     if (!user) return;
     
     setIsLoading(true);
@@ -91,24 +102,12 @@ const SettingsPage: React.FC = () => {
       const { error } = await supabase
         .from('user_settings')
         .upsert({
-          user_id: user.id,
-          email_notifications: data.emailNotifications,
+          id: user.id,
           browser_notifications: data.browserNotifications,
-          whatsapp_notifications: data.whatsappNotifications,
-          email_account: data.emailAccount,
-          // Só envie a senha se foi informada
-          ...(data.emailPassword ? { email_password: data.emailPassword } : {})
-        }, { onConflict: 'user_id' });
+        }, { onConflict: 'id' });
 
       if (error) {
         throw error;
-      }
-      
-      // Atualiza configurações de SMTP no Supabase Edge Function como secrets
-      if (data.emailNotifications && data.emailAccount && data.emailPassword) {
-        // Isso seria uma chamada administrativa que atualizaria as variáveis de ambiente
-        // Na implementação real, isso seria feito pelo administrador via Dashboard do Supabase
-        console.log('Configurações de SMTP atualizadas para:', data.emailAccount);
       }
       
       toast({
@@ -133,13 +132,6 @@ const SettingsPage: React.FC = () => {
       <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
       
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Email Setup Helper Card - Added at the top for visibility */}
-        <Card className="md:col-span-2">
-          <CardContent className="pt-6">
-            <EmailSetupHelper />
-          </CardContent>
-        </Card>
-        
         <Card>
           <CardHeader>
             <CardTitle>Perfil do Usuário</CardTitle>
@@ -217,116 +209,13 @@ const SettingsPage: React.FC = () => {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="emailNotifications"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <FormLabel>Notificações por Email</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Receber notificações por email
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            if (checked) setShowEmailSettings(true);
-                          }}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {form.watch('emailNotifications') && showEmailSettings && (
-                  <div className="space-y-4 border border-border rounded-md p-4">
-                    <h3 className="font-medium">Configurações de Email</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Configure suas credenciais para envio e recebimento de emails
-                    </p>
-                    
-                    <div className="grid gap-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Servidor de Entrada (IMAP)</Label>
-                          <p className="text-sm font-medium">imap.kinghost.net</p>
-                        </div>
-                        <div>
-                          <Label>Porta IMAP</Label>
-                          <p className="text-sm font-medium">143</p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Servidor de Saída (SMTP)</Label>
-                          <p className="text-sm font-medium">smtp.kinghost.net</p>
-                        </div>
-                        <div>
-                          <Label>Porta SMTP</Label>
-                          <p className="text-sm font-medium">587</p>
-                        </div>
-                      </div>
-                      
-                      <FormField
-                        control={form.control}
-                        name="emailAccount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Conta de Email</FormLabel>
-                            <FormControl>
-                              <Input placeholder="seu@email.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="emailPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Senha do Email</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Senha" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                <FormField
-                  control={form.control}
                   name="browserNotifications"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <FormLabel>Notificações do Navegador</FormLabel>
                         <p className="text-sm text-muted-foreground">
-                          Receber notificações no navegador
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="whatsappNotifications"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <FormLabel>Notificações WhatsApp</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Receber notificações via WhatsApp
+                          Receber notificações push no navegador
                         </p>
                       </div>
                       <FormControl>
@@ -337,7 +226,7 @@ const SettingsPage: React.FC = () => {
                 />
                 
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Salvando...' : 'Salvar Preferências de Notificação'}
+                  Salvar Preferências
                 </Button>
               </form>
             </Form>

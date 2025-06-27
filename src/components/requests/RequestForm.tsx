@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Upload, X } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -95,18 +96,26 @@ const RequestForm: React.FC = () => {
         }
       }
       
-      // Create the request - using description as title since title field is removed
-      const newRequest = await createRequest({
-        requesterId: user.id,
-        requesterName: user.name,
-        requesterEmail: user.email,
-        title: values.description.substring(0, 100), // Usar os primeiros 100 caracteres da descrição como título
+      // Create the request - usando description como title
+      // Garante que attachments é sempre um array
+      const safeAttachments = Array.isArray(attachments) ? attachments : [];
+      const now = new Date().toISOString();
+      const payload = {
+        id: uuidv4(),
+        requesterid: user.id,
+        requestername: user.name,
+        requesteremail: user.email,
+        title: values.description.substring(0, 100),
         description: values.description,
         type: values.type as RequestType,
         priority: values.priority as RequestPriority,
         status: 'nova',
-        attachments,
-      });
+        attachments: safeAttachments,
+        createdat: now,
+        deadlineat: null
+      };
+      console.log('Payload enviado para o Supabase:', payload);
+      const newRequest = await createRequest(payload);
       
       toast({
         title: 'Solicitação Enviada',

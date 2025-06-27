@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search, SlidersHorizontal } from 'lucide-react';
@@ -65,12 +64,11 @@ const AllRequestsPage: React.FC = () => {
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
-        r => 
-          (r.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-          r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.requesterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.requesterEmail.toLowerCase().includes(searchQuery.toLowerCase())
+        r =>
+          r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.requestername?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.requesteremail?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     

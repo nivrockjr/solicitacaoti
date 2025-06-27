@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -24,6 +24,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
   const { login, isLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -37,6 +38,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
     try {
       setError(null);
       await login(data.email, data.password);
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha no login');
     }

@@ -1,167 +1,58 @@
-
 import { ITRequest, RequestType, RequestPriority } from '../types';
 import { delay, cloneDeep, createNotification, addBusinessDays } from './utils';
-import { mockRequests } from './mockData';
-import { users } from './authService';
-import { 
-  sendEmail, 
-  generateRequestConfirmationEmail, 
-  generateStatusUpdateEmail,
-  generateNewRequestAlertEmail 
-} from './emailService';
+// import { mockRequests } from './mockData';
+// import { users } from './authService';
+import { supabase } from '../lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 // In-memory data store
-let requests = cloneDeep(mockRequests);
+// let requests = cloneDeep(mockRequests);
 
 export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
-  await delay(300);
-  
-  if (userId) {
-    return requests.filter(r => r.requesterId === userId);
-  }
-  
-  return requests;
+  let query = supabase.from('solicitacoes').select('*');
+  if (userId) query = query.eq('requesterid', userId);
+  const { data, error } = await query;
+  if (error) throw new Error('Erro ao buscar solicitações');
+  return data || [];
 };
 
 export const getRequestById = async (id: string): Promise<ITRequest | undefined> => {
-  await delay(200);
-  return requests.find(r => r.id === id);
+  const { data, error } = await supabase.from('solicitacoes').select('*').eq('id', id).single();
+  if (error) throw new Error('Solicitação não encontrada');
+  return data;
 };
 
-export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdAt' | 'deadlineAt'>): Promise<ITRequest> => {
-  await delay(500);
-  
+export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdat' | 'deadlineat'>): Promise<ITRequest> => {
   const now = new Date();
-  const dia = String(now.getDate()).padStart(2, '0');
-  const mes = String(now.getMonth() + 1).padStart(2, '0');
-  const ano = String(now.getFullYear());
-  const anoAbreviado = ano.slice(-2);
-  
-  // Conta o número de solicitações para o dia atual para gerar o número sequencial
-  const today = now.toISOString().split('T')[0];
-  const todayRequests = requests.filter(r => r.createdAt.startsWith(today)).length + 1;
-  const sequentialNumber = String(todayRequests).padStart(6, '0');
-  
-  // Formato: DiaMesAnoAbreviado-Sequencial (DDMMAA-000000)
-  const newId = `${dia}${mes}${anoAbreviado}-${sequentialNumber}`;
-  
-  const createdAtStr = now.toISOString();
-  
-  // Calculate deadline based on type
-  const deadline = calculateDeadline(request.type, request.priority);
-  
-  const newRequest: ITRequest = {
+  const createdat = now.toISOString();
+  const deadlineat = createdat;
+  const newRequest = {
+    id: uuidv4(),
     ...request,
-    id: newId,
-    createdAt: createdAtStr,
-    deadlineAt: deadline.toISOString(),
-    status: 'nova'
+    createdat,
+    deadlineat,
+    status: 'nova',
   };
-  
-  requests.push(newRequest);
-  
-  // Create notifications
-  createNotification({
-    userId: newRequest.requesterId,
-    title: "Solicitação Enviada",
-    message: `Sua solicitação ${newId} foi enviada com sucesso`,
-    type: "request_created",
-    requestId: newId
-  });
-  
-  // Notify admins
-  users.filter(u => u.role === 'admin').forEach(admin => {
-    createNotification({
-      userId: admin.id,
-      title: "Nova Solicitação",
-      message: `Uma nova solicitação de prioridade ${request.priority} ${newId} foi enviada`,
-      type: "request_created",
-      requestId: newId
-    });
-  });
-  
-  // Send email confirmation to requester
-  const requesterUser = users.find(u => u.id === request.requesterId);
-  if (requesterUser) {
-    const { subject, body } = generateRequestConfirmationEmail(newRequest);
-    sendEmail(requesterUser.email, subject, body).catch(console.error);
-  }
-  
-  // Send email notification to admins about new request
-  users.filter(u => u.role === 'admin').forEach(admin => {
-    const { subject, body } = generateNewRequestAlertEmail(newRequest);
-    sendEmail(admin.email, subject, body).catch(console.error);
-  });
-  
-  return newRequest;
+  const { data, error } = await supabase.from('solicitacoes').insert([newRequest]).select().single();
+  if (error) throw new Error('Erro ao criar solicitação');
+  return data as ITRequest;
 };
 
 export const updateRequest = async (id: string, updates: Partial<ITRequest>): Promise<ITRequest> => {
-  await delay(500);
-  
-  const index = requests.findIndex(r => r.id === id);
-  
-  if (index === -1) {
-    throw new Error("Solicitação não encontrada");
-  }
-  
-  const oldRequest = requests[index];
-  const oldStatus = oldRequest.status;
-  
-  // Check for status change to handle notifications
-  if (updates.status && updates.status !== oldRequest.status) {
-    if (updates.status === 'atribuida') {
-      createNotification({
-        userId: oldRequest.requesterId,
-        title: "Solicitação Atribuída",
-        message: `Sua solicitação ${id} foi atribuída a ${updates.assignedToName || 'um técnico'}`,
-        type: "request_assigned",
-        requestId: id
-      });
-      
-      // Notificar o técnico responsável se houver um assignedTo
-      if (updates.assignedTo) {
-        createNotification({
-          userId: updates.assignedTo,
-          title: "Nova Solicitação Atribuída",
-          message: `A solicitação ${id} foi atribuída a você`,
-          type: "request_assigned",
-          requestId: id
-        });
-      }
-    } else if (updates.status === 'resolvida') {
-      createNotification({
-        userId: oldRequest.requesterId,
-        title: "Solicitação Resolvida",
-        message: `Sua solicitação ${id} foi resolvida`,
-        type: "request_resolved",
-        requestId: id
-      });
-    }
-    
-    // Send email notification about status change
-    const requesterUser = users.find(u => u.id === oldRequest.requesterId);
-    if (requesterUser) {
-      const updatedRequest = { ...oldRequest, ...updates };
-      const { subject, body } = generateStatusUpdateEmail(updatedRequest, oldStatus);
-      sendEmail(requesterUser.email, subject, body).catch(console.error);
-    }
-  }
-  
-  // Check for deadline change
-  if (updates.deadlineAt && updates.deadlineAt !== oldRequest.deadlineAt) {
-    createNotification({
-      userId: oldRequest.requesterId,
-      title: "Prazo Atualizado",
-      message: `O prazo para sua solicitação ${id} foi alterado`,
-      type: "deadline_changed",
-      requestId: id
-    });
-  }
-  
-  requests[index] = { ...oldRequest, ...updates };
-  
-  return requests[index];
+  const { data, error } = await supabase
+    .from('solicitacoes')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error('Erro ao atualizar solicitação');
+  return data;
+};
+
+export const deleteRequest = async (id: string): Promise<boolean> => {
+  const { error } = await supabase.from('solicitacoes').delete().eq('id', id);
+  if (error) throw new Error('Erro ao deletar solicitação');
+  return true;
 };
 
 // Helper function to calculate request deadline based on type and priority
@@ -207,4 +98,4 @@ export const uploadFile = async (file: File): Promise<string> => {
 };
 
 // Export requests for other services to use
-export { requests };
+// export { requests };

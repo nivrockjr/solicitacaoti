@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -253,26 +252,3 @@ const ResolutionTimeMetrics = ({ requests }: { requests: ITRequest[] }) => {
 };
 
 export default ReportsPage;
-
-// Adicionar o componente na página de relatórios
-return (
-  <div className="space-y-6">
-    <div className="flex items-center justify-between">
-      <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-      <div className="flex gap-2">
-        {/* ... existing code ... */}
-      </div>
-    </div>
-    
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {/* ... existing code ... */}
-    </div>
-    
-    <div className="grid gap-6 md:grid-cols-2">
-      {/* ... existing code ... */}
-      <ResolutionTimeMetrics requests={filteredRequests} />
-    </div>
-    
-    {/* ... existing code ... */}
-  </div>
-);

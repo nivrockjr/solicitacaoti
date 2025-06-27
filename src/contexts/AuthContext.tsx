@@ -1,15 +1,13 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User } from '../types';
-import { login as apiLogin, logout as apiLogout, getCurrentUser } from '../services/apiService';
-import { useToast } from "@/hooks/use-toast";
+import { getCurrentUser, login as apiLogin, logout as apiLogout } from '../services/apiService';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,38 +15,31 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     const initAuth = async () => {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
+        console.log('Usuário autenticado:', currentUser);
       } catch (error) {
-        console.error('Falha ao inicializar autenticação:', error);
+        // Se não houver sessão, apenas logue o erro e continue
+        console.warn('Nenhum usuário autenticado:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
-
     initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const user = await apiLogin(email, password);
       setUser(user);
-      toast({
-        title: "Login Realizado",
-        description: `Bem-vindo(a), ${user.name}!`,
-      });
     } catch (error) {
-      toast({
-        title: "Falha no Login",
-        description: error instanceof Error ? error.message : "Credenciais inválidas",
-        variant: "destructive",
-      });
+      setUser(null);
       throw error;
     } finally {
       setIsLoading(false);
@@ -56,36 +47,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       await apiLogout();
       setUser(null);
-      toast({
-        title: "Logout Realizado",
-        description: "Você encerrou sua sessão.",
-      });
     } catch (error) {
-      toast({
-        title: "Falha no Logout",
-        description: "Ocorreu um erro durante o logout.",
-        variant: "destructive",
-      });
-      console.error('Falha no logout:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login,
-        logout,
-        isAuthenticated: Boolean(user),
-      }}
-    >
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

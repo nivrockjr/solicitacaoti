@@ -1,4 +1,3 @@
-
 export type UserRole = 'requester' | 'admin';
 
 export interface User {
@@ -17,27 +16,27 @@ export type RequestStatus = 'nova' | 'atribuida' | 'em_andamento' | 'resolvida' 
 
 export interface ITRequest {
   id: string;
-  requesterId: string;
-  requesterName: string; 
-  requesterEmail: string;
-  description: string;
-  type: RequestType;
-  priority: RequestPriority;
-  status: RequestStatus;
-  createdAt: string;
-  deadlineAt: string;
-  assignedTo?: string;
-  assignedToName?: string;
-  attachments?: Attachment[];
-  comments?: Comment[];
-  resolution?: string;
-  resolvedAt?: string;
-  // title?: string; // Removido conforme solicitado
-  needsApproval?: boolean;
-  approvalStatus?: 'pending' | 'approved' | 'rejected';
-  approvedBy?: string;
-  approvedByName?: string;
-  rating?: number;
+  requesterid: string | null;
+  requestername: string | null;
+  requesteremail: string | null;
+  title: string | null;
+  description: string | null;
+  type: RequestType | null;
+  priority: RequestPriority | null;
+  status: RequestStatus | null;
+  createdat: string | null;
+  deadlineat: string | null;
+  assignedto?: string | null;
+  assignedtoname?: string | null;
+  attachments?: any | null;
+  comments?: any | null;
+  resolution?: string | null;
+  resolvedat?: string | null;
+  needsapproval?: boolean | null;
+  approvalstatus?: 'pending' | 'approved' | 'rejected' | null;
+  approvedby?: string | null;
+  approvedbyname?: string | null;
+  rating?: number | null;
 }
 
 export interface Attachment {
@@ -65,7 +64,7 @@ export interface Holiday {
 
 export interface Notification {
   id: string;
-  userId: string;
+  userid: string;
   title: string;
   message: string;
   isRead: boolean;

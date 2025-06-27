@@ -1,5 +1,6 @@
-
 import { format, isWeekend, addDays } from 'date-fns';
+// import { holidays } from './holidayService';
+import { createNotification as createNotificationFn } from './notificationService';
 
 // Simulated API delay
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -71,14 +72,11 @@ export const isBusinessDay = (date: Date): boolean => {
   
   // Check if it's a holiday - now we'll directly import holidays when needed
   // This breaks the circular dependency
-  const { holidays } = require('./holidayService');
   const dateString = format(date, 'yyyy-MM-dd');
   return !holidays.some(holiday => holiday.date === dateString);
 };
 
 // Re-export createNotification for use in other services
-// Using require to break circular dependency
-export const createNotification = (...args: any[]) => {
-  const { createNotification: createNotificationFn } = require('./notificationService');
-  return createNotificationFn(...args);
+export const createNotification = (notification: Parameters<typeof createNotificationFn>[0]) => {
+  return createNotificationFn(notification);
 };

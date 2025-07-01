@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Notification } from '@/types';
 import { getNotifications, markNotificationAsRead } from '@/services/apiService';
@@ -27,7 +26,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       const userNotifications = await getNotifications(user.id);
-      setNotifications(userNotifications);
+      setNotifications(userNotifications.map(n => ({
+        ...n,
+        createdAt: (n as any).criadaEm,
+        message: (n as any).mensagem || n.message,
+        title: (n as any).tipo || n.title,
+        isRead: (n as any).lida !== undefined ? !(!(n as any).lida) : n.isRead,
+      })));
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch notifications'));
       console.error('Error fetching notifications:', err);

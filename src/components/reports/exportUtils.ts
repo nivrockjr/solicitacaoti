@@ -31,6 +31,13 @@ function translatePriority(priority: string): string {
   return priorityMap[priority] || priority;
 }
 
+// Função utilitária para formatação segura de datas
+function formatDateSafe(date: string | Date | null | undefined) {
+  if (!date) return '-';
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? '-' : format(d, 'dd/MM/yyyy');
+}
+
 // Função para exportar para PDF
 export function exportToPdf(requests: ITRequest[], filters: any) {
   const doc = new jsPDF();
@@ -83,12 +90,12 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
   
   const tableRows = requests.map(request => [
     request.id,
-    request.requesterName,
-    format(new Date(request.createdAt), 'dd/MM/yyyy'),
+    request.requestername,
+    formatDateSafe(request.createdat),
     translateRequestType(request.type),
-    format(new Date(request.deadlineAt), 'dd/MM/yyyy'),
+    formatDateSafe(request.deadlineat),
     translatePriority(request.priority),
-    request.description // Descrição completa, sem truncamento
+    request.description
   ]);
   
   // Criar a tabela com fonte menor
@@ -148,10 +155,10 @@ export function exportToExcel(requests: ITRequest[], filters: any) {
   const worksheetData = requests.map(request => ({
     'ID': request.id,
     'Solicitante': request.requestername,
-    'Data': format(new Date(request.createdat!), 'dd/MM/yyyy'),
-    'Tipo': translateRequestType(request.type!),
-    'Vencimento': format(new Date(request.deadlineat!), 'dd/MM/yyyy'),
-    'Prioridade': translatePriority(request.priority!),
+    'Data': formatDateSafe(request.createdat),
+    'Tipo': translateRequestType(request.type),
+    'Vencimento': formatDateSafe(request.deadlineat),
+    'Prioridade': translatePriority(request.priority),
     'Descrição': request.description
   }));
   

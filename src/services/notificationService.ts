@@ -2,7 +2,6 @@
 import { Notification } from '../types';
 import { delay } from './utils';
 // import { mockNotifications } from './mockData';
-import { supabase } from '../lib/supabase';
 
 // Helper function for deep cloning objects - moved from utils to avoid circular dependency
 const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
@@ -10,47 +9,44 @@ const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 // In-memory data store
 // let notifications = cloneDeep(mockNotifications);
 
+const API_BASE = 'https://notificacoes-backend.onrender.com';
+
 export const getNotifications = async (userId: string): Promise<Notification[]> => {
-  const { data, error } = await supabase.from('notificacoes').select('*').eq('userid', userId);
-  if (error) throw new Error('Erro ao buscar notificações');
-  return data || [];
+  const res = await fetch(`${API_BASE}/notificacoes/${userId}`);
+  if (!res.ok) throw new Error('Erro ao buscar notificações');
+  return await res.json();
 };
 
 export const markNotificationAsRead = async (id: string): Promise<Notification> => {
-  const { data, error } = await supabase.from('notificacoes').update({ isRead: true }).eq('id', id).select().single();
-  if (error) throw new Error('Erro ao marcar notificação como lida');
-  return data;
+  const res = await fetch(`${API_BASE}/notificacoes/${id}/lida`, { method: 'PATCH' });
+  if (!res.ok) throw new Error('Erro ao marcar notificação como lida');
+  return await res.json();
 };
 
-export const createNotification = async (notification: Omit<Notification, 'id' | 'isRead' | 'createdAt'>): Promise<Notification> => {
-  const newNotification = {
-    ...notification,
-    isRead: false,
-    createdAt: new Date().toISOString(),
-  };
-  const { data, error } = await supabase.from('notificacoes').insert([newNotification]).select().single();
-  if (error) throw new Error('Erro ao criar notificação');
-  return data;
+export const createNotification = async (notification: { para: string, mensagem: string, tipo: string }): Promise<any> => {
+  const res = await fetch(`${API_BASE}/notificacoes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(notification),
+  });
+  if (!res.ok) throw new Error('Erro ao criar notificação');
+  return await res.json();
 };
 
 // Função para criar lembretes automáticos para solicitações sem atividade
 export const createReminderNotifications = (requestId: string, assignedTo: string, requesterId: string, daysSinceLastActivity: number): void => {
   // Notificar o técnico responsável
   createNotification({
-    userid: assignedTo,
-    title: "Lembrete de Solicitação",
-    message: `A solicitação ${requestId} está sem atividade há ${daysSinceLastActivity} dias. Por favor, verifique o status.`,
-    type: "request_reminder",
-    requestId
+    para: assignedTo,
+    mensagem: `A solicitação ${requestId} está sem atividade há ${daysSinceLastActivity} dias. Por favor, verifique o status.`,
+    tipo: "request_reminder"
   });
   
   // Notificar o solicitante
   createNotification({
-    userid: requesterId,
-    title: "Atualização de Solicitação",
-    message: `Sua solicitação ${requestId} está sendo acompanhada. Um lembrete foi enviado ao técnico responsável.`,
-    type: "request_reminder",
-    requestId
+    para: requesterId,
+    mensagem: `Sua solicitação ${requestId} está sendo acompanhada. Um lembrete foi enviado ao técnico responsável.`,
+    tipo: "request_reminder"
   });
 };
 

@@ -15,6 +15,7 @@ import { ITRequest, User } from '@/types';
 // import { users } from '@/services/authService';
 import { Comment } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { createNotification } from '@/services/utils';
 
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,9 @@ const RequestDetailPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [reopenComment, setReopenComment] = useState('');
+  const [showReopen, setShowReopen] = useState(false);
   
   useEffect(() => {
     const fetchRequest = async () => {
@@ -93,10 +97,8 @@ const RequestDetailPage: React.FC = () => {
   }, []);
   const handleAddComment = async () => {
     if (!request || !id || !user || !comment.trim()) return;
-    
     try {
       setSubmitting(true);
-      
       const newComment: Comment = {
         id: crypto.randomUUID(),
         userId: user.id,
@@ -104,17 +106,38 @@ const RequestDetailPage: React.FC = () => {
         text: comment.trim(),
         createdAt: new Date().toISOString(),
       };
-      
       const updatedRequest = await updateRequest(id, {
         comments: [...(request.comments || []), newComment],
       });
-      
       setRequest(updatedRequest);
       setComment('');
       toast({
         title: 'Comentário Adicionado',
         description: 'Seu comentário foi adicionado à solicitação.',
       });
+      // Lógica de notificação conforme orientação
+      if (user.id === request.requesterid) {
+        // Se o autor é o solicitante, notificar todos os admins (exceto o próprio autor, caso seja admin)
+        const { data: adminUsers } = await supabase.from('usuarios').select('id').eq('role', 'admin');
+        if (adminUsers && Array.isArray(adminUsers)) {
+          for (const admin of adminUsers) {
+            if (admin.id !== user.id) {
+              await createNotification({
+                para: admin.id,
+                mensagem: `Novo comentário do solicitante na solicitação #${id}.`,
+                tipo: 'comentario'
+              });
+            }
+          }
+        }
+      } else if (user.role === 'admin' && request.requesterid && user.id !== request.requesterid) {
+        // Se o autor é admin, notificar apenas o solicitante (se não for o próprio admin)
+        await createNotification({
+          para: request.requesterid,
+          mensagem: `Novo comentário do administrador na sua solicitação #${id}.`,
+          tipo: 'comentario'
+        });
+      }
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
       toast({
@@ -389,6 +412,62 @@ const RequestDetailPage: React.FC = () => {
     }
   };
   
+  const handleViewAttachment = async (filePath: string) => {
+    setDownloading(filePath);
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from('anexos-solicitacoes')
+        .createSignedUrl(filePath, 60); // 60 segundos
+      if (error) throw error;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      }
+    } catch (err) {
+      toast({
+        title: 'Erro ao abrir anexo',
+        description: 'Não foi possível gerar o link do anexo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloading(null);
+    }
+  };
+  
+  const handleReopenRequest = async () => {
+    if (!request || !id || !user || !reopenComment.trim()) return;
+    try {
+      setSubmitting(true);
+      const newComment: Comment = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: user.name,
+        text: `[REABERTURA] ${reopenComment.trim()}`,
+        createdAt: new Date().toISOString(),
+      };
+      const updates: Partial<ITRequest> = {
+        status: 'reaberta',
+        comments: [...(request.comments || []), newComment],
+      };
+      const updatedRequest = await updateRequest(id, updates);
+      setRequest(updatedRequest);
+      setReopenComment('');
+      setShowReopen(false);
+      toast({
+        title: 'Solicitação Reaberta',
+        description: 'Sua solicitação foi reaberta e a equipe será notificada.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível reabrir a solicitação. Por favor, tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
@@ -515,15 +594,13 @@ const RequestDetailPage: React.FC = () => {
                             {(attachment.fileSize / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </div>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a 
-                            href={attachment.fileUrl} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="text-xs"
-                          >
-                            Visualizar
-                          </a>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewAttachment(attachment.fileUrl)}
+                          disabled={downloading === attachment.fileUrl}
+                        >
+                          {downloading === attachment.fileUrl ? 'Abrindo...' : 'Visualizar'}
                         </Button>
                       </div>
                     ))}
@@ -544,8 +621,8 @@ const RequestDetailPage: React.FC = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 text-sm">
                             <UserIcon className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Atribuído a:</span>
-                            <span>{request.assignedtoname || 'Não atribuído'}</span>
+                            <span className="text-muted-foreground">Comentado por:</span>
+                            <span>{comment.userName}</span>
                           </div>
                           <time className="text-xs text-muted-foreground">
                             {format(new Date(comment.createdAt), 'dd/MM HH:mm')}
@@ -715,6 +792,33 @@ const RequestDetailPage: React.FC = () => {
           </Card>
         </div>
       </div>
+      {/* Botão de reabrir solicitação para o solicitante */}
+      {user?.role !== 'admin' && request?.status && (request.status === 'resolved' || request.status === 'resolvida') && (
+        <div className="mb-4">
+          {!showReopen ? (
+            <Button variant="outline" onClick={() => setShowReopen(true)}>
+              Reabrir solicitação
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Explique o motivo da reabertura..."
+                value={reopenComment}
+                onChange={e => setReopenComment(e.target.value)}
+                className="min-h-[80px]"
+              />
+              <div className="flex gap-2">
+                <Button onClick={handleReopenRequest} disabled={!reopenComment.trim() || submitting}>
+                  Confirmar reabertura
+                </Button>
+                <Button variant="ghost" onClick={() => { setShowReopen(false); setReopenComment(''); }} disabled={submitting}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

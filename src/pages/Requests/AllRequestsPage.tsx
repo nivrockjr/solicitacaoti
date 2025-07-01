@@ -87,7 +87,12 @@ const AllRequestsPage: React.FC = () => {
       filtered = filtered.filter(r => statusesToCheck.includes(r.status));
     }
     
-    return filtered;
+    // Ordenar por data de criação decrescente (mais recente primeiro)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdat).getTime();
+      const dateB = new Date(b.createdat).getTime();
+      return dateB - dateA;
+    });
   };
   
   const handleTypeFilterChange = (type: RequestType) => {

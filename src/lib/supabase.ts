@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Obtém as variáveis de ambiente de conexão do Supabase
@@ -17,7 +16,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Isso permite que o aplicativo seja carregado mesmo sem as variáveis definidas
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder-url.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    global: {
+      headers: {
+        apikey: supabaseAnonKey || 'placeholder-key',
+      },
+    },
+  }
 );
 
 // Função para verificar se o Supabase está configurado corretamente

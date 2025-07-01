@@ -20,7 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const requestSchema = z.object({
-  description: z.string().min(20, 'Descrição deve ter pelo menos 20 caracteres'),
+  description: z.string().min(2, 'Descrição deve ter pelo menos 2 caracteres'),
   type: z.enum(['geral', 'sistemas', 'ajuste_estoque', 'solicitacao_equipamento', 'manutencao_preventiva'] as const),
   priority: z.enum(['baixa', 'media', 'alta'] as const),
 });
@@ -54,12 +54,15 @@ const RequestForm: React.FC = () => {
     try {
       setIsSubmitting(true);
       
+      // Create the request - usando description como title
+      // Garante que attachments é sempre um array
+      const now = new Date().toISOString();
+      // Gere o id da solicitação antes do upload
+      const requestId = uuidv4();
       // Upload files first (if any)
-      const attachments = [];
-      
+      const attachmentsFinal = [];
       for (const file of files) {
         setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
-        
         // Simulate progress
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => {
@@ -70,19 +73,17 @@ const RequestForm: React.FC = () => {
             return prev;
           });
         }, 300);
-        
         try {
-          const fileUrl = await uploadFile(file);
-          
-          attachments.push({
+          // Upload real para o Storage
+          const filePath = await uploadFile(file, requestId);
+          attachmentsFinal.push({
             id: crypto.randomUUID(),
             fileName: file.name,
             fileSize: file.size,
             fileType: file.type,
-            fileUrl,
+            fileUrl: filePath, // Salva o caminho do arquivo
             uploadedAt: new Date().toISOString(),
           });
-          
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
           clearInterval(progressInterval);
         } catch (error) {
@@ -95,13 +96,8 @@ const RequestForm: React.FC = () => {
           });
         }
       }
-      
-      // Create the request - usando description como title
-      // Garante que attachments é sempre um array
-      const safeAttachments = Array.isArray(attachments) ? attachments : [];
-      const now = new Date().toISOString();
       const payload = {
-        id: uuidv4(),
+        id: requestId,
         requesterid: user.id,
         requestername: user.name,
         requesteremail: user.email,
@@ -109,8 +105,8 @@ const RequestForm: React.FC = () => {
         description: values.description,
         type: values.type as RequestType,
         priority: values.priority as RequestPriority,
-        status: 'nova',
-        attachments: safeAttachments,
+        status: 'nova' as const,
+        attachments: attachmentsFinal,
         createdat: now,
         deadlineat: null
       };
@@ -195,7 +191,7 @@ const RequestForm: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="geral" id="geral" />
                           <FormLabel htmlFor="geral" className="font-normal cursor-pointer">
-                            Geral (1 dia)
+                            Geral (5 dias)
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -219,7 +215,7 @@ const RequestForm: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="manutencao_preventiva" id="manutencao_preventiva" />
                           <FormLabel htmlFor="manutencao_preventiva" className="font-normal cursor-pointer">
-                            Manutenção Preventiva (5 dias)
+                            Manutenção Preventiva (10 dias)
                           </FormLabel>
                         </div>
                       </RadioGroup>

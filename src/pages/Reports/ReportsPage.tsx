@@ -93,6 +93,13 @@ const ReportsPage = () => {
     return totalHours / resolvedRequests.length;
   };
 
+  // Função utilitária para formatação segura de datas
+  function formatDateSafe(date: string | Date | null | undefined) {
+    if (!date) return '-';
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? '-' : format(d, 'dd/MM/yyyy');
+  }
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -159,9 +166,9 @@ const ReportsPage = () => {
                     <TableRow key={request.id}>
                       <TableCell className="font-medium">{request.id}</TableCell>
                       <TableCell>{request.requesterName}</TableCell>
-                      <TableCell>{format(new Date(request.createdAt), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>{formatDateSafe(request.createdAt)}</TableCell>
                       <TableCell>{getTypeLabel(request.type)}</TableCell>
-                      <TableCell>{format(new Date(request.deadlineAt), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>{formatDateSafe(request.deadlineAt)}</TableCell>
                       <TableCell>{getPriorityLabel(request.priority)}</TableCell>
                       <TableCell className="max-w-xs truncate">{request.description}</TableCell>
                     </TableRow>

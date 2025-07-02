@@ -9,7 +9,7 @@ const cloneDeep = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 // In-memory data store
 // let notifications = cloneDeep(mockNotifications);
 
-const API_BASE = 'https://notificacoes-backend.onrender.com';
+const API_BASE = 'https://notificacoes.inteligenciai.site:8443';
 
 export const getNotifications = async (userId: string): Promise<Notification[]> => {
   const res = await fetch(`${API_BASE}/notificacoes/${userId}`);
@@ -23,7 +23,7 @@ export const markNotificationAsRead = async (id: string): Promise<Notification> 
   return await res.json();
 };
 
-export const createNotification = async (notification: { para: string, mensagem: string, tipo: string }): Promise<any> => {
+export const createNotification = async (notification: { para: string, mensagem: string, tipo: string, requestId?: string }): Promise<any> => {
   const res = await fetch(`${API_BASE}/notificacoes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

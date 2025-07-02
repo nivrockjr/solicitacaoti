@@ -118,24 +118,30 @@ const RequestDetailPage: React.FC = () => {
       // Lógica de notificação conforme orientação
       if (user.id === request.requesterid) {
         // Se o autor é o solicitante, notificar todos os admins (exceto o próprio autor, caso seja admin)
-        const { data: adminUsers } = await supabase.from('usuarios').select('id').eq('role', 'admin');
         if (adminUsers && Array.isArray(adminUsers)) {
-          for (const admin of adminUsers) {
-            if (admin.id !== user.id) {
-              await createNotification({
+          console.log('Admins encontrados:', adminUsers);
+          await Promise.all(
+            adminUsers.filter(admin => admin.id !== user.id).map(admin => {
+              console.log('Enviando notificação para admin:', admin.id, 'nome:', admin.name);
+              return createNotification({
                 para: admin.id,
                 mensagem: `Novo comentário do solicitante na solicitação #${id}.`,
-                tipo: 'comentario'
+                tipo: 'comentario',
+                requestId: id
               });
-            }
-          }
+            })
+          );
+        } else {
+          console.log('adminUsers está vazio ou não é array:', adminUsers);
         }
       } else if (user.role === 'admin' && request.requesterid && user.id !== request.requesterid) {
         // Se o autor é admin, notificar apenas o solicitante (se não for o próprio admin)
-        await createNotification({
+        console.log('Enviando notificação para solicitante:', request.requesterid);
+        createNotification({
           para: request.requesterid,
           mensagem: `Novo comentário do administrador na sua solicitação #${id}.`,
-          tipo: 'comentario'
+          tipo: 'comentario',
+          requestId: id
         });
       }
     } catch (error) {

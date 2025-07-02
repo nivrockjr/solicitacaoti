@@ -21,7 +21,7 @@ const DashboardPage: React.FC = () => {
       try {
         setLoading(true);
         const fetchedRequests = await getRequests(user?.role === 'admin' ? undefined : user?.id);
-        setRequests(fetchedRequests);
+        setRequests(fetchedRequests.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime()));
       } catch (error) {
         console.error('Error fetching requests:', error);
       } finally {
@@ -40,7 +40,7 @@ const DashboardPage: React.FC = () => {
   
   // Recent requests
   const recentRequests = [...requests]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime())
     .slice(0, 3);
   
   // Chart data (simplified for demo)

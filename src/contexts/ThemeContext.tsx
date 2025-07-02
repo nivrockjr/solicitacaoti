@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -12,15 +11,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Try to get theme from localStorage, default to system preference, fallback to light
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    if (savedTheme) return savedTheme;
-    
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    
-    return 'light';
+    // Sempre iniciar com o tema escuro
+    return 'dark';
   });
 
   useEffect(() => {

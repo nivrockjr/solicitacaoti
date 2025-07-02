@@ -65,29 +65,59 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   // Notificações automáticas
   // 1. Se foi atribuída a um responsável
   if (updates.assignedto && updates.assignedto !== oldRequest.assignedto) {
-    await createNotification({
+    createNotification({
       para: updates.assignedto,
       mensagem: `Você foi atribuído à solicitação #${id}.`,
-      tipo: 'request_assigned'
+      tipo: 'request_assigned',
+      requestId: id
     });
+    if (oldRequest.requesterid) {
+      createNotification({
+        para: oldRequest.requesterid,
+        mensagem: `Sua solicitação foi atribuída para ${updates.assignedtoname || 'um responsável'}.`,
+        tipo: 'request_assigned',
+        requestId: id
+      });
+    }
+  }
+  // 1.1. Se foi iniciada (em andamento)
+  if (updates.status && (updates.status === 'in_progress' || updates.status === 'em_andamento') && oldRequest.status !== updates.status) {
+    if (oldRequest.requesterid) {
+      createNotification({
+        para: oldRequest.requesterid,
+        mensagem: `Sua solicitação está em andamento.`,
+        tipo: 'request_in_progress',
+        requestId: id
+      });
+    }
   }
   // 2. Se foi resolvida
   if (updates.status && (updates.status === 'resolvida' || updates.status === 'resolved') && oldRequest.status !== updates.status) {
     if (oldRequest.requesterid) {
-      await createNotification({
+      createNotification({
         para: oldRequest.requesterid,
-        mensagem: `Sua solicitação #${id} foi resolvida!`,
-        tipo: 'request_resolved'
+        mensagem: `Sua solicitação foi resolvida.`,
+        tipo: 'request_resolved',
+        requestId: id
       });
     }
   }
   // 3. Se foi reaberta
   if (updates.status && (updates.status === 'reaberta') && oldRequest.status !== updates.status) {
     if (oldRequest.assignedto) {
-      await createNotification({
+      createNotification({
         para: oldRequest.assignedto,
         mensagem: `A solicitação #${id} foi reaberta pelo solicitante.`,
-        tipo: 'request_created'
+        tipo: 'request_reopened',
+        requestId: id
+      });
+    }
+    if (oldRequest.requesterid) {
+      createNotification({
+        para: oldRequest.requesterid,
+        mensagem: `Sua solicitação foi reaberta.`,
+        tipo: 'request_reopened',
+        requestId: id
       });
     }
   }
@@ -95,6 +125,17 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
 };
 
 export const deleteRequest = async (id: string): Promise<boolean> => {
+  // Primeiro, remover todos os anexos do Storage
+  // O padrão de upload é: pasta solicitacao_{id}/arquivo.ext
+  // Vamos tentar remover a pasta inteira
+  const { error: storageError } = await supabase.storage
+    .from('anexos-solicitacoes')
+    .remove([`solicitacao_${id}`]);
+  if (storageError && storageError.message !== 'Object not found') {
+    throw new Error('Erro ao remover anexos do Storage: ' + storageError.message);
+  }
+
+  // Agora, deletar a solicitação do banco
   const { error } = await supabase.from('solicitacoes').delete().eq('id', id);
   if (error) throw new Error('Erro ao deletar solicitação');
   return true;

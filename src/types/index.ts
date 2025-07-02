@@ -69,7 +69,7 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
-  type: 'request_created' | 'request_assigned' | 'deadline_changed' | 'request_resolved' | 'request_reminder';
+  type: 'request_created' | 'request_assigned' | 'deadline_changed' | 'request_resolved' | 'request_reminder' | 'comentario';
   requestId?: string;
 }
 

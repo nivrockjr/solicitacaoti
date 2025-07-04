@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { FileSpreadsheet, FileText, Filter } from 'lucide-react';
@@ -15,55 +15,67 @@ import { differenceInHours } from 'date-fns';
 
 const ReportsPage = () => {
   const [filters, setFilters] = useState({
-    status: 'all',
+    status: '',
     type: 'all',
     startDate: null as Date | null,
     endDate: null as Date | null,
   });
 
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  const [error, setError] = useState<string | null>(null);
+
   const { data: allRequests = [], isLoading } = useQuery({
-    queryKey: ['requests'],
-    queryFn: () => getRequests(),
+    queryKey: ['requests', page, filters],
+    enabled: !!filters.status,
+    queryFn: () => {
+      console.time('Carregar solicitações relatório');
+      let statusFilter: string | string[] | undefined = undefined;
+      if (filters.status && filters.status !== 'all') {
+        if (filters.status === 'pending') {
+          statusFilter = ['nova', 'atribuida', 'assigned', 'em_andamento', 'in_progress', 'reaberta'];
+        } else if (filters.status === 'resolvida') {
+          statusFilter = ['resolvida', 'resolved'];
+        }
+      }
+      return getRequests(undefined, page, pageSize, statusFilter)
+        .then((res) => {
+          console.timeEnd('Carregar solicitações relatório');
+          setError(null);
+          return res?.data || [];
+        })
+        .catch((error) => {
+          setError('Erro ao carregar solicitações do relatório. Veja o console para detalhes.');
+          console.error('Erro ao buscar solicitações do relatório:', error);
+          return [];
+        });
+    },
   });
 
   // Aplicar filtros às solicitações
-  const filteredRequests = allRequests.filter((request: ITRequest) => {
-    // Filtro por status
-    if (filters.status !== 'all') {
-      if (filters.status === 'pending') {
-        if (['resolvida', 'fechada', 'resolved', 'closed'].includes(request.status)) {
-          return false;
-        }
-      } else if (request.status !== filters.status) {
-        return false;
-      }
-    }
-
+  const filteredRequests = useMemo(() => allRequests.filter((request: ITRequest) => {
     // Filtro por tipo
     if (filters.type !== 'all' && request.type !== filters.type) {
       return false;
     }
-
     // Filtro por período
     if (filters.startDate) {
-      const requestDate = new Date(request.createdAt);
+      const requestDate = new Date(request.createdat);
       if (requestDate < filters.startDate) {
         return false;
       }
     }
-
     if (filters.endDate) {
-      const requestDate = new Date(request.createdAt);
+      const requestDate = new Date(request.createdat);
       const endOfDay = new Date(filters.endDate);
       endOfDay.setHours(23, 59, 59, 999);
-      
       if (requestDate > endOfDay) {
         return false;
       }
     }
-
     return true;
-  });
+  }), [allRequests, filters]);
 
   const handleExportToPdf = () => {
     exportToPdf(filteredRequests, filters);
@@ -77,16 +89,16 @@ const ReportsPage = () => {
   const calculateAverageResolutionTime = (requests: ITRequest[], filterByType?: string, filterByTechnician?: string) => {
     const resolvedRequests = requests.filter(req => 
       (req.status === 'resolvida' || req.status === 'resolved') &&
-      req.resolvedAt &&
+      req.resolvedat &&
       (!filterByType || req.type === filterByType) &&
-      (!filterByTechnician || req.assignedTo === filterByTechnician)
+      (!filterByTechnician || req.assignedto === filterByTechnician)
     );
     
     if (resolvedRequests.length === 0) return 0;
     
     const totalHours = resolvedRequests.reduce((sum, req) => {
-      const createdDate = new Date(req.createdAt);
-      const resolvedDate = new Date(req.resolvedAt!);
+      const createdDate = new Date(req.createdat);
+      const resolvedDate = new Date(req.resolvedat!);
       return sum + differenceInHours(resolvedDate, createdDate);
     }, 0);
     
@@ -99,6 +111,8 @@ const ReportsPage = () => {
     const d = new Date(date);
     return isNaN(d.getTime()) ? '-' : format(d, 'dd/MM/yyyy');
   }
+
+  console.log('Renderizou ReportsPage');
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -135,11 +149,17 @@ const ReportsPage = () => {
         <CardHeader>
           <CardTitle className="text-xl">Resultados</CardTitle>
           <p className="text-muted-foreground">
-            {filteredRequests.length} solicitações encontradas
+            {filters.status === '' ? 'Selecione um status para visualizar o relatório.' : `${filteredRequests.length} solicitações encontradas`}
           </p>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {filters.status === '' ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Selecione um status para visualizar o relatório.</p>
+            </div>
+          ) : error ? (
+            <div className="text-red-500 text-center my-4">{error}</div>
+          ) : isLoading ? (
             <div className="flex justify-center py-8">
               <p>Carregando relatório...</p>
             </div>
@@ -148,34 +168,59 @@ const ReportsPage = () => {
               <p className="text-muted-foreground">Nenhuma solicitação encontrada com os filtros selecionados.</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Solicitante</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Prioridade</TableHead>
-                    <TableHead>Descrição</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRequests.map((request: ITRequest) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-medium">{request.id}</TableCell>
-                      <TableCell>{request.requesterName}</TableCell>
-                      <TableCell>{formatDateSafe(request.createdAt)}</TableCell>
-                      <TableCell>{getTypeLabel(request.type)}</TableCell>
-                      <TableCell>{formatDateSafe(request.deadlineAt)}</TableCell>
-                      <TableCell>{getPriorityLabel(request.priority)}</TableCell>
-                      <TableCell className="max-w-xs truncate">{request.description}</TableCell>
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Solicitante</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Prioridade</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Data Criação</TableHead>
+                      <TableHead>Data Resolução</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Prazo</TableHead>
+                      <TableHead>Descrição</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests.map((request: ITRequest) => {
+                      // Função para calcular o valor da coluna "Prazo"
+                      function getPrazoStatus(request: ITRequest): string {
+                        if (!request.resolvedat) return 'Em aberto';
+                        if (!request.deadlineat) return '-';
+                        const deadline = new Date(request.deadlineat);
+                        const resolved = new Date(request.resolvedat);
+                        if (resolved <= deadline) return 'No prazo';
+                        return 'Fora do prazo';
+                      }
+                      return (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-medium">{request.id}</TableCell>
+                          <TableCell>{request.requestername}</TableCell>
+                          <TableCell>{getTypeLabel(request.type)}</TableCell>
+                          <TableCell>{getPriorityLabel(request.priority)}</TableCell>
+                          <TableCell>{getStatusLabel(request.status)}</TableCell>
+                          <TableCell>{formatDateSafe(request.createdat)}</TableCell>
+                          <TableCell>{request.resolvedat ? formatDateSafe(request.resolvedat) : '-'}</TableCell>
+                          <TableCell>{formatDateSafe(request.deadlineat)}</TableCell>
+                          <TableCell>{getPrazoStatus(request)}</TableCell>
+                          <TableCell className="max-w-xs truncate">{request.description}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Controles de paginação */}
+              <div className="flex justify-center gap-2 mt-4">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
+                <span className="px-2">Página {page}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={filteredRequests.length < pageSize}>Próxima</Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -209,53 +254,25 @@ function getPriorityLabel(priority: RequestPriority): string {
   return priorityLabels[priority] || priority;
 }
 
+function getStatusLabel(status: string): string {
+  const statusLabels: Record<string, string> = {
+    nova: 'Nova',
+    atribuida: 'Atribuída',
+    assigned: 'Atribuída',
+    em_andamento: 'Em andamento',
+    in_progress: 'Em andamento',
+    reaberta: 'Reaberta',
+    resolvida: 'Resolvida',
+    resolved: 'Resolvida',
+    fechada: 'Fechada',
+    closed: 'Fechada',
+    cancelada: 'Cancelada',
+    canceled: 'Cancelada',
+  };
+  return statusLabels[status] || status;
+}
+
 // Adicionar componente de métricas de tempo médio
-const ResolutionTimeMetrics = ({ requests }: { requests: ITRequest[] }) => {
-  const adminUsers = users.filter(u => u.role === 'admin');
-  
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tempo Médio de Resolução</CardTitle>
-        <CardDescription>Tempo médio (em horas) para resolver solicitações</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Por Tipo de Solicitação</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {['geral', 'sistemas', 'ajuste_estoque', 'solicitacao_equipamento', 'manutencao_preventiva'].map(type => (
-                <div key={type} className="bg-muted/40 p-3 rounded">
-                  <p className="text-sm font-medium">{getRequestTypeText(type)}</p>
-                  <p className="text-2xl font-bold">
-                    {calculateAverageResolutionTime(requests, type).toFixed(1)}
-                    <span className="text-sm font-normal text-muted-foreground ml-1">horas</span>
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <Separator />
-          
-          <div>
-            <h3 className="text-sm font-medium mb-2">Por Técnico Responsável</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {adminUsers.map(admin => (
-                <div key={admin.id} className="bg-muted/40 p-3 rounded">
-                  <p className="text-sm font-medium">{admin.name}</p>
-                  <p className="text-2xl font-bold">
-                    {calculateAverageResolutionTime(requests, undefined, admin.id).toFixed(1)}
-                    <span className="text-sm font-normal text-muted-foreground ml-1">horas</span>
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+// const ResolutionTimeMetrics = ({ requests }: { requests: ITRequest[] }) => { ... }
 
 export default ReportsPage;

@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Upload, X } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -57,8 +56,6 @@ const RequestForm: React.FC = () => {
       // Create the request - usando description como title
       // Garante que attachments é sempre um array
       const now = new Date().toISOString();
-      // Gere o id da solicitação antes do upload
-      const requestId = uuidv4();
       // Upload files first (if any)
       const attachmentsFinal = [];
       for (const file of files) {
@@ -75,7 +72,7 @@ const RequestForm: React.FC = () => {
         }, 300);
         try {
           // Upload real para o Storage
-          const filePath = await uploadFile(file, requestId);
+          const filePath = await uploadFile(file);
           attachmentsFinal.push({
             id: crypto.randomUUID(),
             fileName: file.name,
@@ -97,7 +94,6 @@ const RequestForm: React.FC = () => {
         }
       }
       const payload = {
-        id: requestId,
         requesterid: user.id,
         requestername: user.name,
         requesteremail: user.email,

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -23,9 +22,9 @@ const NotificationsList: React.FC = () => {
     <div className="flex flex-col h-[350px]">
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Notifications</h3>
+          <h3 className="text-lg font-semibold">Notificações</h3>
           <Button variant="ghost" size="sm" onClick={refreshNotifications} disabled={loading}>
-            Refresh
+            Atualizar
           </Button>
         </div>
       </div>
@@ -38,7 +37,7 @@ const NotificationsList: React.FC = () => {
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <Bell className="h-10 w-10 mb-2" />
-            <p>No notifications</p>
+            <p>Sem notificações</p>
           </div>
         ) : (
           <ul>
@@ -51,9 +50,9 @@ const NotificationsList: React.FC = () => {
                 >
                   <div className="space-y-1 w-full">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{notification.title}</p>
+                      <p className="font-medium text-sm">{traduzirTitulo(notification.title)}</p>
                       <time className="text-xs text-muted-foreground">
-                        {format(new Date(notification.createdAt), 'MMM d, h:mm a')}
+                        {format(new Date(notification.createdAt), 'dd/MM, HH:mm')}
                       </time>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
@@ -69,3 +68,16 @@ const NotificationsList: React.FC = () => {
 };
 
 export default NotificationsList;
+
+// Função utilitária para traduzir os títulos das notificações
+function traduzirTitulo(titulo: string) {
+  const mapa = {
+    'request_in_progress': 'Solicitação em andamento',
+    'request_assigned': 'Solicitação atribuída',
+    'comentario': 'Comentário',
+    'request_created': 'Nova solicitação criada',
+    'notifications': 'Notificações',
+    'refresh': 'Atualizar',
+  };
+  return mapa[titulo] || titulo;
+}

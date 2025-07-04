@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search, SlidersHorizontal } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import RequestCard from '@/components/requests/RequestCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabase';
 
 interface Filters {
   types: RequestType[];
@@ -26,41 +27,80 @@ const AllRequestsPage: React.FC = () => {
     types: [],
     priorities: []
   });
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const [error, setError] = useState<string | null>(null);
+  const [filterCounts, setFilterCounts] = useState({
+    all: 0, new: 0, assigned: 0, in_progress: 0, resolved: 0, high: 0
+  });
+  
+  // Funções para status
+  const statusMap = {
+    all: undefined,
+    new: ['nova', 'new'],
+    assigned: ['atribuida', 'assigned'],
+    in_progress: ['em_andamento', 'in_progress'],
+    resolved: ['resolvida', 'resolved', 'fechada', 'closed']
+  };
+  const [tab, setTab] = useState<'all' | 'new' | 'assigned' | 'in_progress' | 'resolved'>('all');
   
   useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setPage(1); // ou chame fetchRequests diretamente se preferir
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  
+  useEffect(() => {
+    console.time('Carregar solicitações');
     const fetchRequests = async () => {
       try {
         setLoading(true);
-        const fetchedRequests = await getRequests();
-        setRequests(fetchedRequests);
+        setError(null);
+        const statusFilter = statusMap[tab];
+        const { data: fetchedRequests } = await getRequests(undefined, page, pageSize, statusFilter);
+        console.log('Solicitações recebidas do backend:', fetchedRequests);
+        // Ordenar por data de criação decrescente
+        const sortedRequests = [...fetchedRequests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+        setRequests(sortedRequests);
       } catch (error) {
+        setError('Erro ao carregar solicitações. Veja o console para detalhes.');
+        setRequests([]);
         console.error('Erro ao buscar solicitações:', error);
       } finally {
         setLoading(false);
+        console.timeEnd('Carregar solicitações');
       }
     };
-    
     fetchRequests();
+  }, [page, tab]);
+  
+  useEffect(() => {
+    const fetchCounts = async () => {
+      // Busca apenas id, status e prioridade para contar
+      const { data, error } = await supabase
+        .from('solicitacoes')
+        .select('id, status, priority');
+      if (error) return;
+      const all = data.length;
+      const newCount = data.filter(r => ['nova', 'new'].includes((r.status || '').toLowerCase())).length;
+      const assigned = data.filter(r => ['atribuida', 'assigned'].includes((r.status || '').toLowerCase())).length;
+      const in_progress = data.filter(r => ['em_andamento', 'in_progress'].includes((r.status || '').toLowerCase())).length;
+      const resolved = data.filter(r => ['resolvida', 'resolved', 'fechada', 'closed'].includes((r.status || '').toLowerCase())).length;
+      const high = data.filter(r => ['alta', 'high'].includes((r.priority || '').toLowerCase())).length;
+      setFilterCounts({ all, new: newCount, assigned, in_progress, resolved, high });
+    };
+    fetchCounts();
   }, []);
   
-  const normalizeStatus = (status: RequestStatus | 'all'): string[] => {
-    if (status === 'all') return ['all'];
-    
-    const statusMap: Record<string, string[]> = {
-      'new': ['new', 'nova'],
-      'assigned': ['assigned', 'atribuida'],
-      'in_progress': ['in_progress', 'em_andamento'],
-      'resolved': ['resolved', 'resolvida'],
-      'closed': ['closed', 'fechada']
-    };
-    
-    return statusMap[status] || [status];
-  };
+  const normalizeStatus = (status) => (status || '').toLowerCase();
+  const normalizePriority = (priority) => (priority || '').toLowerCase();
   
-  const requestsByStatus = (status: RequestStatus | 'all'): ITRequest[] => {
+  const filteredRequests = useMemo(() => {
     let filtered = [...requests];
-    const statusesToCheck = normalizeStatus(status);
-    
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
@@ -71,29 +111,21 @@ const AllRequestsPage: React.FC = () => {
           r.requesteremail?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
     // Apply type filter
     if (filters.types.length > 0) {
       filtered = filtered.filter(r => filters.types.includes(r.type));
     }
-    
     // Apply priority filter
     if (filters.priorities.length > 0) {
       filtered = filtered.filter(r => filters.priorities.includes(r.priority));
     }
-    
-    // Filter by status
-    if (status !== 'all') {
-      filtered = filtered.filter(r => statusesToCheck.includes(r.status));
-    }
-    
     // Ordenar por data de criação decrescente (mais recente primeiro)
     return filtered.sort((a, b) => {
       const dateA = new Date(a.createdat).getTime();
       const dateB = new Date(b.createdat).getTime();
       return dateB - dateA;
     });
-  };
+  }, [requests, searchQuery, filters]);
   
   const handleTypeFilterChange = (type: RequestType) => {
     setFilters(prev => {
@@ -149,6 +181,8 @@ const AllRequestsPage: React.FC = () => {
     
     return priorityMap[priority] || priority;
   };
+  
+  console.log('Renderizou AllRequestsPage');
   
   return (
     <div className="space-y-6">
@@ -273,22 +307,22 @@ const AllRequestsPage: React.FC = () => {
         </div>
       </div>
       
-      <Tabs defaultValue="all">
+      <Tabs value={tab} onValueChange={value => setTab(value as any)} defaultValue="all">
         <TabsList>
           <TabsTrigger value="all">
-            Todas ({requestsByStatus('all').length})
+            Todas ({filterCounts.all})
           </TabsTrigger>
           <TabsTrigger value="new">
-            Novas ({requestsByStatus('new').length})
+            Novas ({filterCounts.new})
           </TabsTrigger>
           <TabsTrigger value="assigned">
-            Atribuídas ({requestsByStatus('assigned').length})
+            Atribuídas ({filterCounts.assigned})
           </TabsTrigger>
           <TabsTrigger value="in_progress">
-            Em Andamento ({requestsByStatus('in_progress').length})
+            Em Andamento ({filterCounts.in_progress})
           </TabsTrigger>
           <TabsTrigger value="resolved">
-            Resolvidas ({requestsByStatus('resolved').length})
+            Resolvidas ({filterCounts.resolved})
           </TabsTrigger>
         </TabsList>
         
@@ -298,31 +332,18 @@ const AllRequestsPage: React.FC = () => {
               <div className="flex items-center justify-center h-40">
                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
               </div>
-            ) : requestsByStatus(status as any).length === 0 ? (
+            ) : filteredRequests.length === 0 ? (
               <Card className="p-8 text-center">
                 <h3 className="font-medium text-lg mb-2">Nenhuma solicitação encontrada</h3>
                 <p className="text-muted-foreground mb-4">
-                  {searchQuery || hasActiveFilters 
-                    ? "Nenhuma solicitação corresponde à sua busca ou filtros" 
-                    : "Não há solicitações com este status"}
+                  {searchQuery 
+                    ? "Nenhuma solicitação corresponde à sua busca" 
+                    : "Nenhuma solicitação encontrada"}
                 </p>
-                
-                {hasActiveFilters && (
-                  <Button onClick={clearFilters} className="mr-2">
-                    Limpar Filtros
-                  </Button>
-                )}
-                
-                <Button asChild>
-                  <Link to="/request/new">
-                    <FilePlus className="h-4 w-4 mr-2" />
-                    Criar Nova Solicitação
-                  </Link>
-                </Button>
               </Card>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {requestsByStatus(status as any).map((request) => (
+                {filteredRequests.map((request) => (
                   <RequestCard key={request.id} request={request} />
                 ))}
               </div>
@@ -363,6 +384,15 @@ const AllRequestsPage: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Controles de paginação */}
+      <div className="flex justify-center gap-2 mt-4">
+        <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
+        <span className="px-2">Página {page}</span>
+        <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={requests.length < pageSize}>Próxima</Button>
+      </div>
+      
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
     </div>
   );
 };

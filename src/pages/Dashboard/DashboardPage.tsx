@@ -15,13 +15,22 @@ const DashboardPage: React.FC = () => {
   const [requests, setRequests] = useState<ITRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const [totalRequests, setTotalRequests] = useState(0);
   
   useEffect(() => {
     const fetchRequests = async () => {
       try {
         setLoading(true);
-        const fetchedRequests = await getRequests(user?.role === 'admin' ? undefined : user?.id);
+        console.log('DASHBOARD - Usuário logado:', user);
+        const isAdmin = user?.role === 'admin';
+        console.log('DASHBOARD - isAdmin:', isAdmin);
+        const param = isAdmin ? undefined : user?.id;
+        console.log('DASHBOARD - Parâmetro passado para getRequests:', param);
+        const { data: fetchedRequests, count: totalCount } = await getRequests(param);
+        console.log('Solicitações recebidas do backend:', fetchedRequests);
+        console.log('DASHBOARD - Status das solicitações:', fetchedRequests.map(r => r.status));
         setRequests(fetchedRequests.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime()));
+        setTotalRequests(totalCount);
       } catch (error) {
         console.error('Error fetching requests:', error);
       } finally {
@@ -32,11 +41,21 @@ const DashboardPage: React.FC = () => {
     fetchRequests();
   }, [user]);
   
-  // Request statistics
-  const totalRequests = requests.length;
-  const pendingRequests = requests.filter(r => r.status !== 'resolved' && r.status !== 'closed').length;
-  const resolvedRequests = requests.filter(r => r.status === 'resolved' || r.status === 'closed').length;
-  const highPriorityRequests = requests.filter(r => r.priority === 'high' && r.status !== 'resolved' && r.status !== 'closed').length;
+  // Função utilitária para normalizar status e prioridade
+  const normalizeStatus = (status) => (status || '').toLowerCase().trim();
+  const normalizePriority = (priority) => (priority || '').toLowerCase().trim();
+
+  const isResolved = (status) =>
+    ['resolved', 'resolvida', 'closed', 'fechada'].includes(normalizeStatus(status));
+
+  const isPending = (status) =>
+    ['nova', 'in_progress', 'assigned'].includes(normalizeStatus(status));
+
+  const isHighPriority = (priority) => ['alta', 'high'].includes(normalizePriority(priority));
+
+  const pendingRequests = requests.filter(r => isPending(r.status)).length;
+  const resolvedRequests = requests.filter(r => isResolved(r.status)).length;
+  const highPriorityRequests = requests.filter(r => isHighPriority(r.priority) && isPending(r.status)).length;
   
   // Recent requests
   const recentRequests = [...requests]
@@ -58,6 +77,11 @@ const DashboardPage: React.FC = () => {
     { name: 'Resolvido', value: requests.filter(r => r.status === 'resolved').length },
     { name: 'Fechado', value: requests.filter(r => r.status === 'closed').length },
   ];
+  
+  console.log('DASHBOARD - Total:', requests.length);
+  console.log('DASHBOARD - Pendentes:', requests.filter(r => isPending(r.status)).length);
+  console.log('DASHBOARD - Resolvidas:', requests.filter(r => isResolved(r.status)).length);
+  console.log('DASHBOARD - Todos os status:', requests.map(r => r.status));
   
   return (
     <div>

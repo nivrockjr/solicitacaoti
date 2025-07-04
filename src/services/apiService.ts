@@ -1,5 +1,5 @@
 // Main API service that re-exports all the functionality from individual services
-import { login, logout, forgotPassword, getCurrentUser, createUser, updateUser, updateUserPassword } from './authService';
+import { login, logout, forgotPassword, getCurrentUser, createUser, updateUser, updateUserPassword, getUsers } from './authService';
 import { getRequests, getRequestById, createRequest, updateRequest, uploadFile, deleteRequest } from './requestService';
 import { getHolidays, addHoliday } from './holidayService';
 import { getNotifications, markNotificationAsRead } from './notificationService';
@@ -19,6 +19,7 @@ export {
   createUser,
   updateUser,
   updateUserPassword,
+  getUsers,
   
   // Requests
   getRequests,

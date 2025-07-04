@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -9,37 +9,78 @@ import { ITRequest } from '@/types';
 import { getRequests } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
+import { supabase } from '@/lib/supabase';
 
 const MyRequestsPage: React.FC = () => {
   const [requests, setRequests] = useState<ITRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuth();
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const [error, setError] = useState<string | null>(null);
+  const [filterCounts, setFilterCounts] = useState({ ativas: 0, resolvidas: 0 });
   
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        const fetchedRequests = await getRequests(user.id);
-        setRequests(fetchedRequests);
-      } catch (error) {
-        console.error('Erro ao buscar solicitações:', error);
-      } finally {
-        setLoading(false);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setPage(1); // ou chame fetchRequests diretamente se preferir
       }
     };
-    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  
+  useEffect(() => {
+    let timerStarted = false;
+    const fetchRequests = async () => {
+      if (!user) return;
+      try {
+        if (!timerStarted) {
+          console.time('Carregar minhas solicitações');
+          timerStarted = true;
+        }
+        setLoading(true);
+        setError(null);
+        const { data: fetchedRequests } = await getRequests(user.id, page, pageSize);
+        console.log('Solicitações recebidas do backend:', fetchedRequests);
+        // Ordenar por data de criação decrescente
+        const sortedRequests = [...fetchedRequests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+        setRequests(sortedRequests);
+      } catch (error) {
+        setError('Erro ao carregar suas solicitações. Veja o console para detalhes.');
+        setRequests([]);
+        console.error('Erro ao buscar solicitações do usuário:', error);
+      } finally {
+        setLoading(false);
+        if (timerStarted) console.timeEnd('Carregar minhas solicitações');
+      }
+    };
     fetchRequests();
+  }, [user, page]);
+  
+  useEffect(() => {
+    const fetchCounts = async () => {
+      if (!user) return;
+      // Busca apenas id e status para contar
+      const { data, error } = await supabase
+        .from('solicitacoes')
+        .select('id, status')
+        .eq('requesterid', user.id);
+      if (error) return;
+      const ativas = data.filter(r => !['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())).length;
+      const resolvidas = data.filter(r => ['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())).length;
+      setFilterCounts({ ativas, resolvidas });
+    };
+    fetchCounts();
   }, [user]);
   
   const activeRequests = requests.filter(
-    r => r.status !== 'resolved' && r.status !== 'closed' && r.status !== 'resolvida' && r.status !== 'fechada'
+    r => !['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())
   );
   
   const resolvedRequests = requests.filter(
-    r => r.status === 'resolved' || r.status === 'closed' || r.status === 'resolvida' || r.status === 'fechada'
+    r => ['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())
   );
   
   const filterRequests = (requests: ITRequest[]) => {
@@ -52,8 +93,14 @@ const MyRequestsPage: React.FC = () => {
     );
   };
   
-  const filteredActive = filterRequests(activeRequests);
-  const filteredResolved = filterRequests(resolvedRequests);
+  // Ordena por data de criação decrescente
+  const sortByDateDesc = (requests: ITRequest[]) =>
+    [...requests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+
+  const filteredActive = useMemo(() => sortByDateDesc(filterRequests(activeRequests)), [activeRequests, searchQuery]);
+  const filteredResolved = useMemo(() => sortByDateDesc(filterRequests(resolvedRequests)), [resolvedRequests, searchQuery]);
+  
+  console.log('Renderizou MyRequestsPage');
   
   return (
     <div className="space-y-6">
@@ -81,10 +128,10 @@ const MyRequestsPage: React.FC = () => {
       <Tabs defaultValue="active">
         <TabsList>
           <TabsTrigger value="active">
-            Ativas ({activeRequests.length})
+            Ativas ({filterCounts.ativas})
           </TabsTrigger>
           <TabsTrigger value="resolved">
-            Resolvidas ({resolvedRequests.length})
+            Resolvidas ({filterCounts.resolvidas})
           </TabsTrigger>
         </TabsList>
         
@@ -140,6 +187,13 @@ const MyRequestsPage: React.FC = () => {
           )}
         </TabsContent>
       </Tabs>
+      {/* Controles de paginação */}
+      <div className="flex justify-center gap-2 mt-4">
+        <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
+        <span className="px-2">Página {page}</span>
+        <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={requests.length < pageSize}>Próxima</Button>
+      </div>
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
     </div>
   );
 };

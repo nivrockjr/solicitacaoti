@@ -8,12 +8,26 @@ import { v4 as uuidv4 } from 'uuid';
 // In-memory data store
 // let requests = cloneDeep(mockRequests);
 
-export const getRequests = async (userId?: string): Promise<ITRequest[]> => {
-  let query = supabase.from('solicitacoes').select('*');
+export const getRequests = async (
+  userId?: string,
+  page: number = 1,
+  pageSize: number = 10,
+  status?: string | string[]
+): Promise<{ data: ITRequest[], count: number }> => {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  let query = supabase.from('solicitacoes').select('*', { count: 'exact' }).range(from, to);
   if (userId) query = query.eq('requesterid', userId);
-  const { data, error } = await query;
+  if (status) {
+    if (Array.isArray(status)) {
+      query = query.in('status', status);
+    } else {
+      query = query.eq('status', status);
+    }
+  }
+  const { data, count, error } = await query;
   if (error) throw new Error('Erro ao buscar solicitações');
-  return data || [];
+  return { data: data || [], count: count || 0 };
 };
 
 export const getRequestById = async (id: string): Promise<ITRequest | undefined> => {
@@ -27,7 +41,6 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdat' 
   const createdat = now.toISOString();
   const deadlineat = calculateDeadline(request.type, request.priority).toISOString();
   const newRequest = {
-    id: uuidv4(),
     ...request,
     createdat,
     deadlineat,

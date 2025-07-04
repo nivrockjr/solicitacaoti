@@ -31,6 +31,25 @@ function translatePriority(priority: string): string {
   return priorityMap[priority] || priority;
 }
 
+// Função para traduzir status para português
+function translateStatus(status) {
+  const statusMap = {
+    'nova': 'Nova',
+    'atribuida': 'Atribuída',
+    'assigned': 'Atribuída',
+    'em_andamento': 'Em andamento',
+    'in_progress': 'Em andamento',
+    'reaberta': 'Reaberta',
+    'resolvida': 'Resolvida',
+    'resolved': 'Resolvida',
+    'fechada': 'Fechada',
+    'closed': 'Fechada',
+    'cancelada': 'Cancelada',
+    'canceled': 'Cancelada',
+  };
+  return statusMap[status] || status;
+}
+
 // Função utilitária para formatação segura de datas
 function formatDateSafe(date: string | Date | null | undefined) {
   if (!date) return '-';
@@ -38,9 +57,20 @@ function formatDateSafe(date: string | Date | null | undefined) {
   return isNaN(d.getTime()) ? '-' : format(d, 'dd/MM/yyyy');
 }
 
+// Função para calcular o valor da coluna "Prazo"
+function getPrazoStatus(request) {
+  if (!request.resolvedat) return 'Em aberto';
+  if (!request.deadlineat) return '-';
+  const deadline = new Date(request.deadlineat);
+  const resolved = new Date(request.resolvedat);
+  if (resolved <= deadline) return 'No prazo';
+  return 'Fora do prazo';
+}
+
 // Função para exportar para PDF
 export function exportToPdf(requests: ITRequest[], filters: any) {
-  const doc = new jsPDF();
+  // Criar o PDF em modo paisagem
+  const doc = new jsPDF({ orientation: 'landscape' });
   
   // Título do relatório - fonte um pouco menor
   doc.setFontSize(16);
@@ -79,63 +109,68 @@ export function exportToPdf(requests: ITRequest[], filters: any) {
   
   // Preparar os dados para a tabela
   const tableColumn = [
-    "ID", 
-    "Solicitante", 
-    "Data", 
-    "Tipo", 
-    "Vencimento", 
-    "Prioridade", 
+    "ID",
+    "Solicitante",
+    "Tipo",
+    "Prioridade",
+    "Status",
+    "Data Criação",
+    "Data Resolução",
+    "Vencimento",
+    "Prazo",
     "Descrição"
   ];
   
   const tableRows = requests.map(request => [
     request.id,
     request.requestername,
-    formatDateSafe(request.createdat),
     translateRequestType(request.type),
-    formatDateSafe(request.deadlineat),
     translatePriority(request.priority),
+    translateStatus(request.status),
+    formatDateSafe(request.createdat),
+    request.resolvedat ? formatDateSafe(request.resolvedat) : '-',
+    formatDateSafe(request.deadlineat),
+    getPrazoStatus(request),
     request.description
   ]);
   
-  // Criar a tabela com fonte menor
+  // Ajustar os espaçamentos das colunas para modo paisagem
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 45,
     styles: {
-      fontSize: 8, // Fonte menor
-      cellPadding: 2, // Padding menor para caber mais informação
-      overflow: 'linebreak' // Garantir que todo texto tenha quebra de linha
+      fontSize: 8,
+      cellPadding: 2,
+      overflow: 'linebreak'
     },
     columnStyles: {
-      0: { cellWidth: 20 }, // ID - diminuído
-      1: { cellWidth: 30 }, // Solicitante
-      2: { cellWidth: 20 }, // Data - diminuído
-      3: { cellWidth: 25 }, // Tipo
-      4: { cellWidth: 25 }, // Vencimento - aumentado para não quebrar
-      5: { cellWidth: 20 }, // Prioridade - diminuído
-      6: { 
-        cellWidth: 50,  // Descrição - ajustado para dar mais espaço aos outros
-        overflow: 'linebreak'
-      }
+      0: { cellWidth: 15 },  // ID
+      1: { cellWidth: 28 },  // Solicitante
+      2: { cellWidth: 22 },  // Tipo
+      3: { cellWidth: 20 },  // Prioridade
+      4: { cellWidth: 22 },  // Status
+      5: { cellWidth: 22 },  // Data Criação
+      6: { cellWidth: 26 },  // Data Resolução
+      7: { cellWidth: 22 },  // Vencimento
+      8: { cellWidth: 22 },  // Prazo
+      9: { cellWidth: 80, overflow: 'linebreak' } // Descrição (bem mais larga)
     },
     headStyles: {
       fillColor: [41, 128, 185],
       textColor: 255,
       fontStyle: 'bold',
-      fontSize: 9, // Cabeçalho um pouco maior que o conteúdo
-      halign: 'center', // Centralizar texto do cabeçalho
-      valign: 'middle', // Alinhar verticalmente ao meio
-      minCellHeight: 14 // Altura mínima para evitar quebras indesejadas
+      fontSize: 9,
+      halign: 'center',
+      valign: 'middle',
+      minCellHeight: 14
     },
     alternateRowStyles: {
       fillColor: [240, 240, 240]
     },
-    // Permite que o texto quebre em várias linhas
     willDrawCell: function(data) {
-      if (data.column.index === 6) { // Coluna de descrição
-        doc.setFontSize(8); // Certifica-se de que a fonte seja pequena o suficiente
+      if (data.column.index === 9) {
+        doc.setFontSize(8);
       }
     }
   });
@@ -155,10 +190,13 @@ export function exportToExcel(requests: ITRequest[], filters: any) {
   const worksheetData = requests.map(request => ({
     'ID': request.id,
     'Solicitante': request.requestername,
-    'Data': formatDateSafe(request.createdat),
     'Tipo': translateRequestType(request.type),
-    'Vencimento': formatDateSafe(request.deadlineat),
     'Prioridade': translatePriority(request.priority),
+    'Status': translateStatus(request.status),
+    'Data Criação': formatDateSafe(request.createdat),
+    'Data Resolução': request.resolvedat ? formatDateSafe(request.resolvedat) : '-',
+    'Vencimento': formatDateSafe(request.deadlineat),
+    'Prazo': getPrazoStatus(request),
     'Descrição': request.description
   }));
   

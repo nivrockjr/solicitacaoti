@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
@@ -55,16 +54,12 @@ export function ReportFilters({ filters, onFilterChange }: FiltersProps) {
             onValueChange={handleStatusChange}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Todos os status" />
+              <SelectValue placeholder="Selecione o status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as solicitações</SelectItem>
               <SelectItem value="pending">Solicitações pendentes</SelectItem>
-              <SelectItem value="nova">Novas</SelectItem>
-              <SelectItem value="atribuida">Atribuídas</SelectItem>
-              <SelectItem value="em_andamento">Em andamento</SelectItem>
               <SelectItem value="resolvida">Resolvidas</SelectItem>
-              <SelectItem value="fechada">Fechadas</SelectItem>
             </SelectContent>
           </Select>
         </div>

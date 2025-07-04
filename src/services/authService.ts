@@ -96,3 +96,12 @@ export const updateUserPassword = async (userId: string, newPassword: string): P
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw new Error('Erro ao alterar senha');
 };
+
+// Busca paginada de usuários (apenas para admin)
+export const getUsers = async (page: number = 1, pageSize: number = 10): Promise<User[]> => {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase.from('usuarios').select('*').range(from, to);
+  if (error) throw new Error('Erro ao buscar usuários');
+  return data || [];
+};

@@ -76,7 +76,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className="hidden md:block text-right">
               <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Requester'}</p>
+              <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrador' : 'Solicitante'}</p>
             </div>
             
             <Button variant="ghost" size="icon" onClick={handleLogout}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, updateUser, updateUserPassword, forgotPassword } from '@/services/apiService';
+import { createUser, updateUser, updateUserPassword, forgotPassword, getUsers } from '@/services/apiService';
 import { supabase } from '@/lib/supabase';
 
 const userFormSchema = z.object({
@@ -41,6 +41,9 @@ const UsersPage: React.FC = () => {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [error, setError] = useState<string | null>(null);
   
   const isAdmin = currentUser?.role === 'admin';
   
@@ -76,25 +79,35 @@ const UsersPage: React.FC = () => {
   });
   
   useEffect(() => {
+    console.time('Carregar usuários');
     const fetchUsers = async () => {
       let data = [];
-      let error = null;
-      if (isAdmin) {
-        // Admin: busca todos os usuários via função RPC
-        const rpcResult = await supabase.rpc('admin_list_users');
-        data = rpcResult.data;
-        error = rpcResult.error;
-      } else if (currentUser) {
-        // Usuário comum: busca apenas o próprio registro
-        const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
-        data = result.data;
-        error = result.error;
+      let errorObj = null;
+      try {
+        setError(null);
+        if (isAdmin) {
+          data = await getUsers(page, pageSize);
+        } else if (currentUser) {
+          const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
+          data = result.data;
+          errorObj = result.error;
+        }
+        if (!errorObj && data) setUsers(data);
+        else {
+          setUsers([]);
+          setError('Erro ao carregar usuários. Veja o console para detalhes.');
+          console.error('Erro ao buscar usuários:', errorObj);
+        }
+      } catch (error) {
+        setUsers([]);
+        setError('Erro ao carregar usuários. Veja o console para detalhes.');
+        console.error('Erro ao buscar usuários:', error);
+      } finally {
+        console.timeEnd('Carregar usuários');
       }
-      if (!error && data) setUsers(data);
-      else setUsers([]);
     };
     fetchUsers();
-  }, [isAdmin, currentUser]);
+  }, [isAdmin, currentUser, page]);
   
   const refreshUsers = async () => {
     let data = [];
@@ -112,14 +125,14 @@ const UsersPage: React.FC = () => {
     else setUsers([]);
   };
   
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = useMemo(() => users.filter(user => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (user.department && user.department.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (user.position && user.position.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (user.whatsapp && user.whatsapp.toLowerCase().includes(searchQuery.toLowerCase())) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ), [users, searchQuery]);
   
   const handleCreateUser = async (values: UserFormValues) => {
     try {
@@ -228,6 +241,8 @@ const UsersPage: React.FC = () => {
       </div>
     );
   }
+  
+  console.log('Renderizou UsersPage');
   
   return (
     <div className="space-y-6">
@@ -368,6 +383,8 @@ const UsersPage: React.FC = () => {
           </Dialog>
         </div>
       </div>
+      
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
       
       <Card>
         <CardHeader>
@@ -578,6 +595,15 @@ const UsersPage: React.FC = () => {
           </Form>
         </DialogContent>
       </Dialog>
+      
+      {/* Controles de paginação para admin */}
+      {isAdmin && (
+        <div className="flex justify-center gap-2 mt-4">
+          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
+          <span className="px-2">Página {page}</span>
+          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={users.length < pageSize}>Próxima</Button>
+        </div>
+      )}
     </div>
   );
 };

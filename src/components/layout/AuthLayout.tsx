@@ -3,7 +3,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AuthLayout: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading, user } = useAuth();
   const location = typeof window !== 'undefined' ? window.location : { hash: '', pathname: '' };
   const isRecovery = location.hash.includes('type=recovery') && location.hash.includes('access_token=');
   const isResetPasswordRoute = location.pathname === '/auth/reset-password';
@@ -18,7 +18,7 @@ const AuthLayout: React.FC = () => {
   }
   
   // Se está na rota de reset e é fluxo de recuperação, NUNCA redireciona
-  if (isAuthenticated && isResetPasswordRoute && isRecovery) {
+  if (user !== null && isResetPasswordRoute && isRecovery) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
@@ -29,7 +29,7 @@ const AuthLayout: React.FC = () => {
   }
   
   // NÃO redireciona para dashboard se for fluxo de recuperação de senha
-  if (isAuthenticated && !(isRecovery && isResetPasswordRoute)) {
+  if (user !== null && !(isRecovery && isResetPasswordRoute)) {
     return <Navigate to="/dashboard" />;
   }
   

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Notification } from '@/types';
-import { getNotifications, markNotificationAsRead } from '@/services/apiService';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/lib/supabase';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -18,53 +18,52 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
 
+  // Busca notificações do Supabase
   const fetchNotifications = async () => {
-    if (!user) return;
-    
+    if (!user?.id) {
+      setNotifications([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const userNotifications = await getNotifications(user.id);
-      setNotifications(userNotifications.map(n => ({
-        ...n,
-        createdAt: (n as any).criadaEm,
-        message: (n as any).mensagem || n.message,
-        title: (n as any).tipo || n.title,
-        isRead: (n as any).lida !== undefined ? !(!(n as any).lida) : n.isRead,
-      })));
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch notifications'));
-      console.error('Error fetching notifications:', err);
+      const { data, error } = await supabase
+        .from('notificacoes')
+        .select('*')
+        .eq('para', user.id)
+        .order('criada_em', { ascending: false });
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (err: any) {
+      setError(err);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Pooling: busca notificações a cada 2 minutos
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchNotifications();
-      
-      // Set up polling for new notifications every minute
-      const interval = setInterval(fetchNotifications, 60000);
-      return () => clearInterval(interval);
-    } else {
-      setNotifications([]);
-    }
-  }, [isAuthenticated, user?.id]);
+    if (!user?.id) return;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 120000); // 2 minutos
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const markAsRead = async (id: string) => {
     try {
-      await markNotificationAsRead(id);
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, isRead: true } : n
-      ));
+      await supabase.from('notificacoes').update({ lida: true }).eq('id', id);
+      setNotifications((prev) => prev.map(n => n.id === id ? { ...n, lida: true } : n));
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      setError(err as Error);
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.lida).length;
 
   return (
     <NotificationContext.Provider 

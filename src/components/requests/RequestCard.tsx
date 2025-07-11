@@ -17,41 +17,33 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
   const navigate = useNavigate();
   
   const getStatusColor = () => {
-    switch (request.status) {
+    const status = (request.status || '').toLowerCase();
+    switch (status) {
       case 'new':
       case 'nova':
-        return 'bg-blue-500';
+        return 'bg-primary'; // azul claro do sistema
       case 'assigned':
       case 'atribuida':
-        return 'bg-amber-500';
+        return 'bg-purple-500';
       case 'in_progress':
       case 'em_andamento':
-        return 'bg-purple-500';
+        return 'bg-amber-500';
       case 'resolved':
       case 'resolvida':
         return 'bg-green-500';
       case 'closed':
       case 'fechada':
         return 'bg-slate-500';
+      case 'rejeitada':
+        return 'bg-destructive'; // exatamente igual ao botão 'Excluir Solicitação'
       default:
         return 'bg-slate-500';
     }
   };
   
   const getPriorityIcon = () => {
-    switch (request.priority) {
-      case 'high':
-      case 'alta':
-        return <AlertCircle className="h-4 w-4 text-destructive" />;
-      case 'medium':
-      case 'media':
-        return <AlertCircle className="h-4 w-4 text-amber-500" />;
-      case 'low':
-      case 'baixa':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      default:
-        return null;
-    }
+    // Todos os níveis usam AlertCircle branco
+    return <AlertCircle className="h-4 w-4 text-white" />;
   };
   
   const formatStatus = (status: string) => {
@@ -83,10 +75,35 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
     
     return priorityMap[priority as keyof typeof priorityMap] || priority;
   };
+
+  const getStatusBadge = (status: string) => {
+    const s = (status || '').toLowerCase();
+    switch (s) {
+      case 'nova':
+      case 'new':
+        return <Badge className="bg-primary text-white">NOVA</Badge>;
+      case 'atribuida':
+      case 'assigned':
+        return <Badge className="bg-purple-500 text-white">ATRIBUÍDA</Badge>;
+      case 'em_andamento':
+      case 'in_progress':
+        return <Badge className="bg-amber-500 text-white">EM ANDAMENTO</Badge>;
+      case 'resolvida':
+      case 'resolved':
+        return <Badge className="bg-green-500 text-white">RESOLVIDA</Badge>;
+      case 'fechada':
+      case 'closed':
+        return <Badge variant="outline">FECHADA</Badge>;
+      case 'rejeitada':
+        return <Badge className="bg-destructive text-destructive-foreground">REJEITADA</Badge>;
+      default:
+        return <Badge variant="outline">{status?.toUpperCase()}</Badge>;
+    }
+  };
   
   return (
     <Card className="overflow-hidden">
-      <div className={cn("h-1", getStatusColor())} />
+      <div className={cn("h-1 opacity-100", getStatusColor())} />
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -95,7 +112,13 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
             </h3>
             <p className="text-xs text-muted-foreground">Solicitação #{request.id}</p>
           </div>
-          <Badge variant={(request.priority === 'high' || request.priority === 'alta') ? 'destructive' : (request.priority === 'medium' || request.priority === 'media') ? 'default' : 'outline'}>
+          <Badge variant={
+            (request.priority === 'high' || request.priority === 'alta') ? 'destructive' :
+            (request.priority === 'medium' || request.priority === 'media') ? undefined :
+            'blueLight'
+          } className={
+            (request.priority === 'medium' || request.priority === 'media') ? 'bg-amber-500 text-white' : undefined
+          }>
             <span className="flex items-center gap-1">
               {getPriorityIcon()}
               {formatPriority(request.priority)}
@@ -109,7 +132,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
         
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center">
-            <Badge variant="outline">{formatStatus(request.status)}</Badge>
+            {getStatusBadge(request.status)}
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />

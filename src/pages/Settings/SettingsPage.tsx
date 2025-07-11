@@ -49,6 +49,28 @@ const SettingsPage: React.FC = () => {
 
     const loadUserSettings = async () => {
       try {
+        // LOG para depuração das variáveis de ambiente
+        console.log('URL:', import.meta.env.VITE_SUPABASE_URL);
+        console.log('API KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
+        // Requisição manual para depuração do erro 406/401
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_settings?select=*&id=eq.${user.id}`;
+        const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const response = await fetch(url, {
+          headers: {
+            'apikey': apiKey,
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          console.error('Erro manual ao buscar user_settings:', response.status, response.statusText);
+          const text = await response.text();
+          console.error('Resposta:', text);
+        } else {
+          const json = await response.json();
+          console.log('Resposta manual user_settings:', json);
+        }
+        // Requisição padrão supabase
         const { data, error } = await supabase
           .from('user_settings')
           .select('*')

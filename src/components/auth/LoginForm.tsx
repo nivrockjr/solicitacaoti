@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email('Por favor, insira um endereço de e-mail válido'),
-  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+  senha: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -30,14 +30,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
-      password: '',
+      senha: '',
     },
   });
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setError(null);
-      await login(data.email, data.password);
+      await login(data.email, data.senha);
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha no login');
@@ -77,7 +77,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword }) => {
 
             <FormField
               control={form.control}
-              name="password"
+              name="senha"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Senha</FormLabel>

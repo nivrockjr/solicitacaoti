@@ -30,3 +30,5 @@ export const supabase = createClient(
 export const isSupabaseConfigured = () => {
   return !!supabaseUrl && !!supabaseAnonKey;
 };
+
+window.supabase = supabase;

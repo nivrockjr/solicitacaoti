@@ -67,118 +67,153 @@ function getPrazoStatus(request) {
   return 'Fora do prazo';
 }
 
+// Função para extrair motivo da rejeição
+function getMotivoRejeicao(request) {
+  if (request.approvalstatus === 'rejected' && Array.isArray(request.comments)) {
+    const motivo = request.comments.find(c => c.text && c.text.startsWith('[REJEITADA]'));
+    return motivo ? motivo.text.replace('[REJEITADA]', '').trim() : '';
+  }
+  return '';
+}
+
 // Função para exportar para PDF
 export function exportToPdf(requests: ITRequest[], filters: any) {
   // Criar o PDF em modo paisagem
   const doc = new jsPDF({ orientation: 'landscape' });
   
-  // Título do relatório - fonte um pouco menor
-  doc.setFontSize(16);
-  doc.text('Relatório de Solicitações', 14, 22);
-  doc.setFontSize(10);
-  
-  // Data de geração
+  // Cabeçalho discreto no topo
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 80); // cinza escuro
+  doc.text('Relatório de Solicitações', 14, 14);
   const today = format(new Date(), 'dd/MM/yyyy HH:mm');
-  doc.text(`Gerado em: ${today}`, 14, 30);
-  
-  // Filtros aplicados
+  doc.text(`Gerado em: ${today}`, 14, 19);
   let filtersText = 'Filtros: ';
-  
-  if (filters.status !== 'all') {
-    filtersText += `Status: ${filters.status === 'pending' ? 'Pendentes' : filters.status}, `;
+  if (filters.status && filters.status !== 'all') {
+    filtersText += `Status: ${filters.status}, `;
   }
-  
-  if (filters.type !== 'all') {
+  if (filters.type && filters.type !== 'all') {
     filtersText += `Tipo: ${translateRequestType(filters.type)}, `;
   }
-  
   if (filters.startDate) {
     filtersText += `De: ${format(filters.startDate, 'dd/MM/yyyy')}, `;
   }
-  
   if (filters.endDate) {
     filtersText += `Até: ${format(filters.endDate, 'dd/MM/yyyy')}, `;
   }
-  
-  // Remove a última vírgula
-  filtersText = filtersText.endsWith(', ') 
-    ? filtersText.slice(0, -2) 
+  filtersText = filtersText.endsWith(', ')
+    ? filtersText.slice(0, -2)
     : filtersText === 'Filtros: ' ? 'Filtros: Nenhum' : filtersText;
-  
-  doc.text(filtersText, 14, 38);
-  
+  doc.text(filtersText, 14, 24);
+  doc.setTextColor(0, 0, 0); // volta para preto
+
   // Preparar os dados para a tabela
+  // Montar colunas dinamicamente
+  let isRejeitada = filters.status === 'rejeitada';
   const tableColumn = [
     "ID",
     "Solicitante",
     "Tipo",
     "Prioridade",
     "Status",
-    "Data Criação",
-    "Data Resolução",
-    "Vencimento",
-    "Prazo",
-    "Descrição"
+    "Data Criação"
   ];
+  if (!isRejeitada) {
+    tableColumn.push("Data Resolução", "Vencimento", "Prazo");
+  }
+  tableColumn.push("Descrição");
+  if (isRejeitada) {
+    tableColumn.push("Motivo Rejeição");
+  }
+
+  const tableRows = requests.map(request => {
+    const row = [
+      request.id,
+      request.requestername,
+      translateRequestType(request.type),
+      translatePriority(request.priority),
+      translateStatus(request.status),
+      formatDateSafe(request.createdat)
+    ];
+    if (!isRejeitada) {
+      row.push(
+        request.resolvedat ? formatDateSafe(request.resolvedat) : '-',
+        formatDateSafe(request.deadlineat),
+        getPrazoStatus(request)
+      );
+    }
+    row.push(request.description);
+    if (isRejeitada) {
+      row.push(getMotivoRejeicao(request));
+    }
+    return row;
+  });
   
-  const tableRows = requests.map(request => [
-    request.id,
-    request.requestername,
-    translateRequestType(request.type),
-    translatePriority(request.priority),
-    translateStatus(request.status),
-    formatDateSafe(request.createdat),
-    request.resolvedat ? formatDateSafe(request.resolvedat) : '-',
-    formatDateSafe(request.deadlineat),
-    getPrazoStatus(request),
-    request.description
-  ]);
-  
-  // Ajustar os espaçamentos das colunas para modo paisagem
+  // Definir margens
+  const marginLeft = 14;
+  const marginRight = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const totalWidth = pageWidth - marginLeft - marginRight;
+
+  // Definir larguras fixas das colunas exceto a última
+  // Para rejeitadas, remover Data Resolução, Vencimento e Prazo
+  const colWidths = isRejeitada
+    ? [26, 25, 20, 25, 25, 22, 50] // ID, Solicitante, Tipo, Prioridade, Status, Data Criação, Descrição (50 fixo)
+    : [26, 25, 20, 25, 25, 22, 22, 26, 20]; // + Data Resolução, Vencimento, Prazo
+  let sumFixed = colWidths.reduce((a, b) => a + b, 0);
+  // Calcular largura da última coluna
+  const lastColWidth = totalWidth - sumFixed;
+
+  // Montar columnStyles dinamicamente
+  const columnStyles = {
+    0: { cellWidth: 26, cellPadding: 2, halign: 'left', valign: 'middle', fontStyle: 'bold' },
+    1: { cellWidth: 25 },
+    2: { cellWidth: 20 },
+    3: { cellWidth: 25 },
+    4: { cellWidth: 25 },
+    5: { cellWidth: 22 },
+  };
+  if (!isRejeitada) {
+    columnStyles[6] = { cellWidth: 22 };
+    columnStyles[7] = { cellWidth: 26 };
+    columnStyles[8] = { cellWidth: 20 };
+    columnStyles[9] = { cellWidth: lastColWidth, overflow: 'linebreak' }; // Descrição
+  } else {
+    columnStyles[6] = { cellWidth: 50, overflow: 'linebreak' }; // Descrição
+    columnStyles[7] = { cellWidth: lastColWidth, overflow: 'linebreak' }; // Motivo Rejeição
+  }
+
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
-    startY: 45,
+    startY: 26,
     styles: {
       fontSize: 8,
       cellPadding: 2,
-      overflow: 'linebreak'
+      overflow: 'linebreak',
+      halign: 'left',
     },
-    columnStyles: {
-      0: { cellWidth: 15 },  // ID
-      1: { cellWidth: 28 },  // Solicitante
-      2: { cellWidth: 22 },  // Tipo
-      3: { cellWidth: 20 },  // Prioridade
-      4: { cellWidth: 22 },  // Status
-      5: { cellWidth: 22 },  // Data Criação
-      6: { cellWidth: 26 },  // Data Resolução
-      7: { cellWidth: 22 },  // Vencimento
-      8: { cellWidth: 22 },  // Prazo
-      9: { cellWidth: 80, overflow: 'linebreak' } // Descrição (bem mais larga)
-    },
+    columnStyles,
     headStyles: {
       fillColor: [41, 128, 185],
       textColor: 255,
       fontStyle: 'bold',
-      fontSize: 9,
-      halign: 'center',
+      fontSize: 10,
+      halign: 'left',
       valign: 'middle',
       minCellHeight: 14
     },
     alternateRowStyles: {
       fillColor: [240, 240, 240]
     },
-    willDrawCell: function(data) {
-      if (data.column.index === 9) {
-        doc.setFontSize(8);
-      }
-    }
+    margin: { left: marginLeft, right: marginRight },
   });
   
   // Número total de solicitações
-  const finalY = (doc as any).lastAutoTable.finalY || 45;
-  doc.setFontSize(10);
+  const finalY = (doc as any).lastAutoTable.finalY || 26;
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 80); // cinza escuro
   doc.text(`Total de solicitações: ${requests.length}`, 14, finalY + 10);
+  doc.setTextColor(0, 0, 0); // volta para preto
   
   // Salvar o PDF
   doc.save('relatorio-solicitacoes.pdf');
@@ -197,7 +232,8 @@ export function exportToExcel(requests: ITRequest[], filters: any) {
     'Data Resolução': request.resolvedat ? formatDateSafe(request.resolvedat) : '-',
     'Vencimento': formatDateSafe(request.deadlineat),
     'Prazo': getPrazoStatus(request),
-    'Descrição': request.description
+    'Descrição': request.description,
+    'Motivo da Rejeição': getMotivoRejeicao(request)
   }));
   
   // Criar uma planilha

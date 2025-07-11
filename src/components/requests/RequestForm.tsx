@@ -30,6 +30,11 @@ interface FileWithPreview extends File {
   preview?: string;
 }
 
+function gerarIdCustomizado() {
+  // Função obsoleta, não será mais usada
+  return '';
+}
+
 const RequestForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileWithPreview[]>([]);
@@ -49,12 +54,8 @@ const RequestForm: React.FC = () => {
   
   const onSubmit = async (values: RequestFormValues) => {
     if (!user) return;
-    
     try {
       setIsSubmitting(true);
-      
-      // Create the request - usando description como title
-      // Garante que attachments é sempre um array
       const now = new Date().toISOString();
       // Upload files first (if any)
       const attachmentsFinal = [];
@@ -71,14 +72,13 @@ const RequestForm: React.FC = () => {
           });
         }, 300);
         try {
-          // Upload real para o Storage
           const filePath = await uploadFile(file);
           attachmentsFinal.push({
             id: crypto.randomUUID(),
             fileName: file.name,
             fileSize: file.size,
             fileType: file.type,
-            fileUrl: filePath, // Salva o caminho do arquivo
+            fileUrl: filePath,
             uploadedAt: new Date().toISOString(),
           });
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
@@ -93,28 +93,24 @@ const RequestForm: React.FC = () => {
           });
         }
       }
-      const payload = {
-        requesterid: user.id,
-        requestername: user.name,
-        requesteremail: user.email,
-        title: values.description.substring(0, 100),
-        description: values.description,
-        type: values.type as RequestType,
-        priority: values.priority as RequestPriority,
-        status: 'nova' as const,
-        attachments: attachmentsFinal,
-        createdat: now,
-        deadlineat: null
-      };
-      console.log('Payload enviado para o Supabase:', payload);
-      const newRequest = await createRequest(payload);
-      
+      // Chama a função RPC para criar a solicitação com ID customizado
+      const { data, error } = await window.supabase.rpc('criar_solicitacao_customizada', {
+        p_requestername: user.name,
+        p_requesteremail: user.email,
+        p_title: values.description.substring(0, 100),
+        p_description: values.description,
+        p_type: values.type,
+        p_priority: values.priority,
+        p_status: 'nova',
+        p_attachments: attachmentsFinal,
+        p_comments: [],
+      });
+      if (error) throw error;
       toast({
         title: 'Solicitação Enviada',
-        description: `Sua solicitação #${newRequest.id} foi enviada com sucesso`,
+        description: `Sua solicitação #${data[0].id} foi enviada com sucesso`,
       });
-      
-      navigate(`/request/${newRequest.id}`);
+      navigate(`/request/${data[0].id}`);
     } catch (error) {
       console.error('Submit request error:', error);
       toast({
@@ -199,7 +195,7 @@ const RequestForm: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="ajuste_estoque" id="ajuste_estoque" />
                           <FormLabel htmlFor="ajuste_estoque" className="font-normal cursor-pointer">
-                            Ajuste de Estoque (2 dias)
+                            Ajuste de Estoque (5 dias)
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">

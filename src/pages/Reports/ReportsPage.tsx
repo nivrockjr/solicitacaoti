@@ -55,6 +55,18 @@ const ReportsPage = () => {
 
   // Aplicar filtros às solicitações
   const filteredRequests = useMemo(() => allRequests.filter((request: ITRequest) => {
+    // Filtro por status
+    if (filters.status === 'rejeitada') {
+      if (request.approvalstatus !== 'rejected') return false;
+    } else if (filters.status && filters.status !== 'all') {
+      if (filters.status === 'pending') {
+        const pendingStatuses = ['nova', 'atribuida', 'assigned', 'em_andamento', 'in_progress', 'reaberta'];
+        if (!pendingStatuses.includes(request.status)) return false;
+      } else if (filters.status === 'resolvida') {
+        const resolvedStatuses = ['resolvida', 'resolved'];
+        if (!resolvedStatuses.includes(request.status)) return false;
+      }
+    }
     // Filtro por tipo
     if (filters.type !== 'all' && request.type !== filters.type) {
       return false;
@@ -183,12 +195,16 @@ const ReportsPage = () => {
                       <TableHead>Vencimento</TableHead>
                       <TableHead>Prazo</TableHead>
                       <TableHead>Descrição</TableHead>
+                      {filters.status === 'rejeitada' && (
+                        <TableHead>Motivo da Rejeição</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredRequests.map((request: ITRequest) => {
                       // Função para calcular o valor da coluna "Prazo"
                       function getPrazoStatus(request: ITRequest): string {
+                        if (request.approvalstatus === 'rejected') return 'N/A';
                         if (!request.resolvedat) return 'Em aberto';
                         if (!request.deadlineat) return '-';
                         const deadline = new Date(request.deadlineat);
@@ -196,9 +212,15 @@ const ReportsPage = () => {
                         if (resolved <= deadline) return 'No prazo';
                         return 'Fora do prazo';
                       }
+                      // Extrair motivo da rejeição
+                      let motivoRejeicao = '';
+                      if (request.approvalstatus === 'rejected' && Array.isArray(request.comments)) {
+                        const motivo = request.comments.find(c => c.text && c.text.startsWith('[REJEITADA]'));
+                        motivoRejeicao = motivo ? motivo.text.replace('[REJEITADA]', '').trim() : '';
+                      }
                       return (
                         <TableRow key={request.id}>
-                          <TableCell className="font-medium">{request.id}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">{request.id}</TableCell>
                           <TableCell>{request.requestername}</TableCell>
                           <TableCell>{getTypeLabel(request.type)}</TableCell>
                           <TableCell>{getPriorityLabel(request.priority)}</TableCell>
@@ -208,6 +230,9 @@ const ReportsPage = () => {
                           <TableCell>{formatDateSafe(request.deadlineat)}</TableCell>
                           <TableCell>{getPrazoStatus(request)}</TableCell>
                           <TableCell className="max-w-xs truncate">{request.description}</TableCell>
+                          {filters.status === 'rejeitada' && (
+                            <TableCell className="max-w-xs truncate">{motivoRejeicao}</TableCell>
+                          )}
                         </TableRow>
                       );
                     })}

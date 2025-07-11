@@ -48,8 +48,8 @@ const formSchema = z.object({
   adjustmentType: z.string().min(1, 'Tipo de ajuste é obrigatório'),
   category: z.string().min(1, 'Categoria é obrigatória'),
   productName: z.string().min(1, 'Nome do produto é obrigatório'),
-  cost: z.coerce.number().min(0, 'Custo deve ser maior ou igual a zero'),
-  reason: z.string().min(5, 'Descreva o motivo do ajuste'),
+  cost: z.coerce.number().min(0.01, 'Custo é obrigatório'),
+  reason: z.string().min(3, 'Descreva o motivo do ajuste (mínimo 3 caracteres)'),
   requestDate: z.date({
     required_error: "Data da solicitação é obrigatória",
   }),
@@ -82,6 +82,14 @@ const StockAdjustmentPage: React.FC = () => {
       toast({
         title: "Número de lote obrigatório",
         description: "Por favor, preencha o número do lote para todos os itens",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (lots.some(lot => !lot.weight || lot.weight <= 0)) {
+      toast({
+        title: "Peso obrigatório",
+        description: "Por favor, preencha o peso (> 0) para todos os lotes",
         variant: "destructive",
       });
       return;
@@ -404,7 +412,7 @@ Motivo: ${formData.reason}
                     id={`weight-${lot.id}`}
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="0.0001"
                     placeholder="0"
                     value={lot.weight.toString()}
                     onChange={(e) => updateLot(lot.id, 'weight', parseFloat(e.target.value) || 0)}

@@ -13,8 +13,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, updateUser, updateUserPassword, forgotPassword, getUsers } from '@/services/apiService';
 import { supabase } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -44,6 +45,7 @@ const UsersPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
   
   const isAdmin = currentUser?.role === 'admin';
   
@@ -86,7 +88,13 @@ const UsersPage: React.FC = () => {
       try {
         setError(null);
         if (isAdmin) {
-          data = await getUsers(page, pageSize);
+          const { data: usersData, error: usersError } = await supabase
+            .from('usuarios')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range((page - 1) * pageSize, page * pageSize - 1);
+          data = usersData || [];
+          errorObj = usersError;
         } else if (currentUser) {
           const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
           data = result.data;
@@ -113,9 +121,13 @@ const UsersPage: React.FC = () => {
     let data = [];
     let error = null;
     if (isAdmin) {
-      const rpcResult = await supabase.rpc('admin_list_users');
-      data = rpcResult.data;
-      error = rpcResult.error;
+      const { data: usersData, error: usersError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+      data = usersData || [];
+      error = usersError;
     } else if (currentUser) {
       const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
       data = result.data;
@@ -136,21 +148,40 @@ const UsersPage: React.FC = () => {
   
   const handleCreateUser = async (values: UserFormValues) => {
     try {
-      const userData: Omit<User, 'id'> & { password: string } = {
-        ...values,
-        password: 'senha123',
+      const newId = uuidv4();
+      console.log('UUID gerado para novo usuário:', newId);
+      const userData = {
+        id: newId,
+        name: values.name,
+        email: values.email.toLowerCase(),
+        role: values.role,
+        department: values.department || '',
+        position: values.position || '',
+        whatsapp: values.whatsapp || '',
+        senha: 'senha123', // campo correto na tabela
+        precisa_alterar_senha: true,
+        created_at: new Date().toISOString()
       };
-      await createUser(userData);
+      const { error } = await supabase.from('usuarios').insert([userData]);
+      if (error) throw error;
       await refreshUsers();
       userForm.reset();
       toast({
-        title: 'Usuário Criado',
+        title: 'Usuário criado!',
         description: `${values.name} foi criado com sucesso.`,
       });
+      setTimeout(() => {
+        navigate('/users'); // ajuste a rota se necessário
+      }, 1000);
     } catch (error) {
+      let message = 'Erro ao criar usuário';
+      if (error && typeof error === 'object' && 'code' in error && (error.code === '23505' || error.code === '409')) {
+        message = 'Já existe um usuário com este e-mail ou ID.';
+      }
+      console.error('Erro detalhado ao criar usuário:', error);
       toast({
         title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao criar usuário',
+        description: message,
         variant: 'destructive',
       });
     }
@@ -159,11 +190,20 @@ const UsersPage: React.FC = () => {
   const handleEditUser = async (values: UserFormValues) => {
     if (!selectedUserForEdit) return;
     try {
-      await updateUser(selectedUserForEdit.id, values);
+      const updateData = {
+        name: values.name,
+        email: values.email,
+        role: values.role,
+        department: values.department || '',
+        position: values.position || '',
+        whatsapp: values.whatsapp || ''
+      };
+      const { error } = await supabase.from('usuarios').update(updateData).eq('id', selectedUserForEdit.id);
+      if (error) throw error;
       await refreshUsers();
       setSelectedUserForEdit(null);
       toast({
-        title: 'Usuário Atualizado',
+        title: 'Usuário atualizado!',
         description: `${values.name} foi atualizado com sucesso.`,
       });
     } catch (error) {
@@ -179,16 +219,20 @@ const UsersPage: React.FC = () => {
     if (!selectedUser) return;
     
     try {
-      await updateUserPassword(selectedUser.id, values.password);
+      const { error } = await supabase.from('usuarios').update({ senha: values.password, precisa_alterar_senha: false }).eq('id', selectedUser.id);
+      if (error) throw error;
       passwordForm.reset();
-      setShowPasswordForm(false);
       toast({
-        title: 'Senha Alterada',
+        title: 'Senha redefinida!',
         description: `A senha de ${selectedUser.name} foi alterada com sucesso.`,
       });
+      setTimeout(() => {
+        setShowPasswordForm(false);
+        setSelectedUser(null);
+      }, 900);
     } catch (error) {
       toast({
-        title: 'Erro',
+        title: 'Erro ao redefinir senha',
         description: error instanceof Error ? error.message : 'Erro ao alterar senha',
         variant: 'destructive',
       });
@@ -219,7 +263,7 @@ const UsersPage: React.FC = () => {
       if (error) throw error;
       await refreshUsers();
       toast({
-        title: 'Usuário Excluído',
+        title: 'Usuário excluído!',
         description: 'O usuário foi excluído com sucesso.'
       });
     } catch (error) {
@@ -429,22 +473,8 @@ const UsersPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Enviar link de redefinição de senha"
-                            onClick={async () => {
-                              try {
-                                await forgotPassword(user.email);
-                                toast({
-                                  title: 'E-mail enviado',
-                                  description: `Link de redefinição de senha enviado para ${user.email}`,
-                                });
-                              } catch (error) {
-                                toast({
-                                  title: 'Erro',
-                                  description: error instanceof Error ? error.message : 'Erro ao enviar e-mail de redefinição',
-                                  variant: 'destructive',
-                                });
-                              }
-                            }}
+                            title="Redefinir senha do usuário"
+                            onClick={() => openPasswordForm(user)}
                           >
                             <Key className="h-4 w-4" />
                           </Button>
@@ -590,6 +620,39 @@ const UsersPage: React.FC = () => {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedUserForEdit(null)}>Cancelar</Button>
                 <Button type="submit">Salvar</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para redefinição de senha */}
+      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redefinir Senha</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Redefinir senha de ${selectedUser.name}.`}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...passwordForm}>
+            <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4">
+              <FormField
+                control={passwordForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nova Senha</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Digite a nova senha" type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedUser(null)}>Cancelar</Button>
+                <Button type="submit">Salvar Nova Senha</Button>
               </DialogFooter>
             </form>
           </Form>

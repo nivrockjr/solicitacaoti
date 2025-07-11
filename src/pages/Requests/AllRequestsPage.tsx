@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Filters {
   types: RequestType[];
@@ -30,19 +31,18 @@ const AllRequestsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [error, setError] = useState<string | null>(null);
-  const [filterCounts, setFilterCounts] = useState({
-    all: 0, new: 0, assigned: 0, in_progress: 0, resolved: 0, high: 0
+  const [totalCount, setTotalCount] = useState(0);
+  // Refatorar os filtros de abas
+  const [tab, setTab] = useState<'all' | 'high_priority' | 'in_progress' | 'resolved' | 'rejected'>('all');
+  const [tabCounts, setTabCounts] = useState({
+    all: 0,
+    high_priority: 0,
+    in_progress: 0,
+    resolved: 0,
+    rejected: 0
   });
   
-  // Funções para status
-  const statusMap = {
-    all: undefined,
-    new: ['nova', 'new'],
-    assigned: ['atribuida', 'assigned'],
-    in_progress: ['em_andamento', 'in_progress'],
-    resolved: ['resolvida', 'resolved', 'fechada', 'closed']
-  };
-  const [tab, setTab] = useState<'all' | 'new' | 'assigned' | 'in_progress' | 'resolved'>('all');
+  const { logout } = useAuth();
   
   useEffect(() => {
     const handleVisibility = () => {
@@ -55,52 +55,65 @@ const AllRequestsPage: React.FC = () => {
   }, []);
   
   useEffect(() => {
-    console.time('Carregar solicitações');
+    // Buscar contadores de cada filtro ao carregar a página
+    const fetchTabCounts = async () => {
+      const { data: allRequests = [] } = await getRequests(undefined, 1, 1000, undefined, logout);
+      const all = allRequests.filter(r => r.approvalstatus !== 'rejected').length;
+      const high_priority = allRequests.filter(r => (['alta', 'high'].includes((r.priority || '').toLowerCase())) && r.status !== 'resolved' && r.approvalstatus !== 'rejected').length;
+      const in_progress = allRequests.filter(r => ['in_progress', 'em_andamento', 'assigned', 'atribuida'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
+      const resolved = allRequests.filter(r => ['resolved'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
+      const rejected = allRequests.filter(r => r.approvalstatus === 'rejected').length;
+      setTabCounts({ all, high_priority, in_progress, resolved, rejected });
+    };
+    fetchTabCounts();
+  }, [logout]);
+
+  useEffect(() => {
     const fetchRequests = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const statusFilter = statusMap[tab];
-        const { data: fetchedRequests } = await getRequests(undefined, page, pageSize, statusFilter);
-        console.log('Solicitações recebidas do backend:', fetchedRequests);
-        // Ordenar por data de criação decrescente
-        const sortedRequests = [...fetchedRequests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
-        setRequests(sortedRequests);
-      } catch (error) {
-        setError('Erro ao carregar solicitações. Veja o console para detalhes.');
-        setRequests([]);
-        console.error('Erro ao buscar solicitações:', error);
-      } finally {
-        setLoading(false);
-        console.timeEnd('Carregar solicitações');
+      setLoading(true);
+      setError(null);
+      let statusFilter: string | string[] | undefined = undefined;
+      let priorityFilter: string[] | undefined = undefined;
+      let notStatus: string | undefined = undefined;
+      let approvalStatus: string | undefined = undefined;
+      if (tab === 'high_priority') {
+        priorityFilter = ['alta', 'high'];
+        notStatus = 'resolved';
+      } else if (tab === 'in_progress') {
+        statusFilter = ['in_progress', 'em_andamento', 'assigned', 'atribuida'];
+      } else if (tab === 'resolved') {
+        statusFilter = ['resolved'];
+      } else if (tab === 'rejected') {
+        approvalStatus = 'rejected';
       }
+      const { data: fetchedRequests, count } = await getRequests(
+        undefined,
+        page,
+        pageSize,
+        statusFilter,
+        logout,
+        { search: searchQuery, priority: priorityFilter, type: filters.types, notStatus, approvalStatus }
+      );
+      setRequests(fetchedRequests);
+      setTotalCount(count || 0);
+      setLoading(false);
     };
     fetchRequests();
-  }, [page, tab]);
-  
-  useEffect(() => {
-    const fetchCounts = async () => {
-      // Busca apenas id, status e prioridade para contar
-      const { data, error } = await supabase
-        .from('solicitacoes')
-        .select('id, status, priority');
-      if (error) return;
-      const all = data.length;
-      const newCount = data.filter(r => ['nova', 'new'].includes((r.status || '').toLowerCase())).length;
-      const assigned = data.filter(r => ['atribuida', 'assigned'].includes((r.status || '').toLowerCase())).length;
-      const in_progress = data.filter(r => ['em_andamento', 'in_progress'].includes((r.status || '').toLowerCase())).length;
-      const resolved = data.filter(r => ['resolvida', 'resolved', 'fechada', 'closed'].includes((r.status || '').toLowerCase())).length;
-      const high = data.filter(r => ['alta', 'high'].includes((r.priority || '').toLowerCase())).length;
-      setFilterCounts({ all, new: newCount, assigned, in_progress, resolved, high });
-    };
-    fetchCounts();
-  }, []);
+  }, [page, tab, searchQuery, filters]);
   
   const normalizeStatus = (status) => (status || '').toLowerCase();
   const normalizePriority = (priority) => (priority || '').toLowerCase();
   
   const filteredRequests = useMemo(() => {
     let filtered = [...requests];
+    // Remover rejeitadas do filtro 'Todas'
+    if (tab === 'all') {
+      filtered = filtered.filter(r => r.approvalstatus !== 'rejected');
+    }
+    // Garantir que só rejeitadas aparecem na aba 'Rejeitadas'
+    if (tab === 'rejected') {
+      filtered = filtered.filter(r => r.approvalstatus === 'rejected');
+    }
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
@@ -125,7 +138,7 @@ const AllRequestsPage: React.FC = () => {
       const dateB = new Date(b.createdat).getTime();
       return dateB - dateA;
     });
-  }, [requests, searchQuery, filters]);
+  }, [requests, searchQuery, filters, tab]);
   
   const handleTypeFilterChange = (type: RequestType) => {
     setFilters(prev => {
@@ -310,23 +323,23 @@ const AllRequestsPage: React.FC = () => {
       <Tabs value={tab} onValueChange={value => setTab(value as any)} defaultValue="all">
         <TabsList>
           <TabsTrigger value="all">
-            Todas ({filterCounts.all})
+            Todas ({tabCounts.all})
           </TabsTrigger>
-          <TabsTrigger value="new">
-            Novas ({filterCounts.new})
-          </TabsTrigger>
-          <TabsTrigger value="assigned">
-            Atribuídas ({filterCounts.assigned})
+          <TabsTrigger value="high_priority">
+            Alta Prioridade ({tabCounts.high_priority})
           </TabsTrigger>
           <TabsTrigger value="in_progress">
-            Em Andamento ({filterCounts.in_progress})
+            Em Andamento ({tabCounts.in_progress})
           </TabsTrigger>
           <TabsTrigger value="resolved">
-            Resolvidas ({filterCounts.resolved})
+            Resolvidas ({tabCounts.resolved})
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            Rejeitadas ({tabCounts.rejected})
           </TabsTrigger>
         </TabsList>
         
-        {['all', 'new', 'assigned', 'in_progress', 'resolved'].map((status) => (
+        {['all', 'high_priority', 'in_progress', 'resolved', 'rejected'].map((status) => (
           <TabsContent key={status} value={status} className="mt-4">
             {loading ? (
               <div className="flex items-center justify-center h-40">

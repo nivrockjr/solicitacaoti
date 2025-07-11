@@ -13,8 +13,8 @@ const NotificationsList: React.FC = () => {
   const handleClick = async (notification: Notification) => {
     await markAsRead(notification.id);
     
-    if (notification.requestId) {
-      navigate(`/request/${notification.requestId}`);
+    if (notification.request_id) {
+      navigate(`/request/${notification.request_id}`);
     }
   };
   
@@ -45,17 +45,17 @@ const NotificationsList: React.FC = () => {
               <li key={notification.id}>
                 <Button
                   variant="ghost"
-                  className={`w-full text-left p-4 h-auto justify-start border-b rounded-none ${!notification.isRead ? 'bg-muted/40' : ''}`}
+                  className={`w-full text-left p-4 h-auto justify-start border-b rounded-none ${!notification.lida ? 'bg-muted/40' : ''}`}
                   onClick={() => handleClick(notification)}
                 >
                   <div className="space-y-1 w-full">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{traduzirTitulo(notification.title)}</p>
+                      <p className="font-medium text-sm">{traduzirTitulo(notification.tipo)}</p>
                       <time className="text-xs text-muted-foreground">
-                        {format(new Date(notification.createdAt), 'dd/MM, HH:mm')}
+                        {format(new Date(notification.criada_em), 'dd/MM, HH:mm')}
                       </time>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{notification.mensagem}</p>
                   </div>
                 </Button>
               </li>
@@ -69,15 +69,22 @@ const NotificationsList: React.FC = () => {
 
 export default NotificationsList;
 
-// Função utilitária para traduzir os títulos das notificações
-function traduzirTitulo(titulo: string) {
-  const mapa = {
-    'request_in_progress': 'Solicitação em andamento',
-    'request_assigned': 'Solicitação atribuída',
-    'comentario': 'Comentário',
-    'request_created': 'Nova solicitação criada',
-    'notifications': 'Notificações',
-    'refresh': 'Atualizar',
-  };
-  return mapa[titulo] || titulo;
+// Função para traduzir o tipo de notificação para um nome amigável
+function traduzirTitulo(tipo: string) {
+  switch (tipo) {
+    case 'request_resolved':
+      return 'Solicitação resolvida';
+    case 'comentario':
+      return 'Comentário';
+    case 'request_in_progress':
+      return 'Solicitação em andamento';
+    case 'request_assigned':
+      return 'Solicitação atribuída';
+    case 'request_reopened':
+      return 'Solicitação reaberta';
+    case 'request_created':
+      return 'Nova solicitação';
+    default:
+      return tipo;
+  }
 }

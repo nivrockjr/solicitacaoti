@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format, isAfter } from 'date-fns';
-import { ArrowLeft, Calendar, Clock, FileText, PaperclipIcon, Send, User as UserIcon, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, FileText, PaperclipIcon, Send, User as UserIcon, Star, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +15,7 @@ import { ITRequest, User } from '@/types';
 // import { users } from '@/services/authService';
 import { Comment } from '@/types';
 import { supabase } from '@/lib/supabase';
-import { createNotification } from '@/services/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +32,8 @@ const RequestDetailPage: React.FC = () => {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [reopenComment, setReopenComment] = useState('');
   const [showReopen, setShowReopen] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   
   useEffect(() => {
     const fetchRequest = async () => {
@@ -52,7 +54,7 @@ const RequestDetailPage: React.FC = () => {
         }
         
         // Check if the user has permission to view the request
-        if (user?.role !== 'admin' && fetchedRequest.requesterid !== user?.id) {
+        if (user?.role !== 'admin' && fetchedRequest.requesteremail !== user?.email) {
           toast({
             title: 'Acesso Negado',
             description: 'Você não tem permissão para visualizar esta solicitação.',
@@ -115,34 +117,37 @@ const RequestDetailPage: React.FC = () => {
         title: 'Comentário Adicionado',
         description: 'Seu comentário foi adicionado à solicitação.',
       });
-      // Lógica de notificação conforme orientação
-      if (user.id === request.requesterid) {
+      // Nova lógica de notificação
+      if (user.email === request.requesteremail) {
         // Se o autor é o solicitante, notificar todos os admins (exceto o próprio autor, caso seja admin)
         if (adminUsers && Array.isArray(adminUsers)) {
-          console.log('Admins encontrados:', adminUsers);
           await Promise.all(
             adminUsers.filter(admin => admin.id !== user.id).map(admin => {
-              console.log('Enviando notificação para admin:', admin.id, 'nome:', admin.name);
-              return createNotification({
-                para: admin.id,
-                mensagem: `Novo comentário do solicitante na solicitação #${id}.`,
-                tipo: 'comentario',
-                requestId: id
-              });
+              return supabase.from('notificacoes').insert([
+                {
+                  para: admin.id,
+                  mensagem: `Novo comentário do solicitante na solicitação #${id}.`,
+                  tipo: 'comentario',
+                  request_id: id
+                }
+              ]);
             })
           );
-        } else {
-          console.log('adminUsers está vazio ou não é array:', adminUsers);
         }
-      } else if (user.role === 'admin' && request.requesterid && user.id !== request.requesterid) {
+      } else if (user.role === 'admin' && request.requesteremail) {
         // Se o autor é admin, notificar apenas o solicitante (se não for o próprio admin)
-        console.log('Enviando notificação para solicitante:', request.requesterid);
-        createNotification({
-          para: request.requesterid,
-          mensagem: `Novo comentário do administrador na sua solicitação #${id}.`,
-          tipo: 'comentario',
-          requestId: id
-        });
+        // Buscar o id do usuário pelo e-mail do solicitante
+        const { data: solicitanteUser } = await supabase.from('usuarios').select('id').eq('email', request.requesteremail).single();
+        if (solicitanteUser && solicitanteUser.id && solicitanteUser.id !== user.id) {
+          await supabase.from('notificacoes').insert([
+            {
+              para: solicitanteUser.id,
+              mensagem: `Novo comentário do administrador na sua solicitação #${id}.`,
+              tipo: 'comentario',
+              request_id: id
+            }
+          ]);
+        }
       }
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
@@ -202,35 +207,38 @@ const RequestDetailPage: React.FC = () => {
     switch (status) {
       case 'new':
       case 'nova':
-        return 'bg-blue-500';
+        return 'bg-primary'; // azul claro do sistema
       case 'assigned':
       case 'atribuida':
-        return 'bg-amber-500';
+        return 'bg-purple-500';
       case 'in_progress':
       case 'em_andamento':
-        return 'bg-purple-500';
+        return 'bg-amber-500';
       case 'resolved':
       case 'resolvida':
         return 'bg-green-500';
       case 'closed':
       case 'fechada':
         return 'bg-slate-500';
+      case 'rejeitada':
+        return 'bg-destructive'; // igual ao botão Excluir Solicitação
       default:
         return 'bg-slate-500';
     }
   };
   
   const getPriorityBadge = (priority: string) => {
+    const icon = <AlertCircle className="h-4 w-4 text-white mr-1" />;
     switch (priority) {
       case 'high':
       case 'alta':
-        return <Badge variant="destructive">Alta Prioridade</Badge>;
+        return <Badge variant="destructive">{icon}Alta Prioridade</Badge>;
       case 'medium':
       case 'media':
-        return <Badge>Média Prioridade</Badge>;
+        return <Badge className="bg-amber-500 text-white">{icon}Média Prioridade</Badge>;
       case 'low':
       case 'baixa':
-        return <Badge variant="outline">Baixa Prioridade</Badge>;
+        return <Badge variant="blueLight">{icon}Baixa Prioridade</Badge>;
       default:
         return null;
     }
@@ -474,6 +482,56 @@ const RequestDetailPage: React.FC = () => {
     }
   };
   
+  const handleReject = async () => {
+    if (!request || !id || !user || !rejectReason.trim()) return;
+    try {
+      setSubmitting(true);
+      // Salvar status de rejeitado e motivo como comentário especial
+      const newComment: Comment = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: user.name,
+        text: `[REJEITADA] ${rejectReason.trim()}`,
+        createdAt: new Date().toISOString(),
+      };
+      const updates: Partial<ITRequest> = {
+        approvalstatus: 'rejected',
+        approvedby: user.id,
+        approvedbyname: user.name,
+        status: 'rejeitada',
+        comments: [...(request.comments || []), newComment],
+      };
+      const updatedRequest = await updateRequest(id, updates);
+      setRequest(updatedRequest);
+      setShowRejectModal(false);
+      setRejectReason('');
+      toast({
+        title: 'Solicitação Rejeitada',
+        description: 'A solicitação foi rejeitada com sucesso.',
+      });
+      // Notificar solicitante
+      const { data: solicitanteUser } = await supabase.from('usuarios').select('id').eq('email', request.requesteremail).single();
+      if (solicitanteUser && solicitanteUser.id && solicitanteUser.id !== user.id) {
+        await supabase.from('notificacoes').insert([
+          {
+            para: solicitanteUser.id,
+            mensagem: `Sua solicitação #${id} foi rejeitada. Motivo: ${rejectReason.trim()}`,
+            tipo: 'rejeicao',
+            request_id: id
+          }
+        ]);
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Falha ao rejeitar a solicitação. Por favor, tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
@@ -494,6 +552,31 @@ const RequestDetailPage: React.FC = () => {
     );
   }
   
+  const getStatusBadge = (status: string) => {
+    const s = (status || '').toLowerCase();
+    switch (s) {
+      case 'nova':
+      case 'new':
+        return <Badge className="bg-primary text-white">NOVA</Badge>;
+      case 'atribuida':
+      case 'assigned':
+        return <Badge className="bg-purple-500 text-white">ATRIBUÍDA</Badge>;
+      case 'em_andamento':
+      case 'in_progress':
+        return <Badge className="bg-amber-500 text-white">EM ANDAMENTO</Badge>;
+      case 'resolvida':
+      case 'resolved':
+        return <Badge className="bg-green-500 text-white">RESOLVIDA</Badge>;
+      case 'fechada':
+      case 'closed':
+        return <Badge variant="outline">FECHADA</Badge>;
+      case 'rejeitada':
+        return <Badge variant="destructive">REJEITADA</Badge>;
+      default:
+        return <Badge variant="outline">{status?.toUpperCase()}</Badge>;
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -507,14 +590,14 @@ const RequestDetailPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
         </div>
         <div className="flex gap-2">
-          {/* Botão de exclusão para admin e solicitante */}
-          {(user?.role === 'admin' || user?.id === request.requesterid) && (
+          {/* Botão de exclusão para admin e solicitante (por email) */}
+          {(user?.role === 'admin' || user?.email === request.requesteremail) && (
             <Button onClick={handleDeleteRequest} variant="destructive" disabled={submitting}>
               Excluir Solicitação
             </Button>
           )}
           {/* Botões de status para admin */}
-          {user?.role === 'admin' && request.status !== 'resolved' && request.status !== 'resolvida' && request.status !== 'closed' && request.status !== 'fechada' && (
+          {user?.role === 'admin' && !['resolved', 'resolvida', 'closed', 'fechada'].includes(request.status) && request.approvalstatus !== 'rejected' && (
             <>
               {(request.status === 'new' || request.status === 'nova') && (
                 <Button onClick={() => handleStatusChange('assigned')} variant="outline" disabled={submitting}>
@@ -526,6 +609,9 @@ const RequestDetailPage: React.FC = () => {
                   Iniciar Progresso
                 </Button>
               )}
+              <Button onClick={() => setShowRejectModal(true)} variant="destructive" disabled={submitting}>
+                Rejeitar
+              </Button>
               <Button onClick={() => handleStatusChange('resolved')} disabled={submitting}>
                 Resolver
               </Button>
@@ -557,9 +643,7 @@ const RequestDetailPage: React.FC = () => {
               </div>
               <div className="flex flex-col gap-2 items-end">
                 {getPriorityBadge(request.priority)}
-                <Badge variant={(request.status === 'resolved' || request.status === 'resolvida' || request.status === 'closed' || request.status === 'fechada') ? 'outline' : 'secondary'}>
-                  {formatStatus(request.status)}
-                </Badge>
+                {getStatusBadge(request.status)}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -677,16 +761,20 @@ const RequestDetailPage: React.FC = () => {
               
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Prazo</p>
-                <div className="flex items-center gap-2">
-                  <Clock className={`h-4 w-4 ${isDeadlinePassed(request.deadlineat) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' ? 'text-destructive' : ''}`} />
-                  <p className={`font-medium ${getDeadlineColorClass(request.deadlineat)}`}>
-                    {format(new Date(request.deadlineat), 'dd/MM/yyyy HH:mm')}
-                  </p>
-                </div>
-                {isDeadlinePassed(request.deadlineat) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' && (
+                {request.approvalstatus === 'rejected' ? (
+                  <p className="font-medium">N/A</p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Clock className={`h-4 w-4 ${isDeadlinePassed(request.deadlineat) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' ? 'text-destructive' : ''}`} />
+                    <p className={`font-medium ${getDeadlineColorClass(request.deadlineat)}`}>
+                      {format(new Date(request.deadlineat), 'dd/MM/yyyy HH:mm')}
+                    </p>
+                  </div>
+                )}
+                {request.approvalstatus !== 'rejected' && isDeadlinePassed(request.deadlineat) && request.status !== 'resolved' && request.status !== 'closed' && request.status !== 'resolvida' && request.status !== 'fechada' && (
                   <p className="text-xs text-destructive">Prazo expirado</p>
                 )}
-                {!isDeadlinePassed(request.deadlineat) && getDeadlineColorClass(request.deadlineat).includes('amber') && (
+                {request.approvalstatus !== 'rejected' && !isDeadlinePassed(request.deadlineat) && getDeadlineColorClass(request.deadlineat).includes('amber') && (
                   <p className="text-xs text-amber-500">Prazo próximo do vencimento</p>
                 )}
               </div>
@@ -799,7 +887,7 @@ const RequestDetailPage: React.FC = () => {
         </div>
       </div>
       {/* Botão de reabrir solicitação para o solicitante */}
-      {user?.role !== 'admin' && request?.status && (request.status === 'resolved' || request.status === 'resolvida') && (
+      {user?.role !== 'admin' && request?.status && (request.status === 'resolved' || request.status === 'resolvida') && request.approvalstatus !== 'rejected' && (
         <div className="mb-4">
           {!showReopen ? (
             <Button variant="outline" onClick={() => setShowReopen(true)}>
@@ -825,6 +913,35 @@ const RequestDetailPage: React.FC = () => {
           )}
         </div>
       )}
+      {/* Badge/status de rejeitada e motivo */}
+      {request.approvalstatus === 'rejected' && (
+        <div className="mb-4">
+          <Badge variant="destructive">REJEITADA</Badge>
+        </div>
+      )}
+      {/* Modal de motivo de rejeição */}
+      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Motivo da Rejeição</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Descreva o motivo da rejeição..."
+            value={rejectReason}
+            onChange={e => setRejectReason(e.target.value)}
+            className="min-h-[100px]"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button onClick={handleReject} disabled={!rejectReason.trim() || submitting}>
+              Confirmar Rejeição
+            </Button>
+            <Button variant="ghost" onClick={() => { setShowRejectModal(false); setRejectReason(''); }} disabled={submitting}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

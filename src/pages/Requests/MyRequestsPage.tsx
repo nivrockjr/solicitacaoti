@@ -15,11 +15,18 @@ const MyRequestsPage: React.FC = () => {
   const [requests, setRequests] = useState<ITRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [error, setError] = useState<string | null>(null);
-  const [filterCounts, setFilterCounts] = useState({ ativas: 0, resolvidas: 0 });
+  const [totalCount, setTotalCount] = useState(0);
+  const [tab, setTab] = useState<'active' | 'resolved' | 'high_priority' | 'rejected'>('active');
+  const [tabCounts, setTabCounts] = useState({
+    active: 0,
+    resolved: 0,
+    high_priority: 0,
+    rejected: 0
+  });
   
   useEffect(() => {
     const handleVisibility = () => {
@@ -31,74 +38,79 @@ const MyRequestsPage: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
   
+  // Sempre que trocar de aba, volta para página 1 ANTES de buscar
   useEffect(() => {
-    let timerStarted = false;
+    setPage(1);
+  }, [tab]);
+
+  // useEffect para buscar solicitações (remover approvalStatus do fetch)
+  useEffect(() => {
     const fetchRequests = async () => {
       if (!user) return;
-      try {
-        if (!timerStarted) {
-          console.time('Carregar minhas solicitações');
-          timerStarted = true;
-        }
-        setLoading(true);
-        setError(null);
-        const { data: fetchedRequests } = await getRequests(user.id, page, pageSize);
-        console.log('Solicitações recebidas do backend:', fetchedRequests);
-        // Ordenar por data de criação decrescente
-        const sortedRequests = [...fetchedRequests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
-        setRequests(sortedRequests);
-      } catch (error) {
-        setError('Erro ao carregar suas solicitações. Veja o console para detalhes.');
-        setRequests([]);
-        console.error('Erro ao buscar solicitações do usuário:', error);
-      } finally {
-        setLoading(false);
-        if (timerStarted) console.timeEnd('Carregar minhas solicitações');
+      setLoading(true);
+      setError(null);
+      let statusFilter: string | string[] | undefined = undefined;
+      let priorityFilter: string[] | undefined = undefined;
+      let notStatus: string | undefined = undefined;
+      if (tab === 'active') {
+        statusFilter = ['nova', 'new', 'atribuida', 'assigned', 'em_andamento', 'in_progress'];
+      } else if (tab === 'resolved') {
+        statusFilter = ['resolved'];
+      } else if (tab === 'high_priority') {
+        priorityFilter = ['alta', 'high'];
+        notStatus = 'resolved';
       }
+      const { data: fetchedRequests, count } = await getRequests(
+        user.email,
+        page,
+        pageSize,
+        statusFilter,
+        logout,
+        { search: searchQuery, priority: priorityFilter, notStatus }
+      );
+      setRequests(fetchedRequests);
+      setTotalCount(count || 0);
+      setLoading(false);
     };
     fetchRequests();
-  }, [user, page]);
-  
+  }, [user, tab, page, searchQuery]);
+
+  // useEffect para contadores (remover approvalStatus do fetch, contar rejeitadas no frontend)
   useEffect(() => {
-    const fetchCounts = async () => {
-      if (!user) return;
-      // Busca apenas id e status para contar
-      const { data, error } = await supabase
-        .from('solicitacoes')
-        .select('id, status')
-        .eq('requesterid', user.id);
-      if (error) return;
-      const ativas = data.filter(r => !['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())).length;
-      const resolvidas = data.filter(r => ['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())).length;
-      setFilterCounts({ ativas, resolvidas });
+    const fetchTabCounts = async () => {
+      const { data: allRequests = [] } = await getRequests(user?.email, 1, 1000, undefined, logout);
+      const active = allRequests.filter(r => ['nova', 'new', 'atribuida', 'assigned', 'em_andamento', 'in_progress'].includes(r.status)).length;
+      const resolved = allRequests.filter(r => r.status === 'resolved').length;
+      const high_priority = allRequests.filter(r => (['alta', 'high'].includes(r.priority)) && r.status !== 'resolved').length;
+      const rejected = allRequests.filter(r => r.approvalstatus === 'rejected').length;
+      setTabCounts({ active, resolved, high_priority, rejected });
     };
-    fetchCounts();
-  }, [user]);
+    if (user) fetchTabCounts();
+  }, [user, logout]);
   
-  const activeRequests = requests.filter(
-    r => !['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())
-  );
-  
-  const resolvedRequests = requests.filter(
-    r => ['resolved', 'closed', 'resolvida', 'fechada'].includes((r.status || '').toLowerCase())
-  );
-  
+  // Remover filtros de status redundantes no frontend
+  // Apenas aplicar busca e ordenação sobre o array 'requests' retornado do backend
   const filterRequests = (requests: ITRequest[]) => {
     if (!searchQuery) return requests;
-    
     return requests.filter(
       r => 
         r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.id?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
-  
+
   // Ordena por data de criação decrescente
   const sortByDateDesc = (requests: ITRequest[]) =>
     [...requests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
 
-  const filteredActive = useMemo(() => sortByDateDesc(filterRequests(activeRequests)), [activeRequests, searchQuery]);
-  const filteredResolved = useMemo(() => sortByDateDesc(filterRequests(resolvedRequests)), [resolvedRequests, searchQuery]);
+  // Filtrar no frontend para a aba 'Rejeitadas'
+  const filteredRequests = useMemo(() => {
+    let filtered = filterRequests(requests);
+    if (tab === 'rejected') {
+      filtered = filtered.filter(r => r.approvalstatus === 'rejected');
+    }
+    return sortByDateDesc(filtered);
+  }, [requests, searchQuery, tab]);
   
   console.log('Renderizou MyRequestsPage');
   
@@ -125,13 +137,20 @@ const MyRequestsPage: React.FC = () => {
         </div>
       </div>
       
-      <Tabs defaultValue="active">
+      {/* Tabs controlado por estado */}
+      <Tabs value={tab} onValueChange={(value) => setTab(value as 'active' | 'resolved' | 'high_priority' | 'rejected')}>
         <TabsList>
           <TabsTrigger value="active">
-            Ativas ({filterCounts.ativas})
+            Ativas ({tabCounts.active})
+          </TabsTrigger>
+          <TabsTrigger value="high_priority">
+            Alta Prioridade ({tabCounts.high_priority})
           </TabsTrigger>
           <TabsTrigger value="resolved">
-            Resolvidas ({filterCounts.resolvidas})
+            Resolvidas ({tabCounts.resolved})
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            Rejeitadas ({tabCounts.rejected})
           </TabsTrigger>
         </TabsList>
         
@@ -140,7 +159,7 @@ const MyRequestsPage: React.FC = () => {
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
             </div>
-          ) : filteredActive.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <Card className="p-8 text-center">
               <h3 className="font-medium text-lg mb-2">Nenhuma solicitação ativa encontrada</h3>
               <p className="text-muted-foreground mb-4">
@@ -157,7 +176,7 @@ const MyRequestsPage: React.FC = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredActive.map((request) => (
+              {filteredRequests.map((request) => (
                 <RequestCard key={request.id} request={request} />
               ))}
             </div>
@@ -169,7 +188,7 @@ const MyRequestsPage: React.FC = () => {
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
             </div>
-          ) : filteredResolved.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <Card className="p-8 text-center">
               <h3 className="font-medium text-lg mb-2">Nenhuma solicitação resolvida encontrada</h3>
               <p className="text-muted-foreground">
@@ -180,7 +199,53 @@ const MyRequestsPage: React.FC = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredResolved.map((request) => (
+              {filteredRequests.map((request) => (
+                <RequestCard key={request.id} request={request} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="high_priority" className="mt-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            </div>
+          ) : filteredRequests.length === 0 ? (
+            <Card className="p-8 text-center">
+              <h3 className="font-medium text-lg mb-2">Nenhuma solicitação de alta prioridade encontrada</h3>
+              <p className="text-muted-foreground">
+                {searchQuery 
+                  ? "Nenhuma solicitação de alta prioridade corresponde à sua busca" 
+                  : "Você não possui solicitações de alta prioridade"}
+              </p>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredRequests.map((request) => (
+                <RequestCard key={request.id} request={request} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rejected" className="mt-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            </div>
+          ) : filteredRequests.length === 0 ? (
+            <Card className="p-8 text-center">
+              <h3 className="font-medium text-lg mb-2">Nenhuma solicitação rejeitada encontrada</h3>
+              <p className="text-muted-foreground">
+                {searchQuery 
+                  ? "Nenhuma solicitação rejeitada corresponde à sua busca" 
+                  : "Você ainda não possui solicitações rejeitadas"}
+              </p>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredRequests.map((request) => (
                 <RequestCard key={request.id} request={request} />
               ))}
             </div>

@@ -60,6 +60,7 @@ export function ReportFilters({ filters, onFilterChange }: FiltersProps) {
               <SelectItem value="all">Todas as solicitações</SelectItem>
               <SelectItem value="pending">Solicitações pendentes</SelectItem>
               <SelectItem value="resolvida">Resolvidas</SelectItem>
+              <SelectItem value="rejeitada">Rejeitadas</SelectItem>
             </SelectContent>
           </Select>
         </div>

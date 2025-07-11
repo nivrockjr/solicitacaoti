@@ -1,14 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { User } from '../types';
-import { getCurrentUser, login as apiLogin, logout as apiLogout } from '../services/apiService';
 import { supabase } from '../lib/supabase';
+import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (email: string, senha: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,66 +16,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-    const initAuth = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        if (isMounted) setUser(currentUser);
-        console.log('Usuário autenticado:', currentUser);
-      } catch (error) {
-        if (isMounted) setUser(null);
-        console.warn('Nenhum usuário autenticado:', error);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    initAuth();
-    // Listener para manter usuário sincronizado com o Supabase Auth
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-        console.log('Usuário autenticado (listener):', currentUser);
-      } else {
-        setUser(null);
-        console.log('Usuário deslogado (listener)');
-      }
-    });
-    return () => {
-      isMounted = false;
-      listener?.subscription?.unsubscribe();
-    };
+    // Recupera usuário do localStorage ao iniciar
+    const saved = localStorage.getItem('usuarioLogado');
+    if (saved) {
+      const user = JSON.parse(saved);
+      user.email = user.email?.toLowerCase(); // Garante minúsculo
+      setUser(user);
+    }
+    setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, senha: string) => {
     setIsLoading(true);
     try {
-      const user = await apiLogin(email, password);
-      setUser(user);
-    } catch (error) {
-      setUser(null);
-      throw error;
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('email', email.toLowerCase()) // Busca sempre em minúsculo
+        .single();
+      if (error || !data) throw new Error('Usuário não encontrado');
+      // Aqui você pode usar hash de senha se desejar
+      if (data.senha !== senha) throw new Error('Senha incorreta');
+      data.email = data.email?.toLowerCase(); // Garante minúsculo
+      setUser(data);
+      localStorage.setItem('usuarioLogado', JSON.stringify(data));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async () => {
-    setIsLoading(true);
-    try {
-      await apiLogout();
-      setUser(null);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('usuarioLogado');
   };
-
-  const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

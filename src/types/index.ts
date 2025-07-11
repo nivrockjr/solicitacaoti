@@ -64,13 +64,12 @@ export interface Holiday {
 
 export interface Notification {
   id: string;
-  userid: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  type: 'request_created' | 'request_assigned' | 'deadline_changed' | 'request_resolved' | 'request_reminder' | 'comentario';
-  requestId?: string;
+  para: string; // id do usuário destinatário
+  mensagem: string;
+  lida: boolean;
+  criada_em: string;
+  tipo: string;
+  request_id?: string;
 }
 
 // Tipos para o formulário de Ajuste de Estoque

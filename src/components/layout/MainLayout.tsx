@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const MainLayout: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading, user } = useAuth();
   const isMobile = useIsMobile();
   
   // Show loading state
@@ -19,7 +19,7 @@ const MainLayout: React.FC = () => {
   }
   
   // Redirect to login if not authenticated
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/auth/login" />;
   }
   

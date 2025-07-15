@@ -36,6 +36,9 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
         return 'bg-slate-500';
       case 'rejeitada':
         return 'bg-destructive'; // exatamente igual ao botão 'Excluir Solicitação'
+      case 'reaberta':
+      case 'reopened':
+        return 'bg-slate-500'; // cinza igual ao badge
       default:
         return 'bg-slate-500';
     }
@@ -96,6 +99,9 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
         return <Badge variant="outline">FECHADA</Badge>;
       case 'rejeitada':
         return <Badge className="bg-destructive text-destructive-foreground">REJEITADA</Badge>;
+      case 'reaberta':
+      case 'reopened':
+        return <Badge className="bg-slate-500 text-white">REABERTA</Badge>;
       default:
         return <Badge variant="outline">{status?.toUpperCase()}</Badge>;
     }
@@ -136,7 +142,11 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>Vence em {format(new Date(request.deadlineat!), 'dd/MM/yyyy, HH:mm')}</span>
+            {request.approvalstatus === 'rejected' ? (
+              <span>N/A</span>
+            ) : (
+              <span>Vence em {format(new Date(request.deadlineat!), 'dd/MM/yyyy, HH:mm')}</span>
+            )}
           </div>
         </div>
       </CardContent>

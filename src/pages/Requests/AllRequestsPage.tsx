@@ -33,13 +33,15 @@ const AllRequestsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   // Refatorar os filtros de abas
-  const [tab, setTab] = useState<'all' | 'high_priority' | 'in_progress' | 'resolved' | 'rejected'>('all');
+  const [tab, setTab] = useState<'novas' | 'high_priority' | 'sistema_eugenio' | 'in_progress' | 'resolved' | 'rejected' | 'all'>('novas');
   const [tabCounts, setTabCounts] = useState({
-    all: 0,
+    novas: 0,
     high_priority: 0,
+    sistema_eugenio: 0,
     in_progress: 0,
     resolved: 0,
-    rejected: 0
+    rejected: 0,
+    all: 0
   });
   
   const { logout } = useAuth();
@@ -58,12 +60,14 @@ const AllRequestsPage: React.FC = () => {
     // Buscar contadores de cada filtro ao carregar a página
     const fetchTabCounts = async () => {
       const { data: allRequests = [] } = await getRequests(undefined, 1, 1000, undefined, logout);
-      const all = allRequests.filter(r => r.approvalstatus !== 'rejected').length;
-      const high_priority = allRequests.filter(r => (['alta', 'high'].includes((r.priority || '').toLowerCase())) && r.status !== 'resolved' && r.approvalstatus !== 'rejected').length;
-      const in_progress = allRequests.filter(r => ['in_progress', 'em_andamento', 'assigned', 'atribuida'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
-      const resolved = allRequests.filter(r => ['resolved'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
+      const novas = allRequests.filter(r => (['nova', 'new'].includes((r.status || '').toLowerCase())) && (['baixa', 'media', 'low', 'medium'].includes((r.priority || '').toLowerCase())) && r.approvalstatus !== 'rejected').length;
+      const high_priority = allRequests.filter(r => (['alta', 'high'].includes((r.priority || '').toLowerCase())) && !['resolvida', 'resolved'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
+      const sistema_eugenio = allRequests.filter(r => r.assignedto === '5eb6f9f4-e0f0-4e4a-b7a6-32b2f3d23f45').filter(r => !['resolvida', 'resolved'].includes((r.status || '').toLowerCase())).length;
+      const in_progress = allRequests.filter(r => ['in_progress', 'em_andamento', 'assigned', 'atribuida', 'reaberta'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
+      const resolved = allRequests.filter(r => ['resolvida', 'resolved'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected').length;
       const rejected = allRequests.filter(r => r.approvalstatus === 'rejected').length;
-      setTabCounts({ all, high_priority, in_progress, resolved, rejected });
+      const all = allRequests.length;
+      setTabCounts({ novas, high_priority, sistema_eugenio, in_progress, resolved, rejected, all });
     };
     fetchTabCounts();
   }, [logout]);
@@ -72,49 +76,43 @@ const AllRequestsPage: React.FC = () => {
     const fetchRequests = async () => {
       setLoading(true);
       setError(null);
-      let statusFilter: string | string[] | undefined = undefined;
-      let priorityFilter: string[] | undefined = undefined;
-      let notStatus: string | undefined = undefined;
-      let approvalStatus: string | undefined = undefined;
-      if (tab === 'high_priority') {
-        priorityFilter = ['alta', 'high'];
-        notStatus = 'resolved';
-      } else if (tab === 'in_progress') {
-        statusFilter = ['in_progress', 'em_andamento', 'assigned', 'atribuida'];
-      } else if (tab === 'resolved') {
-        statusFilter = ['resolved'];
-      } else if (tab === 'rejected') {
-        approvalStatus = 'rejected';
-      }
-      const { data: fetchedRequests, count } = await getRequests(
+      // Buscar todas as solicitações (sem paginação)
+      const { data: allRequests = [] } = await getRequests(
         undefined,
-        page,
-        pageSize,
-        statusFilter,
-        logout,
-        { search: searchQuery, priority: priorityFilter, type: filters.types, notStatus, approvalStatus }
+        1,
+        1000,
+        undefined,
+        logout
       );
-      setRequests(fetchedRequests);
-      setTotalCount(count || 0);
+      setRequests(allRequests);
+      setTotalCount(allRequests.length);
       setLoading(false);
     };
     fetchRequests();
-  }, [page, tab, searchQuery, filters]);
-  
-  const normalizeStatus = (status) => (status || '').toLowerCase();
-  const normalizePriority = (priority) => (priority || '').toLowerCase();
-  
-  const filteredRequests = useMemo(() => {
+  }, [tab, searchQuery, filters]);
+
+  // Paginação, filtragem e ordenação no frontend
+  const filterRequests = (requests: ITRequest[]) => {
     let filtered = [...requests];
-    // Remover rejeitadas do filtro 'Todas'
-    if (tab === 'all') {
-      filtered = filtered.filter(r => r.approvalstatus !== 'rejected');
-    }
-    // Garantir que só rejeitadas aparecem na aba 'Rejeitadas'
-    if (tab === 'rejected') {
+    if (tab === 'novas') {
+      // Todas com status NOVA, independente da prioridade
+      filtered = filtered.filter(r => ['nova', 'new'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
+    } else if (tab === 'high_priority') {
+      // Todas com prioridade alta, exceto resolvidas
+      filtered = filtered.filter(r => ['alta', 'high'].includes((r.priority || '').toLowerCase()) && !['resolvida', 'resolved'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
+    } else if (tab === 'sistema_eugenio') {
+      filtered = filtered.filter(r => r.assignedto === '5eb6f9f4-e0f0-4e4a-b7a6-32b2f3d23f45').filter(r => !['resolvida', 'resolved'].includes((r.status || '').toLowerCase()));
+    } else if (tab === 'in_progress') {
+      // Em andamento: inclui reaberta
+      filtered = filtered.filter(r => ['in_progress', 'em_andamento', 'assigned', 'atribuida', 'reaberta'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
+    } else if (tab === 'resolved') {
+      filtered = filtered.filter(r => ['resolvida', 'resolved'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
+    } else if (tab === 'rejected') {
       filtered = filtered.filter(r => r.approvalstatus === 'rejected');
     }
-    // Apply search filter
+    // Ordenar por data de criação decrescente em todos os filtros
+    filtered = filtered.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+    // Filtros extras
     if (searchQuery) {
       filtered = filtered.filter(
         r =>
@@ -124,21 +122,26 @@ const AllRequestsPage: React.FC = () => {
           r.requesteremail?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    // Apply type filter
     if (filters.types.length > 0) {
       filtered = filtered.filter(r => filters.types.includes(r.type));
     }
-    // Apply priority filter
     if (filters.priorities.length > 0) {
       filtered = filtered.filter(r => filters.priorities.includes(r.priority));
     }
-    // Ordenar por data de criação decrescente (mais recente primeiro)
-    return filtered.sort((a, b) => {
-      const dateA = new Date(a.createdat).getTime();
-      const dateB = new Date(b.createdat).getTime();
-      return dateB - dateA;
-    });
-  }, [requests, searchQuery, filters, tab]);
+    return filtered;
+  };
+
+  // Paginação frontend
+  const paginatedRequests = useMemo(() => {
+    const filtered = filterRequests(requests);
+    setTotalCount(filtered.length);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize;
+    return filtered.slice(from, to);
+  }, [requests, tab, searchQuery, filters, page]);
+  
+  const normalizeStatus = (status) => (status || '').toLowerCase();
+  const normalizePriority = (priority) => (priority || '').toLowerCase();
   
   const handleTypeFilterChange = (type: RequestType) => {
     setFilters(prev => {
@@ -320,13 +323,16 @@ const AllRequestsPage: React.FC = () => {
         </div>
       </div>
       
-      <Tabs value={tab} onValueChange={value => setTab(value as any)} defaultValue="all">
+      <Tabs value={tab} onValueChange={(value) => { setTab(value as any); setPage(1); }} defaultValue="novas">
         <TabsList>
-          <TabsTrigger value="all">
-            Todas ({tabCounts.all})
+          <TabsTrigger value="novas">
+            Novas ({tabCounts.novas})
           </TabsTrigger>
           <TabsTrigger value="high_priority">
             Alta Prioridade ({tabCounts.high_priority})
+          </TabsTrigger>
+          <TabsTrigger value="sistema_eugenio">
+            Sistema Eugênio ({tabCounts.sistema_eugenio})
           </TabsTrigger>
           <TabsTrigger value="in_progress">
             Em Andamento ({tabCounts.in_progress})
@@ -337,15 +343,18 @@ const AllRequestsPage: React.FC = () => {
           <TabsTrigger value="rejected">
             Rejeitadas ({tabCounts.rejected})
           </TabsTrigger>
+          <TabsTrigger value="all">
+            Todas ({tabCounts.all})
+          </TabsTrigger>
         </TabsList>
         
-        {['all', 'high_priority', 'in_progress', 'resolved', 'rejected'].map((status) => (
+        {['novas', 'high_priority', 'sistema_eugenio', 'in_progress', 'resolved', 'rejected', 'all'].map((status) => (
           <TabsContent key={status} value={status} className="mt-4">
             {loading ? (
               <div className="flex items-center justify-center h-40">
                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
               </div>
-            ) : filteredRequests.length === 0 ? (
+            ) : paginatedRequests.length === 0 ? (
               <Card className="p-8 text-center">
                 <h3 className="font-medium text-lg mb-2">Nenhuma solicitação encontrada</h3>
                 <p className="text-muted-foreground mb-4">
@@ -356,7 +365,7 @@ const AllRequestsPage: React.FC = () => {
               </Card>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredRequests.map((request) => (
+                {paginatedRequests.map((request) => (
                   <RequestCard key={request.id} request={request} />
                 ))}
               </div>

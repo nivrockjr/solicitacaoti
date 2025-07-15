@@ -33,10 +33,11 @@ const DashboardPage: React.FC = () => {
           undefined,
           undefined
         );
-        // Filtrar rejeitadas
+        // Salvar todas as solicitações (inclusive rejeitadas) para o total
+        setTotalRequests(fetchedRequests.length);
+        // Filtrar rejeitadas para os demais cards
         const filtered = fetchedRequests.filter(r => r.approvalstatus !== 'rejected');
         setRequests(filtered.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime()));
-        setTotalRequests(filtered.length);
       } catch (error) {
         console.error('Error fetching requests:', error);
       } finally {

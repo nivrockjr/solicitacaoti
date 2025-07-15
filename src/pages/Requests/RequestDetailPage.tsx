@@ -572,6 +572,9 @@ const RequestDetailPage: React.FC = () => {
         return <Badge variant="outline">FECHADA</Badge>;
       case 'rejeitada':
         return <Badge variant="destructive">REJEITADA</Badge>;
+      case 'reaberta':
+      case 'reopened':
+        return <Badge className="bg-slate-500 text-white">REABERTA</Badge>;
       default:
         return <Badge variant="outline">{status?.toUpperCase()}</Badge>;
     }
@@ -590,8 +593,8 @@ const RequestDetailPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
         </div>
         <div className="flex gap-2">
-          {/* Botão de exclusão para admin e solicitante (por email) */}
-          {(user?.role === 'admin' || user?.email === request.requesteremail) && (
+          {/* Botão de exclusão: agora admin pode excluir qualquer solicitação */}
+          {user?.role === 'admin' && (
             <Button onClick={handleDeleteRequest} variant="destructive" disabled={submitting}>
               Excluir Solicitação
             </Button>

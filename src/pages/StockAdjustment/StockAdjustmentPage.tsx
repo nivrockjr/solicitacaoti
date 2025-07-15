@@ -100,10 +100,10 @@ const StockAdjustmentPage: React.FC = () => {
     try {
       // Criar uma solicitação de ajuste de estoque
       const requestData = {
-        requesterId: user?.id || '',
-        requesterName: data.name,
-        requesterEmail: user?.email || '',
-        title: `Ajuste de Estoque - ${data.name}`,
+        requesterid: user?.id || '', // Corrigido para minúsculo
+        requestername: data.name,
+        requesteremail: user?.email || '',
+        title: `Ajuste de Estoque: ${data.productName}`,
         description: createAdjustmentDescription(data),
         type: 'ajuste_estoque' as const,
         priority: 'alta' as const,
@@ -191,13 +191,13 @@ const StockAdjustmentPage: React.FC = () => {
     ).join('\n');
 
     const message = `
-Genius PQVIRK - Solicitação de Ajuste de Estoque
+*Genius PQVIRK - Solicitação de Ajuste de Estoque*
 
 Nome: ${formData.name}
 Setor: ${formData.department}
 Data: ${format(formData.requestDate, 'dd/MM/yyyy')}
 
-Detalhes do Ajuste
+*Detalhes do Ajuste*
 Tipo: ${formData.adjustmentType}
 Categoria: ${formData.category}
 Nome do Produto: ${formData.productName}
@@ -228,9 +228,15 @@ Motivo: ${formData.reason}
   };
 
   const saveAndSendToWhatsApp = async () => {
-    const isFormValid = validateFormBeforeWhatsApp();
-    if (!isFormValid) return;
-
+    const isFormValid = await form.trigger();
+    if (!isFormValid) {
+      toast({
+        title: "Formulário incompleto",
+        description: "Por favor, preencha todos os campos obrigatórios antes de enviar.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Check if lots are filled out
     if (lots.some(lot => !lot.lotNumber)) {
       toast({
@@ -240,7 +246,14 @@ Motivo: ${formData.reason}
       });
       return;
     }
-
+    if (lots.some(lot => !lot.weight || lot.weight <= 0)) {
+      toast({
+        title: "Peso obrigatório",
+        description: "Por favor, preencha o peso (> 0) para todos os lotes",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await form.handleSubmit(onSubmit)();
       sendToWhatsApp();
@@ -250,264 +263,167 @@ Motivo: ${formData.reason}
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Ajuste de Estoque</h1>
-      
+    <div className="flex flex-col items-center w-full">
+      <h1 className="text-2xl font-bold mb-6 mt-2">Ajuste de Estoque</h1>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form className="w-full max-w-2xl" onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="grid grid-cols-2 gap-3">
             {/* Nome */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">
-                    Nome <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite seu nome" readOnly {...field} className="bg-muted" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Departamento */}
-            <FormField
-              control={form.control}
-              name="department"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">Departamento</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite seu setor" readOnly {...field} className="bg-muted" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Tipo de Ajuste */}
-            <FormField
-              control={form.control}
-              name="adjustmentType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">
-                    Tipo de Ajuste <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="positivo">Positivo</SelectItem>
-                      <SelectItem value="negativo">Negativo</SelectItem>
-                      <SelectItem value="relacionamento">Relacionamento</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Categoria */}
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">
-                    Categoria <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="composicao">Composição</SelectItem>
-                      <SelectItem value="produto_acabado">Produto Acabado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Nome do Produto */}
-            <FormField
-              control={form.control}
-              name="productName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">Nome do Produto</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite o nome do produto" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Custo */}
-            <FormField
-              control={form.control}
-              name="cost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base">Custo (R$)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      step="0.01" 
-                      placeholder="0" 
-                      {...field} 
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          
-          {/* Lotes e Pesos */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">Lotes e Pesos</h3>
-              <Button 
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addLot}
-                className="flex items-center gap-1"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar Lote
-              </Button>
-            </div>
-            
-            {lots.map((lot, index) => (
-              <div key={lot.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-md">
-                <div>
-                  <FormLabel htmlFor={`lot-${lot.id}`} className="text-base">
-                    Número do Lote <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <Input
-                    id={`lot-${lot.id}`}
-                    placeholder="Digite o número do lote"
-                    value={lot.lotNumber}
-                    onChange={(e) => updateLot(lot.id, 'lotNumber', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <FormLabel htmlFor={`weight-${lot.id}`} className="text-base">Peso (kg)</FormLabel>
-                  <Input
-                    id={`weight-${lot.id}`}
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    placeholder="0"
-                    value={lot.weight.toString()}
-                    onChange={(e) => updateLot(lot.id, 'weight', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex items-end">
-                  {lots.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeLot(lot.id)}
-                      className="mt-auto"
-                    >
-                      Remover
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Motivo do Ajuste */}
-          <FormField
-            control={form.control}
-            name="reason"
-            render={({ field }) => (
+            <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-base">Motivo do Ajuste</FormLabel>
+                <FormLabel className="text-sm">Nome <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
-                  <Textarea placeholder="Descreva o motivo do ajuste" rows={4} {...field} />
+                  <Input {...field} className="h-10" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
-            )}
-          />
-          
-          {/* Data da Solicitação */}
-          <FormField
-            control={form.control}
-            name="requestDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel className="text-base">Data da Solicitação</FormLabel>
+            )} />
+            {/* Setor */}
+            <FormField control={form.control} name="department" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Setor <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                  <Input {...field} className="h-10" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {/* Tipo de Ajuste */}
+            <FormField control={form.control} name="adjustmentType" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Tipo de Ajuste <span className="text-red-500">*</span></FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="positivo">Positivo</SelectItem>
+                    <SelectItem value="negativo">Negativo</SelectItem>
+                    <SelectItem value="relacionamento">Relacionamento</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {/* Categoria */}
+            <FormField control={form.control} name="category" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Categoria <span className="text-red-500">*</span></FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="composicao">Composição</SelectItem>
+                    <SelectItem value="produto_acabado">Matéria-prima</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {/* Nome do Produto */}
+            <FormField control={form.control} name="productName" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Nome do Produto</FormLabel>
+                <FormControl>
+                  <Input {...field} className="h-10" placeholder="Digite o nome do produto" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {/* Custo */}
+            <FormField control={form.control} name="cost" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Custo (R$)</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" step="0.01" placeholder="0.00" value={field.value ?? ''} onChange={field.onChange} className="h-10" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {/* Campos de Lotes dinâmicos */}
+            {lots.map((lot, index) => (
+              <React.Fragment key={lot.id}>
+                {/* Número do Lote */}
+                <div className="col-span-1">
+                  <FormLabel className="text-sm">Número do Lote</FormLabel>
+                  <Input
+                    type="text"
+                    placeholder="Digite o número do lote"
+                    value={lot.lotNumber}
+                    onChange={e => updateLot(lot.id, 'lotNumber', e.target.value)}
+                    className="h-10 w-full"
+                  />
+                </div>
+                {/* Peso (kg) + Botão de adicionar lote */}
+                <div className="col-span-1 flex gap-2 items-end">
+                  <div className="flex-1">
+                    <FormLabel className="text-sm">Peso (kg)</FormLabel>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      placeholder="Digite o peso"
+                      value={lot.weight}
+                      onChange={e => updateLot(lot.id, 'weight', e.target.value)}
+                      className="h-10 w-full"
+                    />
+                  </div>
+                  {index === lots.length - 1 && (
+                    <Button type="button" size="icon" variant="outline" onClick={addLot} title="Adicionar Lote" className="mb-0 mt-6">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {lots.length > 1 && (
+                    <Button type="button" size="icon" variant="destructive" onClick={() => removeLot(lot.id)} title="Remover Lote" className="mb-0 mt-6">
+                      ×
+                    </Button>
+                  )}
+                </div>
+              </React.Fragment>
+            ))}
+            {/* Motivo do Ajuste (colSpan=2) */}
+            <FormField control={form.control} name="reason" render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel className="text-sm">Motivo do Ajuste</FormLabel>
+                <FormControl>
+                  <Textarea {...field} className="min-h-[40px] h-20" placeholder="Descreva o motivo do ajuste" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {/* Data da Solicitação (colSpan=2) */}
+            <FormField control={form.control} name="requestDate" render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel className="text-sm">Data da Solicitação</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Selecione uma data</span>
-                        )}
-                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
+                      <Input
+                        type="text"
+                        readOnly
+                        value={field.value ? format(field.value, "dd/MM/yyyy") : ''}
+                        className="h-10 cursor-pointer"
+                        placeholder="Selecione a data"
+                        onClick={e => e.preventDefault()}
+                      />
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <CalendarComponent mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                   </PopoverContent>
                 </Popover>
                 <FormMessage />
               </FormItem>
-            )}
-          />
-          
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/dashboard')}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="button" 
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-              onClick={saveAndSendToWhatsApp}
-              disabled={isSubmitting}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Salvar e enviar para o WhatsApp
-            </Button>
+            )} />
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button type="button" variant="outline" className="h-10" onClick={() => navigate(-1)}>Cancelar</Button>
+            <Button type="submit" className="h-10">Salvar e enviar para o WhatsApp</Button>
           </div>
         </form>
       </Form>

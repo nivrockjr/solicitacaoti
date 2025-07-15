@@ -49,37 +49,26 @@ const MyRequestsPage: React.FC = () => {
       if (!user) return;
       setLoading(true);
       setError(null);
-      let statusFilter: string | string[] | undefined = undefined;
-      let priorityFilter: string[] | undefined = undefined;
-      let notStatus: string | undefined = undefined;
-      if (tab === 'active') {
-        statusFilter = ['nova', 'new', 'atribuida', 'assigned', 'em_andamento', 'in_progress'];
-      } else if (tab === 'resolved') {
-        statusFilter = ['resolved'];
-      } else if (tab === 'high_priority') {
-        priorityFilter = ['alta', 'high'];
-        notStatus = 'resolved';
-      }
-      const { data: fetchedRequests, count } = await getRequests(
+      // Buscar todas as solicitações do usuário (sem paginação)
+      const { data: allRequests = [] } = await getRequests(
         user.email,
-        page,
-        pageSize,
-        statusFilter,
-        logout,
-        { search: searchQuery, priority: priorityFilter, notStatus }
+        1,
+        1000,
+        undefined,
+        logout
       );
-      setRequests(fetchedRequests);
-      setTotalCount(count || 0);
+      setRequests(allRequests);
+      setTotalCount(allRequests.length);
       setLoading(false);
     };
     fetchRequests();
-  }, [user, tab, page, searchQuery]);
+  }, [user, tab, searchQuery]);
 
   // useEffect para contadores (remover approvalStatus do fetch, contar rejeitadas no frontend)
   useEffect(() => {
     const fetchTabCounts = async () => {
       const { data: allRequests = [] } = await getRequests(user?.email, 1, 1000, undefined, logout);
-      const active = allRequests.filter(r => ['nova', 'new', 'atribuida', 'assigned', 'em_andamento', 'in_progress'].includes(r.status)).length;
+      const active = allRequests.filter(r => ['nova', 'new', 'atribuida', 'assigned', 'em_andamento', 'in_progress', 'reaberta'].includes(r.status)).length;
       const resolved = allRequests.filter(r => r.status === 'resolved').length;
       const high_priority = allRequests.filter(r => (['alta', 'high'].includes(r.priority)) && r.status !== 'resolved').length;
       const rejected = allRequests.filter(r => r.approvalstatus === 'rejected').length;
@@ -88,29 +77,38 @@ const MyRequestsPage: React.FC = () => {
     if (user) fetchTabCounts();
   }, [user, logout]);
   
-  // Remover filtros de status redundantes no frontend
-  // Apenas aplicar busca e ordenação sobre o array 'requests' retornado do backend
+  // Paginação, filtragem e ordenação no frontend
   const filterRequests = (requests: ITRequest[]) => {
-    if (!searchQuery) return requests;
-    return requests.filter(
-      r => 
-        r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.id?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  };
-
-  // Ordena por data de criação decrescente
-  const sortByDateDesc = (requests: ITRequest[]) =>
-    [...requests].sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
-
-  // Filtrar no frontend para a aba 'Rejeitadas'
-  const filteredRequests = useMemo(() => {
-    let filtered = filterRequests(requests);
-    if (tab === 'rejected') {
+    let filtered = [...requests];
+    if (tab === 'active') {
+      filtered = filtered.filter(r => ['nova', 'new', 'atribuida', 'assigned', 'em_andamento', 'in_progress', 'reaberta'].includes(r.status));
+    } else if (tab === 'resolved') {
+      filtered = filtered.filter(r => r.status === 'resolved');
+    } else if (tab === 'high_priority') {
+      filtered = filtered.filter(r => (['alta', 'high'].includes(r.priority)) && r.status !== 'resolved');
+    } else if (tab === 'rejected') {
       filtered = filtered.filter(r => r.approvalstatus === 'rejected');
     }
-    return sortByDateDesc(filtered);
-  }, [requests, searchQuery, tab]);
+    if (searchQuery) {
+      filtered = filtered.filter(
+        r =>
+          r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.id?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    // Ordenar por data de criação decrescente em todos os filtros
+    filtered = filtered.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+    return filtered;
+  };
+
+  // Paginação frontend
+  const paginatedRequests = useMemo(() => {
+    const filtered = filterRequests(requests);
+    setTotalCount(filtered.length);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize;
+    return filtered.slice(from, to);
+  }, [requests, tab, searchQuery, page]);
   
   console.log('Renderizou MyRequestsPage');
   
@@ -138,10 +136,10 @@ const MyRequestsPage: React.FC = () => {
       </div>
       
       {/* Tabs controlado por estado */}
-      <Tabs value={tab} onValueChange={(value) => setTab(value as 'active' | 'resolved' | 'high_priority' | 'rejected')}>
+      <Tabs value={tab} onValueChange={(value) => { setTab(value as any); setPage(1); }}>
         <TabsList>
           <TabsTrigger value="active">
-            Ativas ({tabCounts.active})
+            {user?.role === 'admin' ? 'Ativas' : 'Pendentes'} ({tabCounts.active})
           </TabsTrigger>
           <TabsTrigger value="high_priority">
             Alta Prioridade ({tabCounts.high_priority})
@@ -159,7 +157,7 @@ const MyRequestsPage: React.FC = () => {
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : paginatedRequests.length === 0 ? (
             <Card className="p-8 text-center">
               <h3 className="font-medium text-lg mb-2">Nenhuma solicitação ativa encontrada</h3>
               <p className="text-muted-foreground mb-4">
@@ -176,7 +174,7 @@ const MyRequestsPage: React.FC = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredRequests.map((request) => (
+              {paginatedRequests.map((request) => (
                 <RequestCard key={request.id} request={request} />
               ))}
             </div>
@@ -188,7 +186,7 @@ const MyRequestsPage: React.FC = () => {
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : paginatedRequests.length === 0 ? (
             <Card className="p-8 text-center">
               <h3 className="font-medium text-lg mb-2">Nenhuma solicitação resolvida encontrada</h3>
               <p className="text-muted-foreground">
@@ -199,7 +197,7 @@ const MyRequestsPage: React.FC = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredRequests.map((request) => (
+              {paginatedRequests.map((request) => (
                 <RequestCard key={request.id} request={request} />
               ))}
             </div>
@@ -211,7 +209,7 @@ const MyRequestsPage: React.FC = () => {
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : paginatedRequests.length === 0 ? (
             <Card className="p-8 text-center">
               <h3 className="font-medium text-lg mb-2">Nenhuma solicitação de alta prioridade encontrada</h3>
               <p className="text-muted-foreground">
@@ -222,7 +220,7 @@ const MyRequestsPage: React.FC = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredRequests.map((request) => (
+              {paginatedRequests.map((request) => (
                 <RequestCard key={request.id} request={request} />
               ))}
             </div>
@@ -234,7 +232,7 @@ const MyRequestsPage: React.FC = () => {
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : paginatedRequests.length === 0 ? (
             <Card className="p-8 text-center">
               <h3 className="font-medium text-lg mb-2">Nenhuma solicitação rejeitada encontrada</h3>
               <p className="text-muted-foreground">
@@ -245,7 +243,7 @@ const MyRequestsPage: React.FC = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredRequests.map((request) => (
+              {paginatedRequests.map((request) => (
                 <RequestCard key={request.id} request={request} />
               ))}
             </div>

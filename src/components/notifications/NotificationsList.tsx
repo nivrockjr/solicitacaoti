@@ -45,17 +45,18 @@ const NotificationsList: React.FC = () => {
               <li key={notification.id}>
                 <Button
                   variant="ghost"
-                  className={`w-full text-left p-4 h-auto justify-start border-b rounded-none ${!notification.lida ? 'bg-muted/40' : ''}`}
+                  className={`w-full text-left p-4 h-auto justify-start border-b rounded-none transition-all duration-150
+                    ${!notification.lida ? 'bg-primary/10 border-l-4 border-primary text-foreground font-semibold shadow-sm' : ''}`}
                   onClick={() => handleClick(notification)}
                 >
                   <div className="space-y-1 w-full">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{traduzirTitulo(notification.tipo)}</p>
+                      <p className={`font-medium text-sm ${!notification.lida ? 'text-primary' : ''}`}>{traduzirTitulo(notification.tipo)}</p>
                       <time className="text-xs text-muted-foreground">
                         {format(new Date(notification.criada_em), 'dd/MM, HH:mm')}
                       </time>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{notification.mensagem}</p>
+                    <p className={`text-sm line-clamp-2 ${!notification.lida ? 'text-foreground' : 'text-muted-foreground'}`}>{notification.mensagem}</p>
                   </div>
                 </Button>
               </li>

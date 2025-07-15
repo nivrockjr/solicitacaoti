@@ -95,6 +95,7 @@ const RequestForm: React.FC = () => {
       }
       // Chama a função RPC para criar a solicitação com ID customizado
       const { data, error } = await window.supabase.rpc('criar_solicitacao_customizada', {
+        p_requesterid: user.id || '', // Adicionado para compatibilidade com a função do Supabase
         p_requestername: user.name,
         p_requesteremail: user.email,
         p_title: values.description.substring(0, 100),
@@ -193,21 +194,9 @@ const RequestForm: React.FC = () => {
                           </FormLabel>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="ajuste_estoque" id="ajuste_estoque" />
-                          <FormLabel htmlFor="ajuste_estoque" className="font-normal cursor-pointer">
-                            Ajuste de Estoque (5 dias)
-                          </FormLabel>
-                        </div>
-                        <div className="flex items-center space-x-2">
                           <RadioGroupItem value="solicitacao_equipamento" id="solicitacao_equipamento" />
                           <FormLabel htmlFor="solicitacao_equipamento" className="font-normal cursor-pointer">
                             Solicitação de Equipamentos (10 dias)
-                          </FormLabel>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="manutencao_preventiva" id="manutencao_preventiva" />
-                          <FormLabel htmlFor="manutencao_preventiva" className="font-normal cursor-pointer">
-                            Manutenção Preventiva (10 dias)
                           </FormLabel>
                         </div>
                       </RadioGroup>

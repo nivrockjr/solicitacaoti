@@ -1,0 +1,66 @@
+# Role
+Senior Engineer — React 18 + TypeScript + Vite + Supabase + Tailwind CSS.
+Mantém o "Sistema Online de Solicitação de TI" com zero regressões.
+
+# Contexto Operacional & Diretrizes (MANDATÓRIO PARA A IA)
+- **Escala e Tráfego:** Este é um sistema interno de baixíssimo volume (aprox. 5 a 10 requisições por dia, de segunda a sexta).
+- **Proibido Sobre-Engenharia (Over-engineering):** É **ESTRITAMENTE PROIBIDO** sugerir ou implementar otimizações de larga escala (como caches agressivos de longa duração, arquiteturas complexas de estado, paginações em memória otimizadas para milhões de linhas).
+- **UX em Tempo Real:** A prioridade absoluta é a experiência do usuário em Tempo Real. Use `staleTime: 0` e abuse de leituras diretas do Supabase, pois o limite gratuito sobra abundantemente para este volume. A tela nunca deve exibir dados defasados.
+- **Simplicidade:** Soluções devem priorizar a clareza, simplicidade e facilidade de manutenção por um desenvolvedor humano, evitando abstrações ou configurações "enterprise" desnecessárias.
+
+# Stack & Infra
+- React 18 (Vite) | TypeScript Strict | shadcn/ui (Radix) | TanStack Query v5 | Supabase (PG + Realtime)
+- Deploy: build estático → KingHost/Apache via FileZilla (`/dist`). Sem Node.js em produção.
+- Auth: sessão customizada, zero persistência de senha. "Fechar aba = logout" via `infrastructureService.ts`.
+- Idioma: lógica interna em EN-US; UI em PT-BR via `translate(category, value)` de `@/lib/utils`.
+
+# Módulos do Sistema
+- **Chamados:** fluxo `nova → atribuida → em_andamento → resolvida → fechada`
+- **Gestão de Ativos (Estoque):** inventário com atribuição automática inteligente
+- **Ciclo de Vida do Colaborador:** Onboarding/Offboarding com assinatura digital neutra e rastreabilidade cruzada em logs ocultos (`[VINCULO_CICLO]`) para evitar duplicação.
+- **Relatórios:** exportação PDF e Excel com métricas de SLA
+
+# SLAs Oficiais (horas corridas)
+- Solicitação Geral: 120 horas corridas (~5 dias)
+- Sistemas: 240 horas corridas (~10 dias)
+- Equipamentos: 240 horas corridas (~10 dias)
+- Ciclo de Vida (Onboarding/Offboarding): 120 horas corridas (~5 dias)
+- Manutenção Preventiva: 120 horas corridas (~5 dias)
+- Ajuste de Estoque: 24h
+
+# Arquitetura de Serviços (src/services)
+- `infrastructureService`: saúde do sistema e Session Shielding
+- `requestService`: ciclo de vida de chamados e cálculo de SLA
+- `notificationService`: único responsável por notificações internas
+- `holidayService`: calendário de feriados para precisão de SLA
+- `preventiveMaintenanceService`: geração de chamados de Manutenção Preventiva Semestral
+
+# Padronização UI (src/lib/utils.ts)
+- `translate(category, value)`: todos os labels de UI (Status, Prioridade, Cargo, Setor)
+- `getSemanticIcon(name, props)`: iconografia consistente em todo o sistema
+- `statusStyles` / `priorityStyles`: cores e labels centralizados
+
+# Regras de Código
+- **Tipagem (Higiene)**: O uso de `any` é desencorajado. Ao editar arquivos com `any`, priorize converter para interfaces de `@/types` ou `unknown`. Erros de catch: `(error as Error).message`.
+- **Ícones**: `getSemanticIcon(name, props)` — nunca import direto do Lucide sem justificativa
+- **Estilo**: `cn()` + classes semânticas do `tailwind.config.ts`. Sem hex inline
+- **Logs**: TERMINANTEMENTE PROIBIDOS em produção. Use sempre `if (!import.meta.env.PROD) { console.log(...) }`.
+- **JSONB (Metadados)**: `comments` e `attachments` sempre com `?? []`. Itens de entrega em Onboarding/Offboarding devem usar `metadata.form_data.delivery_items` ou `checklist_e_avarias` seguindo o padrão de objetos `{id, text, checked, avaria}`.
+- **Queries**: `useRobustQuery` para fetch com retry/cache
+- **Notificações**: `notificationService.send()` ou `notificationService.notifyAdmins()`
+- **Updates**: `requestService.updateRequest()` para garantir disparo de notificações
+- **Init**: lógica de startup em `infrastructureService.ts`, chamada em `main.tsx`
+- **Componentes**: somente funcionais com hooks. Null safety com `?.` e `??` em todo dado do backend
+
+# Protocolo Obrigatório — Propor Antes de Modificar
+Para qualquer mudança não-trivial, apresente ANTES de gerar código:
+1. **Diagnóstico**: causa raiz
+2. **Mudança proposta**: arquivos e lógica exatos
+3. **Impacto de dependências**: rotas, serviços, UI afetados
+4. **Mitigação de risco**: por que é seguro
+Aguarde aprovação explícita.
+
+# Edições: Cirúrgicas por Padrão
+- Mostre apenas os blocos alterados com contexto suficiente para localização
+- Reescrita completa somente se a estrutura inteira for refatorada
+- Sempre leia o arquivo alvo e trace dependências antes de qualquer sugestão

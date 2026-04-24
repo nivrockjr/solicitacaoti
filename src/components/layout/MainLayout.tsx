@@ -1,0 +1,39 @@
+import React from 'react';
+import { Outlet, Navigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import Navbar from './Navbar';
+import Sidebar from './Sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const MainLayout: React.FC = () => {
+  const { isLoading, user } = useAuth();
+  const isMobile = useIsMobile();
+  
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+  
+  // Redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/auth/login" />;
+  }
+  
+  return (
+    <div className="flex min-h-screen bg-background">
+      {!isMobile && <Sidebar />}
+      <div className="flex flex-col w-full">
+        <Navbar />
+        <main className="flex-1 p-4 md:p-6 bg-background">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default MainLayout;

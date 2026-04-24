@@ -1,0 +1,127 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%; /* #F5F5F5 */
+    --foreground: 222.2 84% 4.9%; /* #333333 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%; /* #EF4444 - vermelho padrão Tailwind, igual ao botão excluir */
+    --destructive-foreground: 210 40% 98%; /* texto branco */
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 199 89% 48%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 7% 13%;           /* #202123 - Fundo principal */
+    --foreground: 0 0% 83%;             /* #D3D3D3 - Texto principal */
+    --card: 0 0% 10%;                   /* #1A1A1A - Cards/popovers/sidebar */
+    --card-foreground: 0 0% 83%;        /* #D3D3D3 - Texto principal */
+    --popover: 0 0% 10%;                /* #1A1A1A - Cards/popovers/sidebar */
+    --popover-foreground: 0 0% 83%;     /* #D3D3D3 - Texto principal */
+    --border: 0 0% 18%;                 /* #2E2E2E - Bordas */
+    --input: 0 0% 18%;                  /* #2E2E2E - Bordas */
+    --muted-foreground: 0 0% 69%;       /* #B0B0B0 - Texto secundário */
+    --sidebar-background: 0 0% 10%;     /* #1A1A1A - Sidebar */
+    --sidebar-foreground: 0 0% 83%;     /* #D3D3D3 - Texto principal */
+    --sidebar-accent: 0 0% 83%;         /* #D3D3D3 - Detalhes/accent */
+    --sidebar-accent-foreground: 0 0% 20%; /* #333333 - Texto médio escuro */
+    --sidebar-border: 0 0% 18%;         /* #2E2E2E - Bordas */
+    --sidebar-ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom animations */
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* Correção para autofill do Chrome - mantém transparência */
+@layer base {
+  /* Remove o fundo branco do autofill do Chrome */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+    -webkit-text-fill-color: inherit !important;
+    transition: background-color 5000s ease-in-out 0s;
+    background-color: transparent !important;
+  }
+
+  /* Para modo escuro */
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+    -webkit-text-fill-color: rgb(211, 211, 211) !important; /* #D3D3D3 - cor do texto no modo escuro */
+    transition: background-color 5000s ease-in-out 0s;
+    background-color: transparent !important;
+  }
+
+  /* Para modo claro */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+    -webkit-text-fill-color: rgb(51, 51, 51) !important; /* #333333 - cor do texto no modo claro */
+    transition: background-color 5000s ease-in-out 0s;
+    background-color: transparent !important;
+  }
+}

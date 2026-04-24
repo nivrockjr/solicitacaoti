@@ -5,10 +5,11 @@ Documentação Técnica e Operacional do Sistema - Versão 1.2
 ## 1. Visão Geral
 O **Sistema Online de Solicitação de TI** é uma plataforma centralizada para gestão de chamados, controle de ativos e automação de processos do departamento de Tecnologia da Informação. O sistema foi projetado para garantir eficiência operacional, rastreabilidade total de ativos e conformidade com normas internacionais de qualidade (ISO 9001) e proteção de dados (LGPD).
 
-### 1.1 Contexto Operacional & Escala (Crucial para IAs)
-**⚠️ Atenção Desenvolvedores e Inteligências Artificiais:** 
-Este sistema possui um tráfego de uso **extremamente leve** (média de 5 a 10 solicitações diárias em dias úteis). 
-O Supabase opera com imensa folga neste cenário. Portanto, **NÃO APLIQUE** sobre-engenharia (over-engineering). Caches agressivos (como `staleTime` prolongado) ou paginações complexas em memória são desencorajados. O objetivo arquitetural principal é a **Simplicidade do Código** e a **Experiência em Tempo Real (UX Instantânea)** para os poucos usuários que o utilizam.
+### 1.1 Decisões Arquiteturais e de Design
+A arquitetura do sistema foi desenhada sob a premissa de **Zero-Overengineering** e foco em **Consistência em Tempo Real**. Considerando o escopo corporativo interno e o volume previsível de requisições:
+- Caches agressivos prolongados e estratégias complexas de paginação em memória foram preteridos.
+- A sincronização síncrona com o BaaS (Supabase) é priorizada para garantir latência nula na percepção de estado pelos usuários.
+- Para obter a especificação técnica completa, padrões de código e diretrizes exigidas para contribuição, consulte o documento oficial de governança: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## 2. Primeiros Passos (Getting Started)
 

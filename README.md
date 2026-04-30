@@ -1,141 +1,137 @@
 # Sistema Online de Solicitação de TI
 
-Documentação Técnica e Operacional do Sistema - Versão 1.2
+Sistema interno para abertura, acompanhamento e resolução de chamados de TI.
+Solicitantes registram pedidos pelo formulário; administradores atribuem, resolvem e exportam relatórios.
 
-## 1. Visão Geral
-O **Sistema Online de Solicitação de TI** é uma plataforma centralizada para gestão de chamados, controle de ativos e automação de processos do departamento de Tecnologia da Informação. O sistema foi projetado para garantir eficiência operacional, rastreabilidade total de ativos e conformidade com normas internacionais de qualidade (ISO 9001) e proteção de dados (LGPD).
-
-### 1.1 Decisões Arquiteturais e de Design
-A arquitetura do sistema foi desenhada sob a premissa de **Zero-Overengineering** e foco em **Consistência em Tempo Real**. Considerando o escopo corporativo interno e o volume previsível de requisições:
-- Caches agressivos prolongados e estratégias complexas de paginação em memória foram preteridos.
-- A sincronização síncrona com o BaaS (Supabase) é priorizada para garantir latência nula na percepção de estado pelos usuários.
-- Para obter a especificação técnica completa, padrões de código e diretrizes exigidas para contribuição, consulte o documento oficial de governança: [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## 2. Primeiros Passos (Getting Started)
-
-### 2.1 Pré-requisitos (Apenas para Desenvolvimento)
-*Nota: O Node.js NÃO é necessário no servidor da KingHost, apenas no computador de quem vai programar ou gerar o build.*
-- Node.js (v18+) - Ferramenta necessária para rodar os comandos de desenvolvimento e construção (build).
-- npm ou bun (recomendado) - Gerenciadores de pacotes.
-- Conta no Supabase (Banco de Dados e Auth).
-
-### 2.2 Instalação e Execução
-1. Clone o repositório.
-2. Instale as dependências:
-   ```bash
-   npm install
-   ```
-3. Inicie o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
-4. Gere o build de produção:
-   ```bash
-   npm run build
-   ```
-
-### 2.3 Variáveis de Ambiente (.env)
-Crie um arquivo `.env` na raiz do projeto com as seguintes chaves:
-```env
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-chave-anon-publica
-```
-
-## 3. Stack Técnica
-O sistema utiliza tecnologias modernas para garantir performance, segurança e escalabilidade:
-
-- **Frontend:** React 18 (Vite) com TypeScript. *(Strict Mode em saneamento progressivo — ver `CONTRIBUTING.md § 1`.)*
-- **Estilização:** Tailwind CSS + Radix UI (shadcn/ui).
-- **Backend:** Supabase (PostgreSQL + Realtime).
-- **Gerenciamento de Estado:** TanStack Query v5 (React Query).
-- **Autenticação:** Sistema de sessão customizado, sem uso do Supabase Auth nativo. ⚠️ **As senhas estão atualmente em texto plano no banco** — saneamento de segurança pendente. Ver `DIAGNOSTICO.md` Seção 5.1.
-
-## 4. Arquitetura e Organização do Código
-
-### Camada de Serviços (src/services):
-- **Infrastructure Service:** Centraliza a saúde do sistema e o gerenciamento de persistência segura (Session Shielding).
-- **Request Service:** Gerencia o ciclo de vida dos chamados e cálculos de SLA.
-- **Notification Service:** Único responsável pela gestão e disparo de notificações internas.
-- **Holiday Service:** Gerencia o calendário de feriados para precisão operacional.
-- **Preventive Maintenance Service:** Automatiza a criação de chamados de Manutenção Preventiva Semestral para todos os usuários ativos nas datas 01/03 e 01/09 de cada ano.
-
-### Padronização e UI (src/lib/utils.ts):
-- **Dicionário de Tradução:** Mapeamento centralizado de termos técnicos (EN -> PT-BR) via helper `translate()`.
-- **Iconografia Semântica:** Uso obrigatório de `getSemanticIcon()` para garantir consistência visual em todo o sistema.
-- **Estilos de Status:** Cores e labels centralizados em `statusStyles` e `priorityStyles`.
-
-## 5. Segurança e Conformidade (Compliance)
-
-### Higiene de Tipagem (Strong Typing)
-- **Objetivo de Excelência**: O uso de `any` é desencorajado e está em processo de saneamento integral. O projeto visa 100% de cobertura de tipos para todos os dados assíncronos (Anexos/Comentários/Metadados/Entregas).
-- **Null Safety**: Proteção rigorosa contra erros de renderização usando encadeamento opcional (`?.`) e valores padrão (`??`).
-
-### Silent Logging (Produção)
-- **Estratégia de Supressão**: Implementação mandatória de `if (!import.meta.env.PROD)` em todos os comandos `console.log`, `error` e `warn`. Isso garante que informações técnicas sensíveis (UUIDs, URLs de API, detalhes de erro) não vazem para o console do navegador em produção.
-- ✅ Auditoria 29/04/2026: 100% dos `console.*` no projeto agora estão encapsulados.
-
-### Blindagem de Sessão (Chrome-Ready)
-- Implementação de "fechou a aba, deslogou" via `infrastructureService.ts`, garantindo que sessões não persistam indevidamente após o fechamento do navegador.
-
-### Conformidade — em saneamento
-O sistema foi **projetado** com objetivo de aderência à **ISO 9001:2015** (rastreabilidade total: quem solicitou, quem entregou, quem recebeu) e à **LGPD** (coleta mínima de dados e transparência nos termos de consentimento integrados).
-
-⚠️ **Estado atual (28/04/2026):** o saneamento de segurança está pendente. Senhas em texto plano e RLS aberto comprometem a aderência declarada à LGPD. **Não declare conformidade publicamente** até concluir a Fase 0 do `DIAGNOSTICO.md`.
-
-### Neutralidade Documental (Ciclo de Vida)
-- Os termos digitais de devolução de equipamentos adotam uma postura **Técnica e Neutra**. A TI atua exclusivamente como registradora da custódia de coleta (incluindo laudos de *avarias* técnicas), direcionando qualquer resolução de litígio para o RH. Link público não deve conter aprovações mistas (Gestor vs Funcionário).
-
-## 6. Funcionalidades Core & SLAs Oficiais
-
-### 6.1 Acordo de Nível de Serviço (SLA)
-Os prazos de vencimento são calculados automaticamente no momento da criação, com base em **horas corridas** (não dias úteis — o desconto de fins de semana e feriados está planejado para implementação futura via `holidayService`):
-- **Solicitação Geral:** 120 horas corridas (5 dias).
-- **Sistemas:** 240 horas corridas (10 dias).
-- **Solicitação de Equipamentos:** 240 horas corridas (10 dias).
-- **Ciclo de Vida (Onboarding/Offboarding/Treinamento):** 120 horas corridas (5 dias).
-- **Manutenção Preventiva:** 960 horas corridas (40 dias).
-- **Ajuste de Estoque:** 72 horas corridas (3 dias).
-
-> Tipos de solicitação fora desta lista oficial fazem `calculateDeadline` lançar erro — não há SLA fallback silencioso.
-
-### 6.2 Módulos do Sistema
-- **Ciclo de Vida de Chamados:** Fluxo completo (`nova` -> `atribuida` -> `em_andamento` -> `resolvida` -> `fechada`).
-- **Gestão de Ativos (Estoque):** Controle de inventário com atribuição automática inteligente.
-- **Ciclo de Vida do Colaborador**: Processos de Onboarding/Offboarding com assinatura digital imutável e Automação de Rastreio Cruzado (JSON `[VINCULO_CICLO]`).
-- **Capacitação e Treinamentos**: Sub-módulo para gestão de integração de novos colaboradores com trilhas de conhecimento e registro de ciência digital.
-- **Chat Assistant (IA — Planejado):** Interface de chat disponível no Painel (`ChatAssistant`). Atualmente responde como placeholder visual. A integração com modelo de linguagem (IA generativa) está planejada para desenvolvimento futuro.
-- **Relatórios:** Exportação nativa para PDF e Excel com métricas de SLA.
-
-## 7. Deploy e Manutenção (KingHost)
-
-O sistema é hospedado como um site estático na **KingHost**.
-1. Execute `npm run build`.
-2. Faça o upload do conteúdo da pasta `/dist` via FTP (FileZilla).
-3. Certifique-se de que o arquivo `.htaccess` está na raiz do servidor para gerenciar as rotas do SPA e a segurança (CSP, HSTS).
-
-## 8. Diagnóstico Auditado (Snapshot)
-
-A última auditoria completa do sistema (frontend + Supabase) foi realizada em **28/04/2026** e está documentada em [`DIAGNOSTICO.md`](./DIAGNOSTICO.md) na raiz do projeto.
-
-A auditoria identificou inicialmente:
-- **6 brechas críticas de segurança** (Fase 0 emergencial)
-- **28 bugs funcionais** confirmados
-- **~75 violações** do protocolo interno
-- **20 decisões pendentes** do Operador
-
-**Status pós-correções (atualizado 29/04/2026):**
-- ✅ **Caixas 1 a 6 do plano de correção concluídas** (20 lotes, 40+ itens). Resumo:
-  - Bugs funcionais críticos do front corrigidos: `<Toaster />`, mismatch de coluna em SettingsPage, `uploadFile` com path errado, `meta.onError` morto em `useRobustQuery`, etc.
-  - Brechas de exposição reduzidas: removido `window.supabase` global, URL Supabase migrada para `.env`.
-  - Limpeza: ~640 linhas de código morto/boilerplate removidas (4 componentes UI mortos, imports órfãos, App.css boilerplate, `"use client"` inúteis).
-  - Tipagem: `RequestStatus` ganhou `'rejected'`; `NotificationType` virou união literal de 12 valores; `error: any` e `as any` eliminados de `RequestDetailPage` e `AllRequestsPage`.
-  - Hardcodes ("Nivaldo", UUID do "Eugênio") extraídos para `src/config/`.
-  - SLAs reescritos como tabela declarativa em `requestService.ts` — tipos desconhecidos lançam erro.
-  - Camada de services completada com `userService.ts` e `storageService.ts` (23 chamadas Supabase diretas migradas).
-  - Vitrine UI: zero imports diretos de `lucide-react` em código de domínio (mapeamento central com 59 ícones); zero hex inline; cores cruas substituídas por tokens semânticos.
-- 🚨 **Pendente:** Fase 0 do banco (RLS, hash de senhas, Storage policies) e refatoração de `RequestDetailPage.tsx`.
-
-**Antes de qualquer feature nova, leia `DIAGNOSTICO.md` Seção 5 (segurança) e Seção 12 (decisões pendentes).**
+> 📦 SPA estático servido por Apache (sem Node.js no servidor).
 
 ---
-*Documentação Técnica de Propriedade Intelectual. Informação Confidencial.*
+
+## Stack
+
+| Camada | Tecnologia |
+|---|---|
+| UI | React 18.3 + Vite 5.4 + TypeScript 5.5 (strict) |
+| Estilo | Tailwind 3.4 + Radix UI via shadcn/ui |
+| Estado remoto | TanStack Query v5 (`staleTime: 0`, leitura síncrona) |
+| Forms | react-hook-form + Zod |
+| Backend | Supabase (PostgreSQL + Storage + RLS) |
+| Auth | Custom (bcrypt via `pgcrypto` + funções `SECURITY DEFINER`) |
+
+---
+
+## Como rodar localmente
+
+### Pré-requisitos
+- Node.js 18+
+- npm
+- Acesso a um projeto Supabase (URL + anon key)
+
+### Setup
+
+```bash
+git clone <url-do-repositorio>
+cd solicitacaoti
+npm install
+```
+
+Crie um arquivo `.env` na raiz:
+
+```env
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-anon-key
+```
+
+### Comandos
+
+```bash
+npm run dev       # dev server em http://localhost:5173
+npm run build     # build de produção em /dist
+npm run lint      # ESLint
+npm run preview   # preview do build
+```
+
+---
+
+## Estrutura
+
+```
+src/
+├── components/      # UI: shadcn/ui primitives + componentes de domínio
+│   ├── ui/          # Card, Button, Dialog, etc.
+│   ├── requests/    # modais e seções da página de solicitação
+│   ├── users/       # diálogos de gestão de usuários
+│   └── stock/       # bloco dinâmico de produtos+lotes
+├── contexts/        # AuthContext, NotificationContext, ThemeContext
+├── hooks/           # useRequestsData, useRobustQuery, etc.
+├── lib/             # supabase client, utils (translate, getSemanticIcon, statusStyles)
+├── pages/           # rotas: Dashboard, Requests, Reports, Users, Settings, Acceptance
+├── services/        # única camada que conversa com o Supabase
+└── types/           # tipos canônicos (ITRequest, User, Notification...)
+```
+
+### Camada de serviços
+
+Toda chamada ao Supabase passa por `src/services/`. Componentes nunca falam com o banco direto.
+
+| Service | Responsabilidade |
+|---|---|
+| `requestService` | CRUD de solicitações + cálculo de SLA |
+| `userService` | gestão de usuários (via funções `admin_*` no banco) |
+| `notificationService` | leitura/marcação de notificações |
+| `storageService` | upload/download de anexos (signed URLs) |
+| `userSettingsService` | preferências do usuário |
+| `infrastructureService` | saúde da sessão e logs |
+| `preventiveMaintenanceService` | criação semestral de chamados de manutenção |
+
+---
+
+## SLAs (horas corridas)
+
+Calculados em `requestService.calculateDeadline`. Tipos fora desta lista lançam erro — não há fallback silencioso.
+
+| Tipo | Prazo |
+|---|---|
+| Solicitação Geral (`general`) | 120h (5 dias) |
+| Sistemas (`systems`) | 240h (10 dias) |
+| Equipamentos (`equipment_request`) | 240h (10 dias) |
+| Ciclo de Vida (`employee_lifecycle`) | 120h (5 dias) |
+| Manutenção Preventiva (`preventive_maintenance`) | 960h (40 dias) |
+| Ajuste de Estoque (`ajuste_estoque`) | 72h (3 dias) |
+
+> Cálculo em horas corridas (sem desconto de finais de semana ou feriados — opção consciente para um sistema interno de baixo tráfego).
+
+---
+
+## Segurança
+
+- Senhas armazenadas como **bcrypt** em `usuarios.senha_hash`. Login passa pela função SQL `validate_login` (`SECURITY DEFINER`); o frontend nunca lê senha.
+- Tabelas `usuarios` e `notificacoes` com RLS apertado: anônimo não modifica dados; operações privilegiadas passam por funções `admin_create_user`, `admin_update_user`, `admin_delete_user`, `update_user_password`, `notify_list_mine`, `notify_mark_read`, `notify_mark_all_read`.
+- Storage com `file_size_limit: 10 MB` e whitelist de MIME types (PDF, imagens, Office, ZIP).
+- TypeScript em strict mode, ESLint sem warnings, build limpo.
+
+---
+
+## Deploy
+
+Sistema é um SPA estático. Build via `npm run build` gera `/dist`, que é servido por qualquer hospedagem com Apache (ou similar) com suporte a `.htaccess` para rotas SPA.
+
+1. `npm run build` gera `/dist`.
+2. Upload do conteúdo de `/dist` para a raiz do servidor.
+3. O `.htaccess` na raiz cuida das rotas.
+
+> Não há Node.js no servidor — o artefato é estático.
+
+---
+
+## Documentação interna
+
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — padrões de código e arquitetura.
+- [`CLAUDE.md`](./CLAUDE.md) — instruções para sessões com o Claude Code.
+- [`CHANGELOG.md`](./CHANGELOG.md) — histórico das mudanças importantes.
+
+---
+
+## Licença
+
+Projeto privado — uso interno.

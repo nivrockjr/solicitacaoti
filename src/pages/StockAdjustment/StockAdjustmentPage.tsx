@@ -30,22 +30,11 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { getSemanticIcon } from '@/lib/utils';
 import { createRequest } from '@/services/requestService';
 
 // Define a lot entry type
-interface LotEntry {
-  id: string;
-  lotNumber: string;
-  weight: number | undefined;
-}
-
-interface ProductEntry {
-  id: string;
-  productName: string;
-  cost: number | undefined;
-  lots: LotEntry[];
-}
+import { ProductEntry } from '@/components/stock/stockTypes';
+import { ProductLotsBlock } from '@/components/stock/ProductLotsBlock';
 
 // Updated schema to remove productName and cost as they are dynamic now
 const formSchema = z.object({
@@ -352,94 +341,18 @@ const StockAdjustmentPage: React.FC = () => {
               )} />
               {/* Renderização Dinâmica de Produtos e Lotes */}
               {products.map((product, pIndex) => (
-                <div key={product.id} className="col-span-2 space-y-3">
-                  {pIndex > 0 && <hr className="my-4 border-dashed border-border" />}
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Nome do Produto */}
-                    <div className="col-span-1">
-                      <FormLabel className="text-sm">Nome do Produto <span className="text-destructive">*</span></FormLabel>
-                      <Input
-                        type="text"
-                        placeholder="Digite o nome do produto"
-                        value={product.productName}
-                        onChange={e => updateProduct(product.id, 'productName', e.target.value)}
-                        className="h-10 w-full"
-                        required
-                      />
-                    </div>
-                    {/* Custo + Botão Adicionar Produto */}
-                    <div className="col-span-1 flex gap-2 items-end">
-                      <div className="flex-1">
-                        <FormLabel className="text-sm">Custo (R$) <span className="text-destructive">*</span></FormLabel>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={product.cost === undefined ? '' : product.cost}
-                          onChange={e => updateProduct(product.id, 'cost', e.target.value)}
-                          className="h-10 w-full"
-                          required
-                        />
-                      </div>
-                      {pIndex === products.length - 1 && (
-                        <Button type="button" size="icon" variant="outline" onClick={addProduct} title="Adicionar Novo Produto" className="mb-0 mt-6 shrink-0">
-                          {getSemanticIcon('action-add', { className: 'h-4 w-4' })}
-                        </Button>
-                      )}
-                      {products.length > 1 && (
-                        <Button type="button" size="icon" variant="destructive" onClick={() => removeProduct(product.id)} title="Remover Produto" className="mb-0 mt-6 shrink-0">
-                          ×
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {/* Lotes do Produto */}
-                    {product.lots.map((lot, lIndex) => (
-                      <React.Fragment key={lot.id}>
-                        {/* Número do Lote */}
-                        <div className="col-span-1">
-                          <FormLabel className="text-sm">Número do Lote <span className="text-destructive">*</span></FormLabel>
-                          <Input
-                            type="text"
-                            placeholder="Digite o número do lote"
-                            value={lot.lotNumber}
-                            onChange={e => updateLot(product.id, lot.id, 'lotNumber', e.target.value)}
-                            className="h-10 w-full"
-                            required
-                          />
-                        </div>
-                        {/* Peso (kg) + Botão Adicionar Lote */}
-                        <div className="col-span-1 flex gap-2 items-end">
-                          <div className="flex-1">
-                            <FormLabel className="text-sm">Peso (kg) <span className="text-destructive">*</span></FormLabel>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.0001"
-                              placeholder="Digite o peso"
-                              value={lot.weight === undefined ? '' : lot.weight}
-                              onChange={e => updateLot(product.id, lot.id, 'weight', e.target.value)}
-                              className="h-10 w-full"
-                              required
-                            />
-                          </div>
-                          {lIndex === product.lots.length - 1 && (
-                            <Button type="button" size="icon" variant="outline" onClick={() => addLot(product.id)} title="Adicionar Lote" className="mb-0 mt-6 shrink-0">
-                              {getSemanticIcon('action-add', { className: 'h-4 w-4' })}
-                            </Button>
-                          )}
-                          {product.lots.length > 1 && (
-                            <Button type="button" size="icon" variant="destructive" onClick={() => removeLot(product.id, lot.id)} title="Remover Lote" className="mb-0 mt-6 shrink-0">
-                              ×
-                            </Button>
-                          )}
-                        </div>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                </div>
+                <ProductLotsBlock
+                  key={product.id}
+                  product={product}
+                  index={pIndex}
+                  totalProducts={products.length}
+                  onUpdateProduct={updateProduct}
+                  onRemoveProduct={removeProduct}
+                  onAddProduct={addProduct}
+                  onUpdateLot={updateLot}
+                  onAddLot={addLot}
+                  onRemoveLot={removeLot}
+                />
               ))}
               {/* Motivo do Ajuste (colSpan=2) */}
               <FormField control={form.control} name="reason" render={({ field }) => (

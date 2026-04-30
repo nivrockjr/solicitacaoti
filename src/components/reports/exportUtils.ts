@@ -1,5 +1,12 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+// xlsx 0.18.x tem 2 advisories abertos (Prototype Pollution + ReDoS) e nao ha
+// versao corrigida no npm. As duas vulnerabilidades disparam em PARSE de xlsx
+// nao confiavel; este modulo apenas ESCREVE planilhas a partir de dados ja
+// trafegados pelo backend (Supabase) — superficie de ataque inexistente no
+// nosso fluxo. Risco aceito formalmente em 29/04/2026. Reavaliar se algum dia
+// for necessario LER xlsx do usuario (ex.: import de planilha) — nesse caso
+// migrar para `exceljs` antes de adicionar o leitor.
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ITRequest } from '@/types';

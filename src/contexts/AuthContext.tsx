@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User } from '../types';
-import { getUsuarioRowByEmail } from '../services/userService';
+import { validateLogin } from '../services/userService';
 
 interface AuthContextType {
   user: User | null;
@@ -35,18 +35,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, senha: string) => {
     setIsLoading(true);
     try {
-      const data = await getUsuarioRowByEmail(email);
-      if (!data) throw new Error('Usuário não encontrado');
-      // Aqui você pode usar hash de senha se desejar
-      if (data.senha !== senha) throw new Error('Senha incorreta');
+      // Autenticação via função SQL validate_login (SECURITY DEFINER + bcrypt).
+      // Senha em texto plano nunca trafega de volta — o banco compara internamente.
+      // Mensagem genérica não distingue email-inexistente de senha-errada
+      // (defesa contra enumeração de usuários — Item G).
+      const validatedUser = await validateLogin(email, senha);
+      if (!validatedUser) throw new Error('Email ou senha incorretos');
 
-      // Criar objeto de usuário seguro (sem a senha) para o estado e localStorage
       const secureUser: User = {
-        id: data.id,
-        name: data.name,
-        email: data.email?.toLowerCase(),
-        role: data.role,
-        department: data.department
+        id: validatedUser.id,
+        name: validatedUser.name,
+        email: validatedUser.email?.toLowerCase(),
+        role: validatedUser.role,
+        department: validatedUser.department,
       };
 
       setUser(secureUser);

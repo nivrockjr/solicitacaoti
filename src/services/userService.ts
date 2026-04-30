@@ -31,7 +31,9 @@ interface CreateUserPayload {
   department?: string;
   position?: string;
   whatsapp?: string;
-  senha: string;
+  /** Senha em texto plano. NUNCA vai pro banco como texto: a função
+   *  `update_user_password` aplica bcrypt e grava em `senha_hash`. */
+  password: string;
   precisa_alterar_senha?: boolean;
   created_at?: string;
 }
@@ -47,8 +49,9 @@ interface UpdateUserPayload {
 
 /**
  * Lê o registro completo do usuário pelo email (case-insensitive).
- * Inclui campos sensíveis — usado apenas pelo fluxo de login custom.
- * Componentes que precisam apenas de dados de exibição devem usar `getUserIdByEmail`.
+ * Inclui campos sensíveis — uso restrito.
+ * @deprecated A partir de J.4: use `validateLogin(email, senha)` para autenticação.
+ *   Será removido junto com a coluna `senha` em texto plano (Item J.6 do DIAGNOSTICO).
  */
 export const getUsuarioRowByEmail = async (email: string): Promise<UsuarioRow | null> => {
   const { data, error } = await supabase
@@ -58,6 +61,26 @@ export const getUsuarioRowByEmail = async (email: string): Promise<UsuarioRow | 
     .single();
   if (error) return null;
   return data as UsuarioRow;
+};
+
+/**
+ * Autenticação segura via função SQL `validate_login` (SECURITY DEFINER + bcrypt).
+ * O frontend NÃO lê mais a tabela `usuarios` direto — a senha em texto plano nunca
+ * trafega de volta. Retorna o usuário sem campos sensíveis em caso de sucesso, ou
+ * `null` se email/senha não baterem (sem distinguir qual dos dois falhou).
+ */
+export const validateLogin = async (email: string, password: string): Promise<User | null> => {
+  const { data, error } = await supabase.rpc('validate_login', {
+    p_email: email,
+    p_password: password,
+  });
+  if (error) {
+    if (!import.meta.env.PROD) console.error('Erro ao validar login:', error);
+    return null;
+  }
+  if (!data || (Array.isArray(data) && data.length === 0)) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row as User;
 };
 
 /**
@@ -170,10 +193,20 @@ export const getUsuarioById = async (id: string): Promise<User[]> => {
 
 /**
  * Cria um novo usuário (operação administrativa).
+ * 1) INSERT na tabela `usuarios` SEM o campo de senha (a coluna `senha` em
+ *    texto plano será removida — Item J.6 do DIAGNOSTICO).
+ * 2) Após o INSERT, chama `update_user_password` para gravar o hash bcrypt
+ *    em `senha_hash`.
  */
 export const createUsuario = async (payload: CreateUserPayload): Promise<void> => {
-  const { error } = await supabase.from('usuarios').insert([payload]);
-  if (error) throw error;
+  const { password, ...userRow } = payload;
+  const { error: insertError } = await supabase.from('usuarios').insert([userRow]);
+  if (insertError) throw insertError;
+  const { error: passwordError } = await supabase.rpc('update_user_password', {
+    p_user_id: payload.id,
+    p_new_password: password,
+  });
+  if (passwordError) throw passwordError;
 };
 
 /**
@@ -186,14 +219,15 @@ export const updateUsuario = async (id: string, payload: UpdateUserPayload): Pro
 
 /**
  * Reseta a senha de um usuário (operação administrativa).
- * ⚠️ Senha é gravada em texto plano hoje — saneamento pendente em
- * DIAGNOSTICO.md Seção 5.1.
+ * Usa a função SQL `update_user_password` (SECURITY DEFINER) que aplica bcrypt
+ * internamente. Senha em texto plano nunca é gravada — apenas o hash em
+ * `senha_hash`. Validação de tamanho mínimo (6 chars) também roda no banco.
  */
 export const resetUsuarioPassword = async (id: string, newPassword: string): Promise<void> => {
-  const { error } = await supabase
-    .from('usuarios')
-    .update({ senha: newPassword, precisa_alterar_senha: false })
-    .eq('id', id);
+  const { error } = await supabase.rpc('update_user_password', {
+    p_user_id: id,
+    p_new_password: newPassword,
+  });
   if (error) throw error;
 };
 

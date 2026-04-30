@@ -159,7 +159,7 @@ const UsersPage: React.FC = () => {
         department: values.department || '',
         position: values.position || '',
         whatsapp: values.whatsapp || '',
-        senha: values.password,
+        password: values.password,
         precisa_alterar_senha: false,
         created_at: new Date().toISOString()
       };

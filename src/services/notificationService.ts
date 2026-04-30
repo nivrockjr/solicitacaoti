@@ -16,24 +16,19 @@ interface CreateNotificationParams {
 
 export const notificationService = {
   /**
-   * Lê as notificações recentes de um usuário, ordenadas pelas mais novas.
-   * Filtra por janela de dias para evitar tráfego desnecessário (default 15 dias).
-   * Retorna `[]` em qualquer falha — caller pode tratar `error` se quiser logar.
+   * Lê as notificações recentes do usuário via função SQL `notify_list_mine`
+   * (SECURITY DEFINER). O banco filtra internamente por `para = userId`,
+   * impedindo leitura de notificações alheias mesmo com a anon key vazada.
    */
   async listRecent(
     userId: string,
     windowDays: number = 15
   ): Promise<{ data: Notification[]; error: Error | null }> {
     try {
-      const windowStart = new Date(
-        Date.now() - windowDays * 24 * 60 * 60 * 1000
-      ).toISOString();
-      const { data, error } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('para', userId)
-        .gte('criada_em', windowStart)
-        .order('criada_em', { ascending: false });
+      const { data, error } = await supabase.rpc('notify_list_mine', {
+        p_user_id: userId,
+        p_window_days: windowDays,
+      });
       if (error) throw error;
       return { data: (data ?? []) as Notification[], error: null };
     } catch (err) {
@@ -68,17 +63,18 @@ export const notificationService = {
   },
 
   /**
-   * Marca uma notificação como lida.
+   * Marca uma notificação como lida via função SQL `notify_mark_read`
+   * (SECURITY DEFINER). O banco só atualiza se a notificação pertencer ao
+   * `userId` informado, impedindo marcação de notificações alheias.
    */
-  async markAsRead(id: string): Promise<boolean> {
+  async markAsRead(id: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('notificacoes')
-        .update({ lida: true })
-        .eq('id', id);
-
+      const { data, error } = await supabase.rpc('notify_mark_read', {
+        p_user_id: userId,
+        p_notification_id: id,
+      });
       if (error) throw error;
-      return true;
+      return data === true;
     } catch (err) {
       if (!import.meta.env.PROD) console.error('Erro ao marcar notificação como lida:', err);
       return false;

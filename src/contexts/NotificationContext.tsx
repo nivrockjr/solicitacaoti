@@ -52,8 +52,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [user?.id, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
+    if (!user?.id) return;
     try {
-      const success = await notificationService.markAsRead(id);
+      const success = await notificationService.markAsRead(id, user.id);
       if (success) {
         setNotifications((prev) => prev.map(n => n.id === id ? { ...n, lida: true } : n));
       }

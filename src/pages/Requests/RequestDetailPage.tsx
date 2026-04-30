@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { format, isAfter, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,14 +12,18 @@ import { getRequestById, updateRequest, deleteRequest, uploadFile, findOffboardi
 import { notificationService } from '@/services/notificationService';
 import { listAdmins, getUserIdByEmail } from '@/services/userService';
 import { getAttachmentSignedUrl } from '@/services/storageService';
-import { ITRequest, User, Comment, Attachment, RequestStatus } from '@/types';
+import { ITRequest, User, Comment, Attachment, RequestStatus, DeliveryItem } from '@/types';
 import { cn, tryFormatDateTime, translate, getStatusStyle, getPriorityStyle, getSemanticIcon, SemanticIconName } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RejectRequestModal } from '@/components/requests/modals/RejectRequestModal';
+import { ExtendDeadlineModal } from '@/components/requests/modals/ExtendDeadlineModal';
+import { EditDeliveryModal } from '@/components/requests/modals/EditDeliveryModal';
+import { ResolutionModal } from '@/components/requests/modals/ResolutionModal';
+import { DeleteRequestDialog } from '@/components/requests/modals/DeleteRequestDialog';
+import { RequestHeader } from '@/components/requests/sections/RequestHeader';
+import { RequestAttachments } from '@/components/requests/sections/RequestAttachments';
+import { RequestComments } from '@/components/requests/sections/RequestComments';
+import { RequestSidebar } from '@/components/requests/sections/RequestSidebar';
 import { extractLifecycleLinks } from '@/utils/lifecycle-links';
 
 const RequestDetailPage: React.FC = () => {
@@ -52,7 +55,7 @@ const RequestDetailPage: React.FC = () => {
   const [reopenFiles, setReopenFiles] = useState<File[]>([]);
   const [reopenUploading, setReopenUploading] = useState(false);
   const [showEditDeliveryModal, setShowEditDeliveryModal] = useState(false);
-  const [deliveryItemsList, setDeliveryItemsList] = useState<{ id: string, text: string, checked: boolean, avaria?: string }[]>([]);
+  const [deliveryItemsList, setDeliveryItemsList] = useState<DeliveryItem[]>([]);
   const [newDeliveryItem, setNewDeliveryItem] = useState("");
   const [updatingDelivery, setUpdatingDelivery] = useState(false);
   // Estados populados pelas queries de busca reversa (linhas ~225+) mas atualmente
@@ -406,32 +409,8 @@ const RequestDetailPage: React.FC = () => {
     );
   };
   
-  const formatStatus = (status: string | null | undefined) => {
-    return translate('status', status).toUpperCase();
-  };
-  
   const formatRequestType = (type: string | null | undefined) => {
     return translate('type', type);
-  };
-  
-  const isDeadlinePassed = (deadlineAt: string | null | undefined) => {
-    if (!deadlineAt) return false;
-    const deadline = new Date(deadlineAt);
-    if (!isValid(deadline)) return false;
-    return isAfter(new Date(), deadline);
-  };
-  
-  const getDeadlineColorClass = (deadlineAt: string | null | undefined) => {
-    if (!deadlineAt) return '';
-    const now = new Date();
-    const deadline = new Date(deadlineAt);
-    if (!isValid(deadline)) return '';
-    const diffTime = deadline.getTime() - now.getTime();
-    const diffDays = diffTime / (1000 * 3600 * 24);
-    if (diffDays < 0) return 'text-destructive font-bold';
-    if (diffDays < 1) return 'text-warning font-bold';
-    if (diffDays < 2) return 'text-warning/80';
-    return '';
   };
   
   const handleApproval = async (isApproved: boolean) => {
@@ -882,10 +861,6 @@ const RequestDetailPage: React.FC = () => {
   }
 
   const lifecycleLinks = extractLifecycleLinks(request.comments || []);
-  
-  const normalizeStatus = (status: string | null | undefined): string => {
-    return String(status ?? '').toLowerCase();
-  };
 
   const getStatusBadge = (status: string | null | undefined) => {
     const style = getStatusStyle(status);
@@ -902,57 +877,16 @@ const RequestDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              {getSemanticIcon('action-back', { className: 'h-4 w-4' })}
-              <span className="sr-only">Voltar</span>
-            </Button>
-            <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
-          </div>
-          <div className="flex gap-2">
-            {user?.role === 'admin' && !['resolved', 'resolvida', 'closed', 'fechada'].includes(request.status ?? '') && request.approvalstatus !== 'rejected' && (
-              <>
-                {(['assigned', 'atribuida', 'new', 'nova'].includes(request.status ?? '')) && (
-                  <Button onClick={() => handleStatusChange('in_progress')} variant="outline" size="sm" disabled={submitting}>
-                    Iniciar Progresso
-                  </Button>
-                )}
-                <Button 
-                  onClick={handleOpenResolutionModal} 
-                  variant="outline" 
-                  size="sm" 
-                  disabled={submitting} 
-                  className="bg-status-resolved text-white border-status-resolved hover:bg-status-resolved/90"
-                >
-                  Resolver
-                </Button>
-                <Button 
-                  onClick={() => setShowRejectModal(true)} 
-                  variant="destructive" 
-                  size="sm" 
-                  disabled={submitting} 
-                  className="bg-status-rejected text-white border-status-rejected px-3"
-                  title="Rejeitar Solicitação"
-                >
-                  {getSemanticIcon('action-close', { className: 'h-4 w-4' })}
-                </Button>
-              </>
-            )}
-            {user?.role === 'admin' && (
-              <Button 
-                onClick={handleDeleteRequest} 
-                variant="destructive" 
-                size="sm" 
-                disabled={submitting} 
-                className="bg-status-rejected text-white border-status-rejected px-3"
-                title="Excluir Solicitação"
-              >
-                {getSemanticIcon('action-delete', { className: 'h-4 w-4' })}
-              </Button>
-            )}
-          </div>
-        </div>
+        <RequestHeader
+          request={request}
+          user={user}
+          submitting={submitting}
+          onBack={() => navigate(-1)}
+          onStatusChange={handleStatusChange}
+          onOpenResolutionModal={handleOpenResolutionModal}
+          onOpenRejectModal={() => setShowRejectModal(true)}
+          onDelete={handleDeleteRequest}
+        />
         
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
@@ -1126,317 +1060,46 @@ const RequestDetailPage: React.FC = () => {
                   })()
                 )}
 
-                {request.attachments && request.attachments.length > 0 && (
-                  (() => {
-                    const resComment = request.comments?.find(c => c.text.startsWith('[RESOLUÇÃO]'));
-                    const resAttachmentIds = resComment?.attachments?.map(a => a.id) || [];
-                    const reopenComment = request.comments?.find(c => c.text.startsWith('[REABERTURA]'));
-                    const reopenAttachmentIds = reopenComment?.attachments?.map(a => a.id) || [];
-                    const rejectComment = request.comments?.find(c => c.text.startsWith('[REJEITADA]'));
-                    const rejectAttachmentIds = rejectComment?.attachments?.map(a => a.id) || [];
-                    const userAttachments = request.attachments.filter(att => 
-                      !resAttachmentIds.includes(att.id) && 
-                      !reopenAttachmentIds.includes(att.id) && 
-                      !rejectAttachmentIds.includes(att.id) &&
-                      !att.isSignature
-                    );
-                    if (userAttachments.length === 0) return null;
-                    return (
-                      <div className="bg-card p-3 rounded-md">
-                        <h3 className="text-sm font-medium mb-2">Anexos</h3>
-                        <div className="space-y-2">
-                          {userAttachments.map((attachment) => (
-                            <div key={attachment.id} className="flex items-center gap-2 p-2">
-                              {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Tamanho desconhecido'}
-                                </p>
-                              </div>
-                              <Button variant="ghost" size="sm" onClick={() => attachment.fileUrl && handleViewAttachment(attachment.fileUrl)} disabled={!attachment.fileUrl || downloading === attachment.fileUrl}>
-                                {downloading === attachment.fileUrl ? 'Abrindo...' : 'Visualizar'}
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()
-                )}
+                <RequestAttachments
+                  request={request}
+                  downloading={downloading}
+                  onView={handleViewAttachment}
+                />
                 
                 <Separator />
                 
-                <div>
-                  <h3 className="text-sm font-medium mb-4">Comentários</h3>
-                  {(!request.comments || request.comments.length === 0) ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum comentário ainda</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {request.comments.map((comment) => (
-                        <div key={comment.id} className="p-3 rounded relative group">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-sm">
-                              {getSemanticIcon('user', { className: 'h-4 w-4 text-muted-foreground' })}
-                              <span className="text-muted-foreground">Comentado por:</span>
-                              <span>{comment.userName}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <time className="text-xs text-muted-foreground">
-                                {tryFormatDateTime(comment.createdAt, 'dd/MM HH:mm') ?? '—'}
-                              </time>
-                              {user?.role === 'admin' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  disabled={submitting}
-                                >
-                                  {getSemanticIcon('action-close', { className: 'h-3 w-3' })}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
-                          {comment.attachments && comment.attachments.length > 0 && (
-                            <div className="mt-2 space-y-2 border-t pt-2 border-muted">
-                              {comment.attachments.map((attachment) => (
-                                <div key={attachment.id} className="flex items-center gap-2 p-1.5 bg-muted/30 rounded-md">
-                                  {getSemanticIcon('attachment', { className: 'h-3.5 w-3.5 text-muted-foreground' })}
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium truncate">{attachment.fileName}</p>
-                                    <p className="text-[10px] text-muted-foreground">
-                                      {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Tamanho desconhecido'}
-                                    </p>
-                                  </div>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 text-[10px]" 
-                                    onClick={() => attachment.fileUrl && handleViewAttachment(attachment.fileUrl)}
-                                    disabled={!attachment.fileUrl}
-                                  >
-                                    Ver
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <div className="mt-4">
-                    <Textarea
-                      placeholder="Adicionar um comentário..."
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      className="min-h-[100px] mb-2"
-                    />
-                    <div className="flex justify-end">
-                      <Button onClick={handleAddComment} disabled={!comment.trim() || submitting}>
-                        {getSemanticIcon('action-send', { className: 'h-4 w-4 mr-2' })}
-                        Adicionar Comentário
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <RequestComments
+                  request={request}
+                  user={user}
+                  comment={comment}
+                  onCommentChange={setComment}
+                  submitting={submitting}
+                  onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
+                  onViewAttachment={handleViewAttachment}
+                />
               </CardContent>
             </Card>
           </div>
           
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Detalhes da Solicitação</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="font-medium">{formatStatus(request.status)}</p>
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Prazo</p>
-                  {request.approvalstatus === 'rejected' ? (
-                    <p className="font-medium">N/A</p>
-                  ) : (request.status === 'resolved' || request.status === 'resolvida') ? (
-                    (() => {
-                      const deadline = request.deadlineat ? new Date(request.deadlineat) : null;
-                      const resolved = request.resolvedat ? new Date(request.resolvedat) : null;
-                      if (!deadline || !resolved || !isValid(deadline) || !isValid(resolved)) {
-                        return (
-                          <div className="flex items-center gap-2">
-                            {getSemanticIcon('clock', { className: 'h-4 w-4' })}
-                            <p className="font-medium">{tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm') ?? '—'}</p>
-                          </div>
-                        );
-                      }
-                      const isOnTime = resolved <= deadline;
-                      return (
-                        <div className="flex items-center gap-2">
-                          {getSemanticIcon('clock', { className: `h-4 w-4 ${isOnTime ? 'text-success' : 'text-destructive'}` })}
-                          <p className={`font-medium ${isOnTime ? 'text-success' : 'text-destructive'}`}>
-                            {isOnTime ? '✅ Resolvida no prazo' : '❌ Resolvida fora do prazo'}
-                          </p>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {getSemanticIcon('clock', { className: `h-4 w-4 ${isDeadlinePassed(request.deadlineat) ? 'text-destructive' : ''}` })}
-                        <p className={`font-medium ${getDeadlineColorClass(request.deadlineat)}`}>
-                          {tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm') ?? '—'}
-                        </p>
-                      </div>
-                      {user?.role === 'admin' && !['rejected', 'rejeitada', 'resolved', 'resolvida'].includes(request.status ?? '') && (
-                        <Button onClick={() => setShowExtendDeadline(true)} variant="outline" size="sm" disabled={submitting}>
-                          Estender Prazo
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Solicitante</p>
-                  <div className="flex items-center gap-2">
-                    {getSemanticIcon('user', { className: 'h-4 w-4' })}
-                    <div>
-                      <p className="font-medium">{request.requestername}</p>
-                      <p className="text-xs text-muted-foreground">{request.requesteremail}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {request.assignedto && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Atribuído a</p>
-                    <p className="font-medium">{request.assignedtoname || 'Equipe de Suporte'}</p>
-                  </div>
-                )}
-
-                {request.type === 'employee_lifecycle' && lifecycleLinks.onboardingId && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Onboarding Relacionado</p>
-                    <Button variant="link" className="h-auto p-0 text-left font-medium" onClick={() => navigate(`/request/${lifecycleLinks.onboardingId}`)}>
-                      #{lifecycleLinks.onboardingId}
-                    </Button>
-                  </div>
-                )}
-
-                {request.type === 'employee_lifecycle' && lifecycleLinks.offboardingIds.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Offboarding(s) Relacionado(s)</p>
-                    <div className="flex flex-wrap gap-2">
-                      {lifecycleLinks.offboardingIds.map((offboardingId) => (
-                        <Button key={offboardingId} variant="link" className="h-auto p-0 text-left font-medium" onClick={() => navigate(`/request/${offboardingId}`)}>
-                          #{offboardingId}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                <Separator />
-                
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">ID da Solicitação</p>
-                  <p className="font-medium">{request.id}</p>
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Criada em</p>
-                  <p className="font-medium">{tryFormatDateTime(request.createdat, 'dd/MM/yyyy HH:mm') ?? '—'}</p>
-                </div>
-                
-                {user?.role === 'admin' && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3 py-2">
-                      <div className="flex items-center gap-2 text-primary">
-                        {getSemanticIcon('status-closed', { className: 'h-4 w-4' })}
-                        <p className="text-sm font-semibold">Ações do Administrador</p>
-                      </div>
-                      
-                      {/* Bloco de Ciclo de Vida */}
-                      {(request.type === 'ciclo_colaborador' || request.type === 'employee_lifecycle') && (
-                        <div className="space-y-2 mb-4">
-                          {!['resolvida', 'resolved', 'closed', 'fechada'].includes(normalizeStatus(request.status)) ? (
-                            <div className="flex flex-col gap-2">
-                              <Button onClick={handleOpenDeliveryModal} variant="outline" size="sm" className="w-full flex items-center justify-center gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10">
-                                {getSemanticIcon('file', { className: 'h-3.5 w-3.5' })}
-                                {request.metadata?.form_data?.action === 'offboarding' ? '1 - Itens a coletar' : '1. Definir Itens de Entrega'}
-                              </Button>
-                              <Button onClick={handleCopyAcceptanceLink} variant="outline" size="sm" className="w-full flex items-center justify-center gap-2 border-primary/30 hover:bg-primary/5">
-                                {getSemanticIcon('link', { className: 'h-3.5 w-3.5' })} 2. Copiar Link de Aceite
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button onClick={() => window.open(`${window.location.origin}/aceite/${id}`, '_blank')} variant="default" size="sm" className="w-full flex items-center justify-center gap-2 bg-success hover:bg-success/90 text-success-foreground">
-                              {getSemanticIcon('success', { className: 'h-3.5 w-3.5' })} Assinado - Ver Termo
-                            </Button>
-                          )}
-                          <Separator className="my-2" />
-                        </div>
-                      )}
-
-                      {/* Outras Ações (Aprovação e Atribuição) */}
-                      {!['resolved', 'resolvida', 'closed', 'fechada'].includes(normalizeStatus(request.status)) && (
-                        <div className="space-y-4">
-                          {(request.type === 'solicitacao_equipamento' || request.type === 'sistemas' || request.type === 'equipment_request' || request.type === 'systems') && 
-                           (normalizeStatus(request.status) === 'new' || normalizeStatus(request.status) === 'nova') && 
-                           (!request.approvalstatus || request.approvalstatus === 'pending') && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground">Esta solicitação requer aprovação</p>
-                              <div className="flex gap-2">
-                                <Button onClick={() => handleApproval(true)} className="w-1/2" variant="outline" disabled={submitting}>
-                                  {getSemanticIcon('action-approve', { className: 'h-4 w-4 mr-2' })} Aprovar
-                                </Button>
-                                <Button onClick={() => handleApproval(false)} className="w-1/2" variant="outline" disabled={submitting}>
-                                  {getSemanticIcon('action-reject', { className: 'h-4 w-4 mr-2' })} Rejeitar
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {(normalizeStatus(request.status) === 'new' || normalizeStatus(request.status) === 'nova' || 
-                            ((request.type === 'solicitacao_equipamento' || request.type === 'sistemas' || request.type === 'equipment_request' || request.type === 'systems') && request.approvalstatus === 'approved')) && (
-                             <div className="space-y-2">
-                               <p className="text-xs text-muted-foreground">Atribuir a um técnico específico</p>
-                               <div className="space-y-2">
-                                 <Select
-                                   value={selectedTechnician || undefined}
-                                   onValueChange={setSelectedTechnician}
-                                   disabled={submitting}
-                                 >
-                                   <SelectTrigger className="w-full">
-                                     <SelectValue placeholder="Selecione um técnico" />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                     {adminUsers.map(admin => (
-                                       <SelectItem key={admin.id} value={admin.id}>{admin.name}</SelectItem>
-                                     ))}
-                                   </SelectContent>
-                                 </Select>
-                                 <Button onClick={handleAssignToTechnician} className="w-full" variant="outline" size="sm" disabled={!selectedTechnician || submitting}>
-                                   {submitting ? 'Atribuindo...' : 'Atribuir Solicitação'}
-                                 </Button>
-                               </div>
-                             </div>
-                           )}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <RequestSidebar
+              request={request}
+              user={user}
+              requestId={id}
+              submitting={submitting}
+              lifecycleLinks={lifecycleLinks}
+              selectedTechnician={selectedTechnician}
+              onSelectedTechnicianChange={setSelectedTechnician}
+              adminUsers={adminUsers}
+              onNavigate={navigate}
+              onExtendDeadline={() => setShowExtendDeadline(true)}
+              onOpenDeliveryModal={handleOpenDeliveryModal}
+              onCopyAcceptanceLink={handleCopyAcceptanceLink}
+              onApprove={() => handleApproval(true)}
+              onApprovalReject={() => handleApproval(false)}
+              onAssignToTechnician={handleAssignToTechnician}
+            />
           </div>
         </div>
 
@@ -1459,172 +1122,63 @@ const RequestDetailPage: React.FC = () => {
           </div>
         )}
 
-        <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Motivo da Rejeição</DialogTitle>
-              <DialogDescription>Descreva o motivo da rejeição e anexe arquivos, se necessário.</DialogDescription>
-            </DialogHeader>
-            <Textarea placeholder="Descreva o motivo da rejeição..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="min-h-[100px]" />
-            <Input type="file" multiple onChange={e => setRejectFiles(Array.from(e.target.files || []))} className="mt-2" />
-            <DialogFooter>
-              <Button variant="outline" onClick={handleReject} disabled={!rejectReason.trim() || rejectUploading}>
-                {rejectUploading ? 'Salvando...' : 'Confirmar Rejeição'}
-              </Button>
-              <Button variant="ghost" onClick={() => { setShowRejectModal(false); setRejectReason(''); setRejectFiles([]); }} disabled={rejectUploading}>Cancelar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <RejectRequestModal
+          open={showRejectModal}
+          onOpenChange={setShowRejectModal}
+          reason={rejectReason}
+          onReasonChange={setRejectReason}
+          onFilesChange={setRejectFiles}
+          uploading={rejectUploading}
+          onConfirm={handleReject}
+          onCancel={() => { setShowRejectModal(false); setRejectReason(''); setRejectFiles([]); }}
+        />
 
-         <Dialog open={showExtendDeadline} onOpenChange={setShowExtendDeadline}>
-           <DialogContent>
-             <DialogHeader>
-               <DialogTitle>Estender Prazo da Solicitação</DialogTitle>
-               <DialogDescription>Informe o novo prazo e o motivo da alteração.</DialogDescription>
-             </DialogHeader>
-             <div className="space-y-4">
-               <div>
-                 <label className="block text-sm font-medium mb-1">Novo Prazo *</label>
-                 <Input type="date" value={newDeadline} onChange={e => setNewDeadline(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} />
-               </div>
-               <div>
-                 <label className="block text-sm font-medium mb-1">Motivo *</label>
-                 <Textarea value={extendReason} onChange={e => setExtendReason(e.target.value)} placeholder="Descreva o motivo" rows={3} />
-               </div>
-             </div>
-             <DialogFooter>
-               <Button variant="outline" onClick={() => setShowExtendDeadline(false)} disabled={submitting}>Cancelar</Button>
-               <Button variant="outline" onClick={handleExtendDeadline} disabled={submitting || !newDeadline || !extendReason.trim()}>
-                 {submitting ? 'Salvando...' : 'Salvar'}
-               </Button>
-             </DialogFooter>
-           </DialogContent>
-         </Dialog>
+         <ExtendDeadlineModal
+           open={showExtendDeadline}
+           onOpenChange={setShowExtendDeadline}
+           newDeadline={newDeadline}
+           onNewDeadlineChange={setNewDeadline}
+           reason={extendReason}
+           onReasonChange={setExtendReason}
+           submitting={submitting}
+           onConfirm={handleExtendDeadline}
+           onCancel={() => setShowExtendDeadline(false)}
+         />
 
-         <Dialog open={showEditDeliveryModal} onOpenChange={setShowEditDeliveryModal}>
-           <DialogContent className="max-w-md">
-             <DialogHeader>
-               <DialogTitle>Definir Itens de Entrega</DialogTitle>
-               <DialogDescription>
-                 Selecione os itens originais e adicione novos se necessário.
-               </DialogDescription>
-             </DialogHeader>
-             
-             <div className="space-y-4 py-4">
-               <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                 {deliveryItemsList.length === 0 && (
-                   <p className="text-sm text-muted-foreground text-center py-4 italic">
-                     Nenhum item listado. Adicione abaixo.
-                   </p>
-                 )}
-                 {deliveryItemsList.map((item) => (
-                    <div key={item.id} className="flex flex-col gap-2 p-3 border rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1">
-                          <Checkbox 
-                            id={`item-${item.id}`} 
-                            checked={item.checked} 
-                            onCheckedChange={() => toggleDeliveryItem(item.id)}
-                          />
-                          <Label 
-                            htmlFor={`item-${item.id}`} 
-                            className={cn("text-sm cursor-pointer flex-1", !item.checked && "text-muted-foreground line-through")}
-                          >
-                            {item.text}
-                          </Label>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={() => removeDeliveryItem(item.id)}
-                        >
-                          {getSemanticIcon('action-close', { className: 'h-4 w-4' })}
-                        </Button>
-                      </div>
-                      {item.checked && request.metadata?.form_data?.action === 'offboarding' && (
-                        <Input 
-                          placeholder="Descrever avaria técnica ou motivo de não devolução (Opcional)" 
-                          className="h-8 text-xs bg-background"
-                          value={item.avaria || ''}
-                          onChange={(e) => {
-                            setDeliveryItemsList(prev => prev.map(i => i.id === item.id ? { ...i, avaria: e.target.value } : i));
-                          }}
-                        />
-                      )}
-                    </div>
-                  ))}
-               </div>
-
-               <div className="flex gap-2 pt-2 border-t">
-                 <Input 
-                   placeholder="Adicionar novo item (ex: Celular)" 
-                   value={newDeliveryItem} 
-                   onChange={(e) => setNewDeliveryItem(e.target.value)}
-                   onKeyDown={(e) => e.key === 'Enter' && addDeliveryItem()}
-                 />
-                 <Button onClick={addDeliveryItem} size="sm" type="button">
-                   Adicionar
-                 </Button>
-               </div>
-
-               <div className="p-3 rounded-md border flex gap-3">
-                 {getSemanticIcon('info', { className: 'h-5 w-5 text-foreground shrink-0 mt-0.5' })}
-                 <p className="text-[11px] text-foreground leading-normal">
-                   Ao salvar, a descrição do chamado será atualizada com esta lista e a original será arquivada nos comentários.
-                 </p>
-               </div>
-             </div>
-
-             <DialogFooter>
-               <Button variant="outline" onClick={() => setShowEditDeliveryModal(false)} disabled={updatingDelivery}>
-                 Cancelar
-               </Button>
-               <Button onClick={handleUpdateDeliveryItems} disabled={updatingDelivery || deliveryItemsList.filter(i => i.checked).length === 0}>
-                 {updatingDelivery ? 'Atualizando...' : 'Confirmar e Gerar Link'}
-               </Button>
-             </DialogFooter>
-           </DialogContent>
-         </Dialog>
+         <EditDeliveryModal
+           open={showEditDeliveryModal}
+           onOpenChange={setShowEditDeliveryModal}
+           items={deliveryItemsList}
+           onItemsChange={setDeliveryItemsList}
+           onToggleItem={toggleDeliveryItem}
+           onRemoveItem={removeDeliveryItem}
+           newItemText={newDeliveryItem}
+           onNewItemTextChange={setNewDeliveryItem}
+           onAddItem={addDeliveryItem}
+           isOffboarding={request.metadata?.form_data?.action === 'offboarding'}
+           updating={updatingDelivery}
+           onConfirm={handleUpdateDeliveryItems}
+           onCancel={() => setShowEditDeliveryModal(false)}
+         />
          
-         <Dialog open={showResolutionModal} onOpenChange={setShowResolutionModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Registrar Resolução</DialogTitle>
-              <DialogDescription>Descreva o que foi feito e anexe arquivos, se necessário.</DialogDescription>
-            </DialogHeader>
-            <Textarea placeholder="Descreva a resolução..." value={resolutionText} onChange={e => setResolutionText(e.target.value)} className="min-h-[100px]" />
-            <Input type="file" multiple onChange={e => setResolutionFiles(Array.from(e.target.files || []))} className="mt-2" />
-            <DialogFooter>
-              <Button onClick={() => setShowResolutionModal(false)} variant="outline">Cancelar</Button>
-              <Button variant="outline" onClick={handleSubmitResolution} disabled={resolutionUploading || !resolutionText.trim()}>
-                {resolutionUploading ? 'Salvando...' : 'Salvar Resolução'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+         <ResolutionModal
+           open={showResolutionModal}
+           onOpenChange={setShowResolutionModal}
+           text={resolutionText}
+           onTextChange={setResolutionText}
+           onFilesChange={setResolutionFiles}
+           uploading={resolutionUploading}
+           onConfirm={handleSubmitResolution}
+           onCancel={() => setShowResolutionModal(false)}
+         />
 
-        {/* Confirmação de exclusão da solicitação */}
-        <AlertDialog open={showDeleteDialog} onOpenChange={(open) => !open && !submitting && setShowDeleteDialog(false)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir solicitação?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação removerá permanentemente a solicitação #{id} e seus anexos. Não é possível desfazer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDeleteRequest}
-                disabled={submitting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {submitting ? 'Excluindo...' : 'Excluir'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteRequestDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          requestId={id}
+          submitting={submitting}
+          onConfirm={confirmDeleteRequest}
+        />
       </div>
     </div>
   );

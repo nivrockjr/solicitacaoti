@@ -74,11 +74,9 @@ export function RequestSidebar({
   onAssignToTechnician,
 }: RequestSidebarProps) {
   const status = normalizeStatus(request.status);
-  const isFinished = ['resolved', 'resolvida', 'closed', 'fechada'].includes(status);
-  const isNew = status === 'new' || status === 'nova';
+  const isFinished = ['resolved', 'closed'].includes(status);
+  const isNew = status === 'new';
   const isApprovableType =
-    request.type === 'solicitacao_equipamento' ||
-    request.type === 'sistemas' ||
     request.type === 'equipment_request' ||
     request.type === 'systems';
 
@@ -97,7 +95,7 @@ export function RequestSidebar({
           <p className="text-sm text-muted-foreground">Prazo</p>
           {request.approvalstatus === 'rejected' ? (
             <p className="font-medium">N/A</p>
-          ) : (request.status === 'resolved' || request.status === 'resolvida') ? (
+          ) : request.status === 'resolved' ? (
             (() => {
               const deadline = request.deadlineat ? new Date(request.deadlineat) : null;
               const resolved = request.resolvedat ? new Date(request.resolvedat) : null;
@@ -127,7 +125,7 @@ export function RequestSidebar({
                   {tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm') ?? '—'}
                 </p>
               </div>
-              {user?.role === 'admin' && !['rejected', 'rejeitada', 'resolved', 'resolvida'].includes(request.status ?? '') && (
+              {user?.role === 'admin' && !['rejected', 'resolved'].includes(request.status ?? '') && (
                 <Button onClick={onExtendDeadline} variant="outline" size="sm" disabled={submitting}>
                   Estender Prazo
                 </Button>

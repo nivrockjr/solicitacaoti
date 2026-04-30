@@ -79,7 +79,7 @@ const LifecycleRequestForm: React.FC = () => {
       setLoadingOnboardings(true);
       try {
         const { data } = await getRequests(user.email, 1, 1000, undefined, undefined, { fullData: true });
-        const allLifecycle = (data || []).filter((request) => request.type === 'employee_lifecycle' || request.type === 'ciclo_colaborador');
+        const allLifecycle = (data || []).filter((request) => request.type === 'employee_lifecycle');
         
         const usedIds = new Set();
         allLifecycle.forEach(req => {

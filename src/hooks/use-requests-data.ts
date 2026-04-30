@@ -90,11 +90,11 @@ export function useRequestsCounters(requests: ITRequest[]) {
       if (isRejected) {
         counts.rejected++;
       } else {
-        if (['new', 'nova'].includes(s)) counts.novas++;
-        if (['high', 'alta'].includes(p) && !['resolved', 'resolvida'].includes(s)) counts.high_priority++;
-        if (isAssignedToSistemaEugenio(r.assignedto) && !['resolved', 'resolvida'].includes(s)) counts.sistema_eugenio++;
-        if (['in_progress', 'em_andamento', 'assigned', 'atribuida', 'reopened', 'reaberta'].includes(s)) counts.in_progress++;
-        if (['resolved', 'resolvida'].includes(s)) counts.resolved++;
+        if (s === 'new') counts.novas++;
+        if (p === 'high' && s !== 'resolved') counts.high_priority++;
+        if (isAssignedToSistemaEugenio(r.assignedto) && s !== 'resolved') counts.sistema_eugenio++;
+        if (['in_progress', 'assigned', 'reopened'].includes(s)) counts.in_progress++;
+        if (s === 'resolved') counts.resolved++;
       }
     });
 

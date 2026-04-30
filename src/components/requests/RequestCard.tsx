@@ -77,10 +77,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
           </div>
           <Badge 
             variant={priorityStyle.variant || 'default'} 
-            className={cn("font-bold", priorityStyle.color, (request.priority === 'high' || request.priority === 'alta') && "text-white")}
+            className={cn("font-bold", priorityStyle.color, request.priority === 'high' && "text-white")}
           >
             <span className="flex items-center gap-1">
-              {getPriorityIcon(request.priority === 'high' || request.priority === 'alta')}
+              {getPriorityIcon(request.priority === 'high')}
               {priorityStyle.label}
             </span>
           </Badge>
@@ -98,7 +98,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
             {getSemanticIcon('calendar', { className: 'h-3 w-3' })}
             {request.approvalstatus === 'rejected' ? (
               <span>N/A</span>
-            ) : (request.status === 'resolvida' || request.status === 'resolved') ? (
+            ) : request.status === 'resolved' ? (
               <span>{resolvedAtLabel ? `Resolvida em ${resolvedAtLabel}` : 'Resolvida'}</span>
             ) : (
               <span>{deadlineAtLabel ? `Vence em ${deadlineAtLabel}` : 'Prazo não definido'}</span>

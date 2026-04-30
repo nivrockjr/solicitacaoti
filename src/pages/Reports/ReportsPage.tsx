@@ -34,9 +34,9 @@ const ReportsPage = () => {
       let statusFilter: string | string[] | undefined = undefined;
       if (filters.status && filters.status !== 'all') {
         if (filters.status === 'pending') {
-          statusFilter = ['new', 'nova', 'assigned', 'atribuida', 'in_progress', 'em_andamento', 'reopened', 'reaberta'];
-        } else if (filters.status === 'resolvida') {
-          statusFilter = ['resolved', 'resolvida'];
+          statusFilter = ['new', 'assigned', 'in_progress', 'reopened'];
+        } else if (filters.status === 'resolved') {
+          statusFilter = ['resolved'];
         }
       }
       return getRequests(undefined, page, pageSize, statusFilter)
@@ -56,15 +56,14 @@ const ReportsPage = () => {
   // Aplicar filtros às solicitações
   const filteredRequests = useMemo(() => allRequests.filter((request: ITRequest) => {
     // Filtro por status
-    if (filters.status === 'rejeitada') {
+    if (filters.status === 'rejected') {
       if (request.approvalstatus !== 'rejected') return false;
     } else if (filters.status && filters.status !== 'all') {
       if (filters.status === 'pending') {
-        const pendingStatuses = ['new', 'nova', 'assigned', 'atribuida', 'in_progress', 'em_andamento', 'reopened', 'reaberta'];
+        const pendingStatuses = ['new', 'assigned', 'in_progress', 'reopened'];
         if (!pendingStatuses.includes(request.status ?? '')) return false;
-      } else if (filters.status === 'resolvida') {
-        const resolvedStatuses = ['resolved', 'resolvida'];
-        if (!resolvedStatuses.includes(request.status ?? '')) return false;
+      } else if (filters.status === 'resolved') {
+        if (request.status !== 'resolved') return false;
       }
     }
     // Filtro por tipo
@@ -175,7 +174,7 @@ const ReportsPage = () => {
                       <TableHead>Vencimento</TableHead>
                       <TableHead>Prazo</TableHead>
                       <TableHead>Descrição</TableHead>
-                      {filters.status === 'rejeitada' && (
+                      {filters.status === 'rejected' && (
                         <TableHead>Motivo da Rejeição</TableHead>
                       )}
                     </TableRow>
@@ -210,7 +209,7 @@ const ReportsPage = () => {
                           <TableCell>{formatDateSafe(request.deadlineat)}</TableCell>
                           <TableCell>{getPrazoStatus(request)}</TableCell>
                           <TableCell className="max-w-xs truncate">{request.description}</TableCell>
-                          {filters.status === 'rejeitada' && (
+                          {filters.status === 'rejected' && (
                             <TableCell className="max-w-xs truncate">{motivoRejeicao}</TableCell>
                           )}
                         </TableRow>

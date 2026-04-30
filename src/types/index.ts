@@ -13,19 +13,10 @@ export interface User {
 /**
  * Vocabulário canônico das solicitações.
  *
- * **Regra do projeto:** banco e código em inglês; tradução só na UI via `translate()`.
- *
- * Os literais em **PT-BR** abaixo (`'sistemas'`, `'alta'`, `'resolvida'`, etc.) NÃO são
- * suporte bilíngue. São **defesa contra dados legados** — em 28/04/2026 a auditoria
- * encontrou 17 linhas em `solicitacoes` salvas em PT-BR (origem em funções SQL legadas
- * e edição manual via SQL Editor). Mantemos os literais aqui apenas para o `tsc`
- * aceitar comparações como `request.status === 'resolvida'`.
- *
- * **Quando remover:** depois que uma migração SQL converter as 17 linhas legadas para
- * EN-US (registrada em `DIAGNOSTICO.md` Fase 1.14). Aí estes literais marcados como
- * `@deprecated` devem sumir em uma única passada — frontend e DB simultaneamente.
- *
- * **Novas implementações DEVEM gravar EN-US.**
+ * Banco e código em inglês; tradução só na UI via `translate()`.
+ * Migração das 18 linhas legadas PT-BR concluída em 30/04/2026 (Item A da Fase 0
+ * do DIAGNOSTICO). A função SQL `criar_manutencao_preventiva_em_lote` também foi
+ * corrigida para gravar EN-US (Item B). Não há mais dados PT-BR no banco.
  */
 export type RequestType =
   | 'general'
@@ -34,21 +25,9 @@ export type RequestType =
   | 'employee_lifecycle'
   | 'equipment_request'
   | 'preventive_maintenance'
-  | 'other'
-  // @deprecated — legados PT-BR, remover após migração SQL.
-  | 'sistemas'
-  | 'solicitacao_equipamento'
-  | 'manutencao_preventiva'
-  | 'ciclo_colaborador';
+  | 'other';
 
-export type RequestPriority =
-  | 'low'
-  | 'medium'
-  | 'high'
-  // @deprecated — legados PT-BR, remover após migração SQL.
-  | 'alta'
-  | 'media'
-  | 'baixa';
+export type RequestPriority = 'low' | 'medium' | 'high';
 
 export type RequestStatus =
   | 'new'
@@ -58,16 +37,7 @@ export type RequestStatus =
   | 'closed'
   | 'reopened'
   | 'cancelled'
-  | 'rejected'
-  // @deprecated — legados PT-BR, remover após migração SQL.
-  | 'nova'
-  | 'atribuida'
-  | 'em_andamento'
-  | 'resolvida'
-  | 'fechada'
-  | 'reaberta'
-  | 'rejeitada'
-  | 'cancelada';
+  | 'rejected';
 
 export interface DeliveryItem {
   id: string;

@@ -24,8 +24,8 @@ export function RequestHeader({
   onDelete,
 }: RequestHeaderProps) {
   const status = request.status ?? '';
-  const isFinished = ['resolved', 'resolvida', 'closed', 'fechada'].includes(status);
-  const isPending = ['assigned', 'atribuida', 'new', 'nova'].includes(status);
+  const isFinished = ['resolved', 'closed'].includes(status);
+  const isPending = ['assigned', 'new'].includes(status);
   const isAdmin = user?.role === 'admin';
   const isRejected = request.approvalstatus === 'rejected';
 

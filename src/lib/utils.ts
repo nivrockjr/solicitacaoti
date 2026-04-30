@@ -87,44 +87,27 @@ export function tryFormatDateTime(
 export const translations = {
   status: {
     'new': 'Nova',
-    'nova': 'Nova',
     'assigned': 'Atribuída',
-    'atribuida': 'Atribuída',
     'in_progress': 'Em Andamento',
-    'em_andamento': 'Em Andamento',
     'resolved': 'Resolvida',
-    'resolvida': 'Resolvida',
     'closed': 'Fechada',
-    'fechada': 'Fechada',
     'reopened': 'Reaberta',
-    'reaberta': 'Reaberta',
     'cancelled': 'Cancelada',
-    'cancelada': 'Cancelada',
-    'rejected': 'Rejeitada',
-    'rejeitada': 'Rejeitada'
+    'rejected': 'Rejeitada'
   },
   priority: {
     'low': 'Baixa',
-    'baixa': 'Baixa',
     'medium': 'Média',
-    'media': 'Média',
-    'high': 'Alta',
-    'alta': 'Alta'
+    'high': 'Alta'
   },
   type: {
     'general': 'Geral',
-    'geral': 'Geral',
     'systems': 'Sistemas',
-    'sistemas': 'Sistemas',
     'ajuste_estoque': 'Ajuste de Estoque',
     'employee_lifecycle': 'Ciclo de Vida',
-    'ciclo_colaborador': 'Ciclo de Vida',
     'equipment_request': 'Solicitação de Equipamento',
-    'solicitacao_equipamento': 'Solicitação de Equipamento',
     'preventive_maintenance': 'Manutenção Preventiva',
-    'manutencao_preventiva': 'Manutenção Preventiva',
     'other': 'Outro',
-    'emergencia': 'Emergência',
     'emergency': 'Emergência'
   },
   role: {
@@ -289,30 +272,19 @@ export interface VisualStyle {
 
 export const statusStyles = {
   new: { color: 'bg-status-new', label: 'NOVA', icon: 'status-new' as SemanticIconName },
-  nova: { color: 'bg-status-new', label: 'NOVA', icon: 'status-new' as SemanticIconName },
   assigned: { color: 'bg-status-assigned', label: 'ATRIBUÍDA', icon: 'status-assigned' as SemanticIconName },
-  atribuida: { color: 'bg-status-assigned', label: 'ATRIBUÍDA', icon: 'status-assigned' as SemanticIconName },
   in_progress: { color: 'bg-status-progress', label: 'EM ANDAMENTO', icon: 'status-progress' as SemanticIconName },
-  em_andamento: { color: 'bg-status-progress', label: 'EM ANDAMENTO', icon: 'status-progress' as SemanticIconName },
   resolved: { color: 'bg-status-resolved', label: 'RESOLVIDA', icon: 'status-resolved' as SemanticIconName },
-  resolvida: { color: 'bg-status-resolved', label: 'RESOLVIDA', icon: 'status-resolved' as SemanticIconName },
   closed: { color: 'bg-status-closed text-white', label: 'FECHADA', icon: 'status-closed' as SemanticIconName },
-  fechada: { color: 'bg-status-closed text-white', label: 'FECHADA', icon: 'status-closed' as SemanticIconName },
   reopened: { color: 'bg-status-reopened', label: 'REABERTA', icon: 'status-reopened' as SemanticIconName },
-  reaberta: { color: 'bg-status-reopened', label: 'REABERTA', icon: 'status-reopened' as SemanticIconName },
   rejected: { color: 'bg-status-rejected text-white', label: 'REJEITADA', icon: 'status-rejected' as SemanticIconName },
-  rejeitada: { color: 'bg-status-rejected text-white', label: 'REJEITADA', icon: 'status-rejected' as SemanticIconName },
   cancelled: { color: 'bg-muted', label: 'CANCELADA', icon: 'status-cancelled' as SemanticIconName },
-  cancelada: { color: 'bg-muted', label: 'CANCELADA', icon: 'status-cancelled' as SemanticIconName },
 } satisfies Record<string, VisualStyle>;
 
 export const priorityStyles = {
   high: { color: 'bg-status-rejected', label: 'ALTA', icon: 'priority-high' as SemanticIconName },
-  alta: { color: 'bg-status-rejected', label: 'ALTA', icon: 'priority-high' as SemanticIconName },
   medium: { color: 'border-foreground text-foreground bg-transparent', label: 'MÉDIA', variant: 'outline' as const, icon: 'priority-medium' as SemanticIconName },
-  media: { color: 'border-foreground text-foreground bg-transparent', label: 'MÉDIA', variant: 'outline' as const, icon: 'priority-medium' as SemanticIconName },
   low: { color: 'border-foreground text-foreground bg-transparent', label: 'BAIXA', variant: 'outline' as const, icon: 'priority-low' as SemanticIconName },
-  baixa: { color: 'border-foreground text-foreground bg-transparent', label: 'BAIXA', variant: 'outline' as const, icon: 'priority-low' as SemanticIconName },
 } satisfies Record<string, VisualStyle>;
 
 export function getStatusStyle(status: string | null | undefined): VisualStyle {
@@ -330,7 +302,7 @@ export function getPriorityStyle(priority: string | null | undefined): VisualSty
  */
 export function isResolved(status: string | null | undefined): boolean {
   const s = (status || '').toLowerCase().trim();
-  return ['resolved', 'resolvida', 'closed', 'fechada'].includes(s);
+  return s === 'resolved' || s === 'closed';
 }
 
 export function isPending(status: string | null | undefined): boolean {
@@ -344,29 +316,13 @@ export function isPending(status: string | null | undefined): boolean {
  */
 export function buildRequestNotificationType(status: RequestStatus): NotificationType {
   switch (status) {
-    case 'new':
-    case 'nova':
-      return 'request_new';
-    case 'assigned':
-    case 'atribuida':
-      return 'request_assigned';
-    case 'in_progress':
-    case 'em_andamento':
-      return 'request_in_progress';
-    case 'resolved':
-    case 'resolvida':
-      return 'request_resolved';
-    case 'reopened':
-    case 'reaberta':
-      return 'request_reopened';
-    case 'closed':
-    case 'fechada':
-      return 'request_closed';
-    case 'cancelled':
-    case 'cancelada':
-      return 'request_cancelled';
-    case 'rejected':
-    case 'rejeitada':
-      return 'request_rejected';
+    case 'new': return 'request_new';
+    case 'assigned': return 'request_assigned';
+    case 'in_progress': return 'request_in_progress';
+    case 'resolved': return 'request_resolved';
+    case 'reopened': return 'request_reopened';
+    case 'closed': return 'request_closed';
+    case 'cancelled': return 'request_cancelled';
+    case 'rejected': return 'request_rejected';
   }
 }

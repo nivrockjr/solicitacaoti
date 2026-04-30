@@ -16,12 +16,12 @@ export function LifecycleSection({
   onOpenDeliveryModal,
   onCopyAcceptanceLink,
 }: LifecycleSectionProps) {
-  if (request.type !== 'ciclo_colaborador' && request.type !== 'employee_lifecycle') {
+  if (request.type !== 'employee_lifecycle') {
     return null;
   }
 
   const status = (request.status || '').toLowerCase().trim();
-  const isFinished = ['resolvida', 'resolved', 'closed', 'fechada'].includes(status);
+  const isFinished = ['resolved', 'closed'].includes(status);
 
   return (
     <div className="space-y-2 mb-4">

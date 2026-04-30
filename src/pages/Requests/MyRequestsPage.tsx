@@ -66,12 +66,12 @@ const MyRequestsPage: React.FC = () => {
 
     if (tab === 'active') {
       filtered = filtered.filter(r =>
-        ['new', 'nova', 'assigned', 'atribuida', 'in_progress', 'em_andamento', 'reopened', 'reaberta'].includes(statusLower(r.status))
+        ['new', 'assigned', 'in_progress', 'reopened'].includes(statusLower(r.status))
       );
     } else if (tab === 'resolved') {
-      filtered = filtered.filter(r => ['resolved', 'resolvida'].includes(statusLower(r.status)));
+      filtered = filtered.filter(r => statusLower(r.status) === 'resolved');
     } else if (tab === 'high_priority') {
-      filtered = filtered.filter(r => ['high', 'alta'].includes(priorityLower(r.priority)) && !['resolved', 'resolvida'].includes(statusLower(r.status)));
+      filtered = filtered.filter(r => priorityLower(r.priority) === 'high' && statusLower(r.status) !== 'resolved');
     } else if (tab === 'rejected') {
       filtered = filtered.filter(r => r.approvalstatus === 'rejected');
     }
@@ -94,19 +94,18 @@ const MyRequestsPage: React.FC = () => {
     }
 
     const active = requests.filter(r =>
-      ['new', 'nova', 'assigned', 'atribuida', 'in_progress', 'em_andamento', 'reopened', 'reaberta']
-        .includes((r.status || '').toLowerCase()) &&
+      ['new', 'assigned', 'in_progress', 'reopened'].includes(r.status ?? '') &&
       r.approvalstatus !== 'rejected'
     ).length;
 
     const resolved = requests.filter(r =>
-      ['resolved', 'resolvida'].includes((r.status || '').toLowerCase()) &&
+      r.status === 'resolved' &&
       r.approvalstatus !== 'rejected'
     ).length;
 
     const high_priority = requests.filter(r =>
-      ['high', 'alta'].includes((r.priority || '').toLowerCase()) &&
-      !['resolved', 'resolvida'].includes((r.status || '').toLowerCase()) &&
+      r.priority === 'high' &&
+      r.status !== 'resolved' &&
       r.approvalstatus !== 'rejected'
     ).length;
 

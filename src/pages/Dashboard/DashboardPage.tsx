@@ -29,7 +29,7 @@ const DashboardPage: React.FC = () => {
   // Função utilitária para normalizar prioridade
   const normalizePriority = (priority: string | null | undefined) => (priority || '').toLowerCase().trim();
 
-  const isHighPriority = (priority: string | null | undefined) => ['alta', 'high'].includes(normalizePriority(priority));
+  const isHighPriority = (priority: string | null | undefined) => normalizePriority(priority) === 'high';
   const highPriorityRequests = requests.filter(r => isHighPriority(r.priority) && isPending(r.status)).length;
 
   // Recent requests: 3 mais recentes

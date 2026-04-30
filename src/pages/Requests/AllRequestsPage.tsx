@@ -61,13 +61,13 @@ const AllRequestsPage: React.FC = () => {
     let filtered = [...requests];
 
     if (tab === 'novas') {
-      filtered = filtered.filter(r => ['new', 'nova'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
+      filtered = filtered.filter(r => r.status === 'new' && r.approvalstatus !== 'rejected');
     } else if (tab === 'high_priority') {
-      filtered = filtered.filter(r => ['high', 'alta'].includes((r.priority || '').toLowerCase()) && isPending(r.status) && r.approvalstatus !== 'rejected');
+      filtered = filtered.filter(r => r.priority === 'high' && isPending(r.status) && r.approvalstatus !== 'rejected');
     } else if (tab === 'sistema_eugenio') {
       filtered = filtered.filter(r => isAssignedToSistemaEugenio(r.assignedto)).filter(r => isPending(r.status));
     } else if (tab === 'in_progress') {
-      filtered = filtered.filter(r => ['in_progress', 'em_andamento', 'assigned', 'atribuida', 'reopened', 'reaberta'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
+      filtered = filtered.filter(r => ['in_progress', 'assigned', 'reopened'].includes(r.status ?? '') && r.approvalstatus !== 'rejected');
     } else if (tab === 'resolved') {
       filtered = filtered.filter(r => isResolved(r.status) && r.approvalstatus !== 'rejected');
     } else if (tab === 'rejected') {

@@ -228,7 +228,7 @@ const RequestDetailPage: React.FC = () => {
 
   useEffect(() => {
     const fetchRelatedLifecycle = async () => {
-      if (!request || (request.type !== 'employee_lifecycle' && request.type !== 'ciclo_colaborador')) {
+      if (!request || request.type !== 'employee_lifecycle') {
         setRelatedOnboardingReq(null);
         setRelatedOffboardingReqs([]);
         return;
@@ -358,7 +358,7 @@ const RequestDetailPage: React.FC = () => {
       const updates: Partial<ITRequest> = {
         status: newStatus as RequestStatus,
       };
-      if ((newStatus === 'resolved' || newStatus === 'resolvida') && !request.resolvedat) {
+      if (newStatus === 'resolved' && !request.resolvedat) {
         updates.resolvedat = new Date().toISOString();
         updates.resolution = `Resolvido por ${user?.name}`;
       }
@@ -389,8 +389,8 @@ const RequestDetailPage: React.FC = () => {
   
   const getPriorityBadge = (priority: string | null | undefined) => {
     const style = getPriorityStyle(priority);
-    const isHigh = priority === 'high' || priority === 'alta';
-    const isMedium = priority === 'medium' || priority === 'media';
+    const isHigh = priority === 'high';
+    const isMedium = priority === 'medium';
     
     let iconName: SemanticIconName = 'priority-low';
     if (isHigh) iconName = 'priority-high';
@@ -422,7 +422,7 @@ const RequestDetailPage: React.FC = () => {
         approvedby: user.id,
         approvedbyname: user.name
       };
-      if (isApproved && (request.type !== 'solicitacao_equipamento' && request.type !== 'sistemas')) {
+      if (isApproved && request.type !== 'equipment_request' && request.type !== 'systems') {
         updates.status = 'assigned';
       }
       const updatedRequest = await updateRequest(id, updates);
@@ -924,7 +924,7 @@ const RequestDetailPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {request.resolution && (request.status === 'resolved' || request.status === 'resolvida') && (
+                {request.resolution && request.status === 'resolved' && (
                   <div>
                     <h3 className="text-sm font-medium mb-2">Resolução</h3>
                     <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-success shadow-none">
@@ -972,7 +972,7 @@ const RequestDetailPage: React.FC = () => {
                   </div>
                 )}
 
-                {request.comments && request.comments.some(c => c.text.startsWith('[REABERTURA]')) && (request.status === 'reopened' || request.status === 'reaberta') && (
+                {request.comments && request.comments.some(c => c.text.startsWith('[REABERTURA]')) && request.status === 'reopened' && (
                   (() => {
                     const reopen = request.comments.find(c => c.text.startsWith('[REABERTURA]'));
                     if (!reopen) return null;
@@ -1016,7 +1016,7 @@ const RequestDetailPage: React.FC = () => {
                   })()
                 )}
 
-                {request.comments && request.comments.some(c => c.text.startsWith('[REJEITADA]')) && (request.status === 'rejected' || request.status === 'rejeitada') && (
+                {request.comments && request.comments.some(c => c.text.startsWith('[REJEITADA]')) && request.status === 'rejected' && (
                   (() => {
                     const reject = request.comments.find(c => c.text.startsWith('[REJEITADA]'));
                     if (!reject) return null;
@@ -1103,7 +1103,7 @@ const RequestDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {user?.role !== 'admin' && ['resolved', 'resolvida'].includes(request.status ?? '') && (
+        {user?.role !== 'admin' && request.status === 'resolved' && (
           <div className="mb-4">
             {!showReopen ? (
               <Button variant="outline" onClick={() => setShowReopen(true)}>Reabrir solicitação</Button>

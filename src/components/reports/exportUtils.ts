@@ -86,7 +86,7 @@ export function exportToPdf(requests: ITRequest[], filters: ReportExportFilters)
 
   // Preparar os dados para a tabela
   // Montar colunas dinamicamente
-  const isRejeitada = filters.status === 'rejeitada';
+  const isRejeitada = filters.status === 'rejected';
   const tableColumn = [
     "ID",
     "Solicitante",

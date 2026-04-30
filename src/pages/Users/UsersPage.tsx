@@ -5,10 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { User } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +20,11 @@ import {
   deleteUsuario,
 } from '@/services/userService';
 import { useNavigate } from 'react-router-dom';
-import { translate, getSemanticIcon } from '@/lib/utils';
+import { getSemanticIcon } from '@/lib/utils';
+import { DeleteUserDialog } from '@/components/users/DeleteUserDialog';
+import { ResetPasswordDialog } from '@/components/users/ResetPasswordDialog';
+import { EditUserDialog } from '@/components/users/EditUserDialog';
+import { CreateUserDialog } from '@/components/users/CreateUserDialog';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -300,129 +300,7 @@ const UsersPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  {getSemanticIcon('user-add', { className: 'h-4 w-4 mr-2' })}
-                  Adicionar Usuário
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Adicionar Novo Usuário</DialogTitle>
-                  <DialogDescription>
-                    Preencha os dados para criar um novo usuário no sistema.
-                  </DialogDescription>
-                </DialogHeader>
-                <Form {...userForm}>
-                  <form onSubmit={userForm.handleSubmit(handleCreateUser)} className="space-y-4">
-                    <FormField
-                      control={userForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nome do usuário" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={userForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="email@exemplo.com" type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={userForm.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Função</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione uma função" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="admin">Administrador</SelectItem>
-                                <SelectItem value="requester">Solicitante</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={userForm.control}
-                        name="whatsapp"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>WhatsApp</FormLabel>
-                            <FormControl>
-                              <Input placeholder="(00) 00000-0000" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={userForm.control}
-                        name="department"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Departamento</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Departamento" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={userForm.control}
-                        name="position"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Unidade</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Unidade" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="outline">Cancelar</Button>
-                      </DialogClose>
-                      <Button variant="outline" type="submit">Criar Usuário</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            <CreateUserDialog form={userForm} onSubmit={handleCreateUser} />
           </div>
         </div>
         
@@ -506,176 +384,28 @@ const UsersPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        {/* Dialog para edição de usuário */}
-        <Dialog open={!!selectedUserForEdit} onOpenChange={(open) => !open && setSelectedUserForEdit(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Editar Usuário</DialogTitle>
-              <DialogDescription>
-                {selectedUserForEdit && `Editar informações de ${selectedUserForEdit.name}.`}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...editUserForm}>
-              <form onSubmit={editUserForm.handleSubmit(handleEditUser)} className="space-y-4">
-                <FormField
-                  control={editUserForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nome do usuário" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editUserForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="email@exemplo.com" type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editUserForm.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Função</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma função" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="admin">{translate('role', 'admin')}</SelectItem>
-                            <SelectItem value="requester">{translate('role', 'requester')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editUserForm.control}
-                    name="whatsapp"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>WhatsApp</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(00) 00000-0000" {...field} value={field.value || ''} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editUserForm.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Departamento</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Departamento" {...field} value={field.value || ''} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editUserForm.control}
-                    name="position"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unidade</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Unidade" {...field} value={field.value || ''} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setSelectedUserForEdit(null)}>Cancelar</Button>
-                  <Button variant="outline" type="submit">Salvar</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <EditUserDialog
+          user={selectedUserForEdit}
+          form={editUserForm}
+          onSubmit={handleEditUser}
+          onCancel={() => setSelectedUserForEdit(null)}
+        />
         
         {/* Dialog para redefinição de senha */}
-        <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Redefinir Senha</DialogTitle>
-              <DialogDescription>
-                {selectedUser && `Redefinir senha de ${selectedUser.name}.`}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...passwordForm}>
-              <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4">
-                <FormField
-                  control={passwordForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nova Senha</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite a nova senha" type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setSelectedUser(null)}>Cancelar</Button>
-                  <Button type="submit">Salvar Nova Senha</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <ResetPasswordDialog
+          user={selectedUser}
+          form={passwordForm}
+          onSubmit={handlePasswordChange}
+          onCancel={() => setSelectedUser(null)}
+        />
 
         {/* Confirmação de exclusão de usuário */}
-        <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && !deletingUser && setUserToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-              <AlertDialogDescription>
-                {userToDelete && `Esta ação removerá permanentemente o usuário ${userToDelete.name} (${userToDelete.email}). Não é possível desfazer.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deletingUser}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDeleteUser}
-                disabled={deletingUser}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {deletingUser ? 'Excluindo...' : 'Excluir'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteUserDialog
+          user={userToDelete}
+          deleting={deletingUser}
+          onCancel={() => setUserToDelete(null)}
+          onConfirm={confirmDeleteUser}
+        />
 
         {/* Controles de paginação para admin */}
         {isAdmin && (

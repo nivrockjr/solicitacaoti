@@ -1,0 +1,81 @@
+# Configuração Apache para SPA estático (React + Vite).
+# Este arquivo vive em /public/ e é copiado automaticamente para /dist/
+# em cada `npm run build`.
+
+# ----------------------------------------------------------------------
+# Roteamento SPA — toda URL que não bate com arquivo/pasta cai no index
+# ----------------------------------------------------------------------
+RewriteEngine On
+RewriteBase /
+
+# Acesso direto a arquivo ou pasta existente: passa direto.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Qualquer outra rota: entrega o index.html (React Router resolve no cliente).
+RewriteRule ^ index.html [L]
+
+# ----------------------------------------------------------------------
+# Headers de segurança
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Sem clickjacking.
+    Header always set X-Frame-Options SAMEORIGIN
+
+    # Sem MIME sniffing.
+    Header always set X-Content-Type-Options nosniff
+
+    # Política de referrer conservadora.
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Restringe APIs sensíveis do navegador.
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+    # HTTPS obrigatório por 1 ano (KingHost serve com SSL).
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Content Security Policy.
+    # Connect-src cobre Supabase REST + Realtime (wss). Img-src cobre signed URLs do Storage.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Cache
+# ----------------------------------------------------------------------
+# Vite gera bundles com hash no nome (ex: index-A1b2C3.js). São imutáveis:
+# o conteúdo nunca muda dentro do mesmo nome de arquivo. Podem ser cachados
+# por 1 ano com `immutable`. O index.html, ao contrário, precisa sempre vir
+# fresco — senão o usuário fica preso numa versão antiga.
+<IfModule mod_headers.c>
+    # Assets com hash (build do Vite) — cache longo + immutable.
+    <FilesMatch "\.(js|css|woff|woff2|ttf|otf|eot|png|jpg|jpeg|gif|svg|ico|webp|avif)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # HTML — sempre fresco.
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Compressão GZIP
+# ----------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+    AddOutputFilterByType DEFLATE image/svg+xml font/ttf font/otf
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Bloqueios
+# ----------------------------------------------------------------------
+# Não listar diretórios.
+Options -Indexes
+
+# Esconder arquivos sensíveis (sintaxe Apache 2.4+).
+<FilesMatch "^\.(env|htaccess|git|gitignore)">
+    Require all denied
+</FilesMatch>

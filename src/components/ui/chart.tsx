@@ -358,7 +358,7 @@ function getPayloadConfigFromPayload(
 const BarChart = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<typeof ChartContainer> & {
-    data: any[]
+    data: Array<Record<string, unknown>>
     index: string
     categories: string[]
     colors?: string[]

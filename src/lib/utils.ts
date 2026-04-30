@@ -278,7 +278,7 @@ export function getSemanticIcon(name: SemanticIconName, props?: React.ComponentP
  * `variant` espelha as variantes do componente Badge (`@/components/ui/badge`).
  * Mantemos a união declarada localmente para evitar dependência cíclica com badge.tsx.
  */
-export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'blueLight' | 'blueDark';
+export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
 export interface VisualStyle {
   color: string;

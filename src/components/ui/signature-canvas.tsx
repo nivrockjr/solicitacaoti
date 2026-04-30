@@ -81,7 +81,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onClea
       canvas.removeEventListener('touchmove', draw);
       canvas.removeEventListener('touchend', stopDrawing);
     };
-  }, [isDrawing]);
+  }, [isDrawing, onSave]);
 
   const clear = () => {
     const canvas = canvasRef.current;

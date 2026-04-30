@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Notification } from '@/types';
 import { useAuth } from './AuthContext';
 import { notificationService } from '@/services/notificationService';
@@ -24,7 +24,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // para evitar acesso direto ao Supabase neste contexto.
   const NOTIFICATION_WINDOW_DAYS = 15;
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user?.id) {
       setNotifications([]);
       setLoading(false);
@@ -41,7 +41,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications(data);
     }
     setLoading(false);
-  };
+  }, [user?.id]);
 
   // Pooling: busca notificações a cada 2 minutos
   useEffect(() => {
@@ -49,7 +49,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 120000); // 2 minutos
     return () => clearInterval(interval);
-  }, [user?.id]);
+  }, [user?.id, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
     try {

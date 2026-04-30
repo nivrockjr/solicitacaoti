@@ -25,5 +25,15 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": "off",
     },
+  },
+  {
+    // Shadcn primitives (`components/ui/**`) misturam componente + cva variants
+    // ou hooks no mesmo arquivo por design oficial do shadcn-ui. Idem os contexts
+    // (Provider + hook `use*`). Desabilitar essa regra de HMR nesses arquivos
+    // segue o padrao da comunidade e nao afeta runtime/build.
+    files: ["src/components/ui/**/*.{ts,tsx}", "src/contexts/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
   }
 );

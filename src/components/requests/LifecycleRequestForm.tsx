@@ -3,15 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { getSemanticIcon } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -23,62 +18,12 @@ import {
 import { createRequest, getRequests, updateRequest } from '@/services/requestService';
 import { ITRequest } from '@/types';
 import { buildLifecycleLinkComment } from '@/utils/lifecycle-links';
-
-const accessOptions = [
-  { id: 'conta_canais', label: 'Contas e Canais Corporativos' },
-  { id: 'sistemas', label: 'Acesso aos sistemas e pastas' },
-  { id: 'equipamentos', label: 'Equipamentos' },
-];
-
-const DEFAULT_SYSTEM_TRAINING_CONTENT = `Treinamento: Sistema Online de Solicitação de TI
-
-Conteúdo abordado:
-- Como abrir uma nova solicitação;
-- Como acompanhar status e comentários;
-- Boas práticas no preenchimento de chamados;
-- Consulta e histórico de solicitações.
-`;
-
-const formSchema = z
-  .object({
-    action: z.enum(['onboarding', 'offboarding', 'training'], {
-      required_error: 'Selecione a ação desejada',
-    }),
-    collaboratorName: z.string().min(1, 'Nome do colaborador é obrigatório'),
-    department: z.string().min(1, 'Setor é obrigatório'),
-    relatedOnboardingId: z.string().optional(),
-    accessItems: z.array(z.string()).optional(),
-    trainingMode: z.enum(['system', 'custom']).optional(),
-    trainingContent: z.string().optional(),
-    description: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.action === 'onboarding') {
-      if (!data.accessItems || data.accessItems.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Selecione ao menos um recurso ou acesso.',
-          path: ['accessItems'],
-        });
-      }
-    }
-    if (data.action === 'training') {
-      if (!data.trainingMode) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Selecione uma opção de treinamento.',
-          path: ['trainingMode'],
-        });
-      }
-      if (!data.trainingContent || data.trainingContent.trim().length < 10) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Informe o conteúdo do treinamento (mínimo 10 caracteres).',
-          path: ['trainingContent'],
-        });
-      }
-    }
-  });
+import { lifecycleFormSchema as formSchema, LifecycleFormValues, DEFAULT_SYSTEM_TRAINING_CONTENT, accessOptions } from './lifecycle/lifecycleSchema';
+import { ActionRadioGroup } from './lifecycle/ActionRadioGroup';
+import { OffboardingLinkSelect } from './lifecycle/OffboardingLinkSelect';
+import { CollaboratorBasicFields } from './lifecycle/CollaboratorBasicFields';
+import { AccessItemsCheckboxList } from './lifecycle/AccessItemsCheckboxList';
+import { TrainingFields } from './lifecycle/TrainingFields';
 
 const LifecycleRequestForm: React.FC = () => {
   const { user } = useAuth();
@@ -88,7 +33,7 @@ const LifecycleRequestForm: React.FC = () => {
   const [loadingOnboardings, setLoadingOnboardings] = useState(false);
   const [availableOnboardings, setAvailableOnboardings] = useState<ITRequest[]>([]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<LifecycleFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       action: 'onboarding',
@@ -186,7 +131,7 @@ const LifecycleRequestForm: React.FC = () => {
     return `Onboarding de ${name} — ${depto} (${dataRef}) | ID: #${req.id}`;
   };
 
-  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+  const onSubmit = async (data: LifecycleFormValues) => {
     setIsSubmitting(true);
 
     try {
@@ -266,7 +211,7 @@ const LifecycleRequestForm: React.FC = () => {
     }
   };
 
-  const createCicloVidaDescription = (data: z.infer<typeof formSchema>): string => {
+  const createCicloVidaDescription = (data: LifecycleFormValues): string => {
     const actionLabels = {
       onboarding: 'Onboarding',
       offboarding: 'Offboarding',
@@ -310,237 +255,24 @@ const LifecycleRequestForm: React.FC = () => {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="action"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Ação Desejada</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex flex-col space-y-1"
-                    >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="onboarding" />
-                        </FormControl>
-                        <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
-                          {getSemanticIcon('user-check', { className: 'h-4 w-4 text-success' })} Onboarding
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="offboarding" />
-                        </FormControl>
-                        <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
-                          {getSemanticIcon('user-minus', { className: 'h-4 w-4 text-destructive' })} Offboarding
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="training" />
-                        </FormControl>
-                        <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
-                          {getSemanticIcon('graduation', { className: 'h-4 w-4 text-primary' })} Treinamento
-                        </FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <ActionRadioGroup form={form} />
 
             {watchAction === 'offboarding' && (
-              <FormField
-                control={form.control}
-                name="relatedOnboardingId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vincular a qual entrega (Onboarding)?</FormLabel>
-                    <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingOnboardings ? 'Carregando opções...' : 'Selecione o Onboarding original'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableOnboardings.length === 0 ? (
-                            <SelectItem value="none" disabled>
-                              Nenhum colaborador elegível para devolução encontrado.
-                            </SelectItem>
-                          ) : (
-                            availableOnboardings.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {getOnboardingLabel(item)}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      Ao selecionar, o sistema preencherá automaticamente os dados do colaborador.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <OffboardingLinkSelect
+                form={form}
+                loading={loadingOnboardings}
+                availableOnboardings={availableOnboardings}
+                getOnboardingLabel={getOnboardingLabel}
               />
             )}
 
-            {watchAction !== 'offboarding' && (
-              <div className="grid grid-cols-1 gap-4">
-                <FormField
-                  control={form.control}
-                  name="collaboratorName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome do Colaborador</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nome completo" {...field} className="h-10" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Setor</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Departamento" {...field} className="h-10" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
+            {watchAction !== 'offboarding' && <CollaboratorBasicFields form={form} />}
 
 
 
-            {watchAction === 'onboarding' && (
-              <FormField
-                control={form.control}
-                name="accessItems"
-                render={() => (
-                  <FormItem>
-                    <div className="mb-4">
-                      <FormLabel className="text-base">Recursos e Acessos</FormLabel>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Marque apenas o que se aplica a esta solicitação (obrigatório ao menos um).
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {accessOptions.map((item) => (
-                        <FormField
-                          key={item.id}
-                          control={form.control}
-                          name="accessItems"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item.id}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...(field.value || []), item.id])
-                                        : field.onChange(
-                                            field.value?.filter((value) => value !== item.id)
-                                          );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal cursor-pointer">
-                                  {item.label}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            {watchAction === 'onboarding' && <AccessItemsCheckboxList form={form} />}
 
-            {watchAction === 'training' && (
-              <div className="space-y-4 bg-muted/30 p-4 rounded-lg border border-primary/10">
-                <div className="flex items-center gap-2 text-primary font-semibold mb-2">
-                  {getSemanticIcon('book', { className: 'h-5 w-5' })}
-                  <h3 className="text-sm uppercase tracking-wider">Configuração do Treinamento</h3>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="trainingMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Treinamento</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            if (value === 'system') {
-                              form.setValue('trainingContent', DEFAULT_SYSTEM_TRAINING_CONTENT);
-                            } else if (!form.getValues('trainingContent')?.trim()) {
-                              form.setValue('trainingContent', '');
-                            }
-                          }}
-                          value={field.value}
-                          className="space-y-2"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="system" id="training-system" />
-                            <FormLabel htmlFor="training-system" className="font-normal cursor-pointer">
-                              Treinamento do Sistema Online de Solicitação de TI
-                            </FormLabel>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="custom" id="training-custom" />
-                            <FormLabel htmlFor="training-custom" className="font-normal cursor-pointer">
-                              Treinamento Personalizado
-                            </FormLabel>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="trainingContent"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Conteúdo do Treinamento</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descreva o conteúdo que será apresentado ao colaborador."
-                          className="min-h-[140px] resize-y"
-                          {...field}
-                        />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Este texto será exibido no link de treinamento antes do aceite e da assinatura.
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
+            {watchAction === 'training' && <TrainingFields form={form} />}
 
             <FormField
               control={form.control}

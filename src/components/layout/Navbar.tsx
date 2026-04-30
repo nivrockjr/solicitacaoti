@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,6 +18,7 @@ const Navbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   const handleLogout = async () => {
     await logout();
@@ -33,7 +34,7 @@ const Navbar: React.FC = () => {
     <header className="border-b bg-card">
       <div className="flex h-16 items-center px-4 md:px-6">
         {isMobile && (
-          <Sheet>
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden mr-2" title="Menu">
                 {getSemanticIcon('menu', { className: 'h-5 w-5' })}
@@ -41,7 +42,7 @@ const Navbar: React.FC = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0">
-              <Sidebar />
+              <Sidebar onNavigate={() => setMobileSidebarOpen(false)} />
             </SheetContent>
           </Sheet>
         )}

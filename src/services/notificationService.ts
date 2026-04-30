@@ -82,6 +82,24 @@ export const notificationService = {
   },
 
   /**
+   * Marca todas as notificações do usuário como lidas em uma única chamada
+   * via função SQL `notify_mark_all_read` (SECURITY DEFINER). Retorna a
+   * quantidade de linhas atualizadas (apenas as que estavam não-lidas).
+   */
+  async markAllAsRead(userId: string): Promise<number> {
+    try {
+      const { data, error } = await supabase.rpc('notify_mark_all_read', {
+        p_user_id: userId,
+      });
+      if (error) throw error;
+      return typeof data === 'number' ? data : 0;
+    } catch (err) {
+      if (!import.meta.env.PROD) console.error('Erro ao marcar todas como lidas:', err);
+      return 0;
+    }
+  },
+
+  /**
    * Notifica todos os administradores.
    * Útil para novos chamados ou atualizações críticas.
    */

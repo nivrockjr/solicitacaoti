@@ -4,7 +4,13 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn, getSemanticIcon } from '@/lib/utils';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  /** Callback opcional disparado ao clicar em qualquer item de navegação.
+   *  Usado pelo Navbar mobile para fechar o Sheet automaticamente apos navegar. */
+  onNavigate?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -79,14 +85,18 @@ const Sidebar: React.FC = () => {
         <ul className="space-y-2">
           {filteredNavItems.map((item) => (
             <li key={item.href}>
-              <NavLink to={item.href} className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-2 py-2 rounded-full text-sm transition-colors dark-hover-gradient",
-                  isActive
-                    ? "font-semibold shadow-sm text-foreground bg-muted/60 dark:dark-active-tone"
-                    : ""
-                )
-              }>
+              <NavLink
+                to={item.href}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 px-2 py-2 rounded-full text-sm transition-colors dark-hover-gradient",
+                    isActive
+                      ? "font-semibold shadow-sm text-foreground bg-muted/60 dark:dark-active-tone"
+                      : ""
+                  )
+                }
+              >
                 {item.icon}
                 {item.title}
               </NavLink>

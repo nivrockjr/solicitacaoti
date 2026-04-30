@@ -9,6 +9,7 @@ interface NotificationContextType {
   loading: boolean;
   error: Error | null;
   markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -63,16 +64,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const markAllAsRead = async () => {
+    if (!user?.id) return;
+    try {
+      await notificationService.markAllAsRead(user.id);
+      // Atualizacao otimista do estado local: marca todas como lidas sem refetch.
+      setNotifications((prev) => prev.map(n => n.lida ? n : { ...n, lida: true }));
+    } catch (err) {
+      setError(err as Error);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.lida).length;
 
   return (
-    <NotificationContext.Provider 
+    <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
         loading,
         error,
         markAsRead,
+        markAllAsRead,
         refreshNotifications: fetchNotifications
       }}
     >

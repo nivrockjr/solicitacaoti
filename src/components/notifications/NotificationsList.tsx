@@ -6,25 +6,38 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { Notification } from '@/types';
 
 const NotificationsList: React.FC = () => {
-  const { notifications, markAsRead, refreshNotifications, loading } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, loading } = useNotifications();
   const navigate = useNavigate();
-  
+
   const handleClick = async (notification: Notification) => {
     await markAsRead(notification.id);
-    
+
     if (notification.request_id) {
       navigate(`/request/${notification.request_id}`);
     }
   };
-  
+
   return (
     <div className="flex flex-col h-[350px]">
       <div className="p-4 border-b">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-lg font-semibold">Notificações</h3>
-          <Button variant="ghost" size="sm" onClick={refreshNotifications} disabled={loading}>
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={markAllAsRead}
+                disabled={loading}
+                className="text-xs text-muted-foreground"
+              >
+                Marcar todas como lidas
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={refreshNotifications} disabled={loading}>
+              Atualizar
+            </Button>
+          </div>
         </div>
       </div>
       

@@ -8,7 +8,7 @@ Ao propor qualquer *Pull Request* ou alteração estrutural, certifique-se de qu
 
 ## 1. Stack Tecnológica e Infraestrutura
 O sistema foi concebido com uma stack moderna voltada para estabilidade e manutenibilidade:
-- **Core:** React 18 (Vite), TypeScript (Strict Mode).
+- **Core:** React 18 (Vite), TypeScript. *(Strict Mode desligado em `tsconfig.app.json` durante saneamento progressivo — ligar gradualmente conforme `DIAGNOSTICO.md` Seção 11 Fase 3.)*
 - **Interface e Estilização:** Tailwind CSS acoplado ao Radix UI (implementado via `shadcn/ui`).
 - **Gestão de Estado:** TanStack Query v5 (React Query) para sincronização de estado remoto.
 - **Backend-as-a-Service (BaaS):** Supabase (PostgreSQL + Realtime).
@@ -25,6 +25,8 @@ O sistema atende exclusivamente ao departamento interno de Tecnologia da Informa
 A latência de sincronização de dados entre instâncias do sistema deve ser mínima.
 - O cache global (via TanStack Query) opera com `staleTime: 0`.
 - É **mandatório** privilegiar leituras síncronas diretamente do Supabase para garantir que a interface sempre reflita o estado mais recente do banco de dados (UX instantânea), ignorando preocupações com economia microscópica de requisições de leitura.
+
+> **Exceção formal de paginação:** páginas que carregam o conjunto completo (`pageSize: 1000`) são aceitáveis enquanto o volume da tabela `solicitacoes` permanecer abaixo de ~5.000 linhas. Justificativa: trade-off intencional entre Real-Time Consistency e Zero-Overengineering, dado o universo operacional pequeno (349 chamados em 10 meses, projeção de 5 anos < 5k). **Reavaliar quando a tabela cruzar 3.000 linhas.**
 
 ## 3. Padrões de Código e Manutenibilidade
 
@@ -46,6 +48,10 @@ A lógica de negócio está separada em serviços isolados em `src/services/`. N
 - **Notificações:** Somente o `notificationService.ts` detém a responsabilidade de disparar alertas (internos ou Webhooks).
 - **Saúde e Sessão:** O controle de inicialização, blindagem de sessão e logs ocultos são regidos pelo `infrastructureService.ts`.
 
+**Services pendentes de criação (registrados em `DIAGNOSTICO.md` Fase 2):**
+- `userService.ts` → concentrar `getUserIdByEmail`, `getAdmins`, `validateUserExists`. Hoje essas operações estão duplicadas em componentes (6 chamadas Supabase diretas em `RequestDetailPage`).
+- `storageService.ts` → concentrar `uploadAttachment`, `createSignedUrl`, `deleteFolder`. Hoje vazam para componentes.
+
 ### 3.4. Monitoramento e Logs
 Logs verbosos poluem o console do cliente e vazam informações de estado.
 - `console.log()` é terminantemente proibido no artefato de produção. 
@@ -60,3 +66,42 @@ Antes de iniciar a refatoração ou criação de um novo módulo complexo, o con
 3. **Justificativa de Abordagem:** O motivo pelo qual a solução proposta não fere a regra de simplicidade e consistência descrita na seção 2.1.
 
 Qualquer alteração submetida (PR) deve ser atômica (cirúrgica) sempre que possível, evitando reescritas completas de arquivos funcionais, a menos que uma refatoração arquitetural profunda tenha sido previamente aprovada pela liderança técnica.
+
+---
+
+## 5. Vocabulário Canônico
+
+Os campos `RequestStatus`, `RequestType`, `RequestPriority`, `UserRole` e `approvalstatus` no banco são **EN-US** (`'new'`, `'general'`, `'high'`, `'admin'`, etc.).
+
+**Distribuição real (auditoria 28/04/2026):** EN-US representa 97-99% dos dados em todas as colunas tipadas.
+
+**Histórico:** 17 linhas em `solicitacoes` foram criadas em PT-BR (`'alta'`, `'media'`, `'sistemas'`, `'solicitacao_equipamento'`, `'atribuida'`) — origem identificada em funções SQL legadas (`criar_manutencao_preventiva_em_lote`, `criar_solicitacao_customizada`) e/ou edição manual via SQL Editor.
+
+**Regra para novas implementações:**
+- Novas implementações **devem** gravar EN-US.
+- Comparações que aceitam PT-BR (`'high' || 'alta'`) são **defesa contra dados legados**, não suporte bilíngue.
+- Removê-las requer **migração prévia das linhas legadas** (registrada em `DIAGNOSTICO.md` Fase 1.14).
+
+**Tipos relevantes:** ver `src/types/index.ts`.
+- `RequestStatus` agora inclui `'rejected'` (atualizado 28/04/2026).
+- `NotificationType` é união fechada com 9 valores EN-US canônicos + 3 PT-BR legados (`'comentario'`, `'rejeicao'`, `'prazo_estendido'`).
+- Quando o tipo de notificação é derivado dinamicamente do `RequestStatus`, use `buildRequestNotificationType(status)` em `@/lib/utils` para garantir exhaustividade.
+
+---
+
+## 6. Decisões de Segurança Pendentes
+
+⚠️ O sistema **ainda tem brechas críticas no banco** (status 29/04/2026). Avanços feitos no frontend, mas a Fase 0 (RLS, hash de senhas, Storage policies) permanece pendente por decisão do Operador.
+
+**Pendente (Fase 0 — exige decisão sobre autenticação):**
+1. **Autenticação:** atualmente custom com senhas em **texto plano** em `usuarios.senha` + comparação no front. Decisão pendente: migrar para Supabase Auth nativo (recomendado), ou hashar via `pgcrypto` (já instalado), ou aceitar formalmente como sistema interno fechado documentado.
+2. **RLS:** todas as 4 tabelas têm policies `USING (true)` — banco aberto à `anon key` exposta no bundle JavaScript público. Reescrever policies depois da decisão #1.
+3. **Storage:** policies idênticas abertas para `anexos-solicitacoes` e `guideit`. Mesmo bloqueio.
+4. **Senha padrão `'senha123'`** em `UsersPage.handleCreateUser` — depende da decisão #1.
+5. **Mensagem de login distingue "email não existe" vs "senha errada"** — vetor de enumeração de usuários (`AuthContext.login:43,45`).
+
+**Já corrigido (frontend, 28-29/04/2026):**
+- ✅ `window.supabase = supabase` removido de `lib/supabase.ts`.
+- ✅ URL Supabase literal migrada para `import.meta.env.VITE_SUPABASE_URL` via `storageService.getGuidePdfUrl()`.
+
+Detalhes completos com cada exploração possível em `DIAGNOSTICO.md` Seção 5.

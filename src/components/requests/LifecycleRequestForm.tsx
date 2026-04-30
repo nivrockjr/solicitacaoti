@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, UserCheck, UserMinus, GraduationCap, BookOpen } from 'lucide-react';
+import { getSemanticIcon } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -20,7 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { createRequest, getRequests, updateRequest } from '@/services/apiService';
+import { createRequest, getRequests, updateRequest } from '@/services/requestService';
 import { ITRequest } from '@/types';
 import { buildLifecycleLinkComment } from '@/utils/lifecycle-links';
 
@@ -179,7 +179,7 @@ const LifecycleRequestForm: React.FC = () => {
     }
   }, [watchAction, watchRelatedId, availableOnboardings, form]);
 
-  const getOnboardingLabel = (req: any) => {
+  const getOnboardingLabel = (req: ITRequest) => {
     const name = req.metadata?.form_data?.collaboratorName || req.title?.split(' - ')[1] || req.requestername || 'Colaborador';
     const depto = req.metadata?.form_data?.department || req.description?.match(/Setor:\s*(.+?)(?:\n|$)/)?.[1]?.trim() || 'N/I';
     const dataRef = req.createdat ? new Date(req.createdat).toLocaleDateString('pt-BR') : 'N/I';
@@ -305,7 +305,7 @@ const LifecycleRequestForm: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center w-full">
-      <div className="w-full max-w-xl mx-auto bg-card shadow rounded-2xl border p-6 hover:bg-muted/80 dark:hover:bg-gradient-to-r dark:hover:from-[#23272f] dark:hover:to-[#2d3748]">
+      <div className="w-full max-w-xl mx-auto bg-card shadow rounded-2xl border p-6 dark-hover-gradient">
         <h1 className="text-xl font-bold mb-6 mt-2">Ciclo de Vida do Colaborador</h1>
 
         <Form {...form}>
@@ -327,7 +327,7 @@ const LifecycleRequestForm: React.FC = () => {
                           <RadioGroupItem value="onboarding" />
                         </FormControl>
                         <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
-                          <UserCheck className="h-4 w-4 text-green-500" /> Onboarding
+                          {getSemanticIcon('user-check', { className: 'h-4 w-4 text-success' })} Onboarding
                         </FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0">
@@ -335,7 +335,7 @@ const LifecycleRequestForm: React.FC = () => {
                           <RadioGroupItem value="offboarding" />
                         </FormControl>
                         <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
-                          <UserMinus className="h-4 w-4 text-red-500" /> Offboarding
+                          {getSemanticIcon('user-minus', { className: 'h-4 w-4 text-destructive' })} Offboarding
                         </FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0">
@@ -343,7 +343,7 @@ const LifecycleRequestForm: React.FC = () => {
                           <RadioGroupItem value="training" />
                         </FormControl>
                         <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
-                          <GraduationCap className="h-4 w-4 text-blue-500" /> Treinamento
+                          {getSemanticIcon('graduation', { className: 'h-4 w-4 text-primary' })} Treinamento
                         </FormLabel>
                       </FormItem>
                     </RadioGroup>
@@ -477,7 +477,7 @@ const LifecycleRequestForm: React.FC = () => {
             {watchAction === 'training' && (
               <div className="space-y-4 bg-muted/30 p-4 rounded-lg border border-primary/10">
                 <div className="flex items-center gap-2 text-primary font-semibold mb-2">
-                  <BookOpen className="h-5 w-5" />
+                  {getSemanticIcon('book', { className: 'h-5 w-5' })}
                   <h3 className="text-sm uppercase tracking-wider">Configuração do Treinamento</h3>
                 </div>
 
@@ -571,7 +571,7 @@ const LifecycleRequestForm: React.FC = () => {
                 'Enviando...'
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" /> Salvar Solicitação
+                  {getSemanticIcon('action-save', { className: 'mr-2 h-4 w-4' })} Salvar Solicitação
                 </>
               )}
             </Button>

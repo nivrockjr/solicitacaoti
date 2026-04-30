@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useRobustQuery } from './use-robust-query';
 import { getRequests } from '@/services/requestService';
 import { RequestStatus, ITRequest } from '@/types';
+import { isAssignedToSistemaEugenio } from '@/config/specialUsers';
 
 interface UseRequestsDataOptions {
   userEmail?: string;
@@ -62,8 +63,6 @@ export function useRequestsData(options: UseRequestsDataOptions = {}) {
     lastUpdated,
     refresh,
     clearError,
-    hasProblems: false,    // Mantido para compatibilidade de interface
-    problems: []          // Mantido para compatibilidade de interface
   };
 }
 
@@ -93,7 +92,7 @@ export function useRequestsCounters(requests: ITRequest[]) {
       } else {
         if (['new', 'nova'].includes(s)) counts.novas++;
         if (['high', 'alta'].includes(p) && !['resolved', 'resolvida'].includes(s)) counts.high_priority++;
-        if (r.assignedto === '5eb6f9f4-e0f0-4e4a-b7a6-32b2f3d23f45' && !['resolved', 'resolvida'].includes(s)) counts.sistema_eugenio++;
+        if (isAssignedToSistemaEugenio(r.assignedto) && !['resolved', 'resolvida'].includes(s)) counts.sistema_eugenio++;
         if (['in_progress', 'em_andamento', 'assigned', 'atribuida', 'reopened', 'reaberta'].includes(s)) counts.in_progress++;
         if (['resolved', 'resolvida'].includes(s)) counts.resolved++;
       }

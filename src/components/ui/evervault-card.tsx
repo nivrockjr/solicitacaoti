@@ -1,4 +1,3 @@
-"use client";
 import { useMotionValue } from "framer-motion";
 import type { MotionValue } from "framer-motion";
 import React, { useState, useEffect } from "react";
@@ -49,49 +48,12 @@ export const EvervaultCard = ({
           randomString={randomString}
         />
         <div className="relative z-10 flex items-center justify-center w-full h-full p-8">
-          {children || <LoginForm />}
+          {children}
         </div>
       </div>
     </div>
   );
 };
-
-function LoginForm() {
-  return (
-    <div className="w-full max-w-xs">
-      <form className="space-y-6">
-        <div className="space-y-4">
-          <div className="relative">
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full max-w-[200px] mx-auto block px-4 py-3 bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/10 rounded-xl text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300 text-sm"
-            />
-          </div>
-          
-          <div className="relative">
-            <input
-              type="password"
-              placeholder="Senha"
-              className="w-full max-w-[200px] mx-auto block px-4 py-3 bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/10 rounded-xl text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300 text-sm"
-            />
-          </div>
-        </div>
-        
-        <div className="flex justify-center">
-          <motion.button
-            type="submit"
-            className="w-32 py-3 bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-white/20 rounded-xl text-black dark:text-white font-medium hover:bg-white/20 dark:hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all duration-300 text-sm"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            Entrar
-          </motion.button>
-        </div>
-      </form>
-    </div>
-  );
-}
 
 export function CardPattern({
   mouseX,

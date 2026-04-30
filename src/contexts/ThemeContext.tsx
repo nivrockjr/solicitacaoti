@@ -11,7 +11,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Sempre iniciar com o tema escuro
+    // Respeita a preferência salva pelo usuário; fallback para tema escuro.
+    try {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch {
+      // localStorage indisponível (modo privado restrito) — segue para o fallback.
+    }
     return 'dark';
   });
 

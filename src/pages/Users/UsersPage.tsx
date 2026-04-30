@@ -3,20 +3,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, UserPlus, Key } from 'lucide-react';
 import { User } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  listUsuariosPaginated,
+  getUsuarioById,
+  createUsuario,
+  updateUsuario,
+  resetUsuarioPassword,
+  deleteUsuario,
+} from '@/services/userService';
 import { useNavigate } from 'react-router-dom';
-import { translate } from '@/lib/utils';
+import { translate, getSemanticIcon } from '@/lib/utils';
 
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -40,7 +48,9 @@ const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [, setShowPasswordForm] = useState(false);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
   const [page, setPage] = useState(1);
@@ -84,28 +94,14 @@ const UsersPage: React.FC = () => {
   useEffect(() => {
     if (!import.meta.env.PROD) console.time('Carregar usuários');
     const fetchUsers = async () => {
-      let data = [];
-      let errorObj = null;
       try {
         setError(null);
         if (isAdmin) {
-          const { data: usersData, error: usersError } = await supabase
-            .from('usuarios')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .range((page - 1) * pageSize, page * pageSize - 1);
-          data = usersData || [];
-          errorObj = usersError;
+          setUsers(await listUsuariosPaginated(page, pageSize));
         } else if (currentUser) {
-          const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
-          data = result.data;
-          errorObj = result.error;
-        }
-        if (!errorObj && data) setUsers(data);
-        else {
+          setUsers(await getUsuarioById(currentUser.id));
+        } else {
           setUsers([]);
-          setError('Erro ao carregar usuários. Veja o console para detalhes.');
-          if (!import.meta.env.PROD) console.error('Erro ao buscar usuários:', errorObj);
         }
       } catch (error) {
         setUsers([]);
@@ -117,25 +113,20 @@ const UsersPage: React.FC = () => {
     };
     fetchUsers();
   }, [isAdmin, currentUser, page]);
-  
+
   const refreshUsers = async () => {
-    let data = [];
-    let error = null;
-    if (isAdmin) {
-      const { data: usersData, error: usersError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range((page - 1) * pageSize, page * pageSize - 1);
-      data = usersData || [];
-      error = usersError;
-    } else if (currentUser) {
-      const result = await supabase.from('usuarios').select('*').eq('id', currentUser.id);
-      data = result.data;
-      error = result.error;
+    try {
+      if (isAdmin) {
+        setUsers(await listUsuariosPaginated(page, pageSize));
+      } else if (currentUser) {
+        setUsers(await getUsuarioById(currentUser.id));
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      setUsers([]);
+      if (!import.meta.env.PROD) console.error('Erro ao recarregar usuários:', error);
     }
-    if (!error && data) setUsers(data);
-    else setUsers([]);
   };
   
   const filteredUsers = useMemo(() => users.filter(user => 
@@ -163,8 +154,7 @@ const UsersPage: React.FC = () => {
         precisa_alterar_senha: true,
         created_at: new Date().toISOString()
       };
-      const { error } = await supabase.from('usuarios').insert([userData]);
-      if (error) throw error;
+      await createUsuario(userData);
       await refreshUsers();
       userForm.reset();
       toast({
@@ -199,8 +189,7 @@ const UsersPage: React.FC = () => {
         position: values.position || '',
         whatsapp: values.whatsapp || ''
       };
-      const { error } = await supabase.from('usuarios').update(updateData).eq('id', selectedUserForEdit.id);
-      if (error) throw error;
+      await updateUsuario(selectedUserForEdit.id, updateData);
       await refreshUsers();
       setSelectedUserForEdit(null);
       toast({
@@ -220,8 +209,7 @@ const UsersPage: React.FC = () => {
     if (!selectedUser) return;
     
     try {
-      const { error } = await supabase.from('usuarios').update({ senha: values.password, precisa_alterar_senha: false }).eq('id', selectedUser.id);
-      if (error) throw error;
+      await resetUsuarioPassword(selectedUser.id, values.password);
       passwordForm.reset();
       toast({
         title: 'Senha redefinida!',
@@ -257,22 +245,30 @@ const UsersPage: React.FC = () => {
     });
   };
   
-  const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este usuário?')) return;
+  const handleDeleteUser = (user: User) => {
+    setUserToDelete(user);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeletingUser(true);
     try {
-      const { error } = await supabase.from('usuarios').delete().eq('id', userId);
-      if (error) throw error;
+      await deleteUsuario(userToDelete.id);
       await refreshUsers();
       toast({
         title: 'Usuário excluído!',
-        description: 'O usuário foi excluído com sucesso.'
+        description: `${userToDelete.name} foi excluído com sucesso.`,
       });
+      setUserToDelete(null);
     } catch (error) {
+      if (!import.meta.env.PROD) console.error('Erro ao excluir usuário:', error);
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Erro ao excluir usuário',
         variant: 'destructive',
       });
+    } finally {
+      setDeletingUser(false);
     }
   };
   
@@ -296,7 +292,7 @@ const UsersPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              {getSemanticIcon('action-search', { className: 'absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' })}
               <Input
                 placeholder="Buscar usuários..."
                 className="pl-8 w-full md:w-[250px]"
@@ -307,7 +303,7 @@ const UsersPage: React.FC = () => {
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">
-                  <UserPlus className="h-4 w-4 mr-2" />
+                  {getSemanticIcon('user-add', { className: 'h-4 w-4 mr-2' })}
                   Adicionar Usuário
                 </Button>
               </DialogTrigger>
@@ -430,7 +426,7 @@ const UsersPage: React.FC = () => {
           </div>
         </div>
         
-        {error && <div className="text-red-500 text-center my-4">{error}</div>}
+        {error && <div className="text-destructive text-center my-4">{error}</div>}
         
         <Card>
           <CardHeader>
@@ -438,39 +434,39 @@ const UsersPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-background">
-                    <th className="h-10 px-4 text-left font-medium">Nome</th>
-                    <th className="h-10 px-4 text-left font-medium">Email</th>
-                    <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Departamento</th>
-                    <th className="h-10 px-4 text-left font-medium hidden md:table-cell">Unidade</th>
-                    <th className="h-10 px-4 text-left font-medium hidden md:table-cell">WhatsApp</th>
-                    <th className="h-10 px-4 text-left font-medium">Função</th>
-                    <th className="h-10 px-4 text-right font-medium">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-background">
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Departamento</TableHead>
+                    <TableHead className="hidden md:table-cell">Unidade</TableHead>
+                    <TableHead className="hidden md:table-cell">WhatsApp</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-4 text-center text-muted-foreground">
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
                         Nenhum usuário encontrado
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     filteredUsers.map((user) => (
-                      <tr key={user.id} className="border-b">
-                        <td className="p-4 align-middle font-medium">{user.name}</td>
-                        <td className="p-4 align-middle">{user.email}</td>
-                        <td className="p-4 align-middle hidden md:table-cell">{user.department || '-'}</td>
-                        <td className="p-4 align-middle hidden md:table-cell">{user.position || '-'}</td>
-                        <td className="p-4 align-middle hidden md:table-cell">{user.whatsapp || '-'}</td>
-                        <td className="p-4 align-middle">
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell className="hidden md:table-cell">{user.department || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{user.position || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{user.whatsapp || '-'}</TableCell>
+                        <TableCell>
                           <Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
                             {user.role === 'admin' ? 'Administrador' : 'Solicitante'}
                           </Badge>
-                        </td>
-                        <td className="p-4 align-middle text-right">
+                        </TableCell>
+                        <TableCell className="text-right">
                           {isAdmin && (
                             <Button
                               variant="ghost"
@@ -478,36 +474,34 @@ const UsersPage: React.FC = () => {
                               title="Redefinir senha do usuário"
                               onClick={() => openPasswordForm(user)}
                             >
-                              <Key className="h-4 w-4" />
+                              {getSemanticIcon('key', { className: 'h-4 w-4' })}
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="icon"
                             title="Editar Usuário"
                             onClick={() => openEditUserForm(user)}
                           >
-                            <Edit className="h-4 w-4" />
+                            {getSemanticIcon('action-edit', { className: 'h-4 w-4' })}
                           </Button>
                           {isAdmin && (
                             <Button
                               variant="ghost"
                               size="icon"
                               title="Excluir Usuário"
-                              onClick={() => handleDeleteUser(user.id)}
-                              style={{ color: 'red' }}
+                              onClick={() => handleDeleteUser(user)}
+                              className="text-destructive hover:text-destructive"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
+                              {getSemanticIcon('action-close', { className: 'h-4 w-4' })}
                             </Button>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
@@ -660,7 +654,29 @@ const UsersPage: React.FC = () => {
             </Form>
           </DialogContent>
         </Dialog>
-        
+
+        {/* Confirmação de exclusão de usuário */}
+        <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && !deletingUser && setUserToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {userToDelete && `Esta ação removerá permanentemente o usuário ${userToDelete.name} (${userToDelete.email}). Não é possível desfazer.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletingUser}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteUser}
+                disabled={deletingUser}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletingUser ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Controles de paginação para admin */}
         {isAdmin && (
           <div className="flex justify-center gap-2 mt-4">

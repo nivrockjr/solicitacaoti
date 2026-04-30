@@ -61,6 +61,29 @@
     --sidebar-accent-foreground: 0 0% 20%; /* #333333 - Texto médio escuro */
     --sidebar-border: 0 0% 18%;         /* #2E2E2E - Bordas */
     --sidebar-ring: 212.7 26.8% 83.9%;
+
+    /* Gradient sutil de hover/seleção em itens (Sidebar, busca, formulários grandes) */
+    --hover-gradient-from: 220 8% 16%;  /* #23272f */
+    --hover-gradient-to:   217 19% 19%; /* #2d3748 */
+  }
+}
+
+/* Utilitários para o gradient hover dark — substitui hex inline [#23272f]/[#2d3748]. */
+@layer utilities {
+  /* Gradient hover dark com fallback de hover:bg-muted/80 no modo claro. */
+  .dark-hover-gradient {
+    @apply hover:bg-muted/80;
+  }
+  .dark .dark-hover-gradient:hover {
+    background-image: linear-gradient(to right, hsl(var(--hover-gradient-from)), hsl(var(--hover-gradient-to)));
+  }
+  /* Aplica o gradient SOMENTE em dark mode — usado quando o componente já
+     tem um hover customizado no modo claro (ex.: Button destructive/outline/secondary). */
+  .dark .dark-hover-gradient-only:hover {
+    background-image: linear-gradient(to right, hsl(var(--hover-gradient-from)), hsl(var(--hover-gradient-to)));
+  }
+  .dark .dark-active-tone {
+    background-color: hsl(var(--hover-gradient-from) / 0.6);
   }
 }
 

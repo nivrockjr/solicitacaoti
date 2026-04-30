@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format, isAfter, isValid } from 'date-fns';
-import { ArrowLeft, Calendar, Clock, FileText, PaperclipIcon, Send, User as UserIcon, ThumbsUp, ThumbsDown, AlertCircle, Trash2, X, Link as LinkIcon, ShieldCheck, Info, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,15 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { getRequestById, updateRequest, deleteRequest, uploadFile } from '@/services/requestService';
+import { getRequestById, updateRequest, deleteRequest, uploadFile, findOffboardingsByOnboardingId } from '@/services/requestService';
 import { notificationService } from '@/services/notificationService';
+import { listAdmins, getUserIdByEmail } from '@/services/userService';
+import { getAttachmentSignedUrl } from '@/services/storageService';
 import { ITRequest, User, Comment, Attachment, RequestStatus } from '@/types';
-import { supabase } from '@/lib/supabase';
 import { cn, tryFormatDateTime, translate, getStatusStyle, getPriorityStyle, getSemanticIcon, SemanticIconName } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { extractLifecycleLinks } from '@/utils/lifecycle-links';
 
 const RequestDetailPage: React.FC = () => {
@@ -53,8 +55,12 @@ const RequestDetailPage: React.FC = () => {
   const [deliveryItemsList, setDeliveryItemsList] = useState<{ id: string, text: string, checked: boolean, avaria?: string }[]>([]);
   const [newDeliveryItem, setNewDeliveryItem] = useState("");
   const [updatingDelivery, setUpdatingDelivery] = useState(false);
-  const [relatedOnboardingReq, setRelatedOnboardingReq] = useState<ITRequest | null>(null);
-  const [relatedOffboardingReqs, setRelatedOffboardingReqs] = useState<ITRequest[]>([]);
+  // Estados populados pelas queries de busca reversa (linhas ~225+) mas atualmente
+  // não consumidos no JSX. Setters preservados para manter o efeito colateral
+  // do fetch e permitir religar a UI no futuro sem reintroduzir o estado.
+  const [, setRelatedOnboardingReq] = useState<ITRequest | null>(null);
+  const [, setRelatedOffboardingReqs] = useState<ITRequest[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   // Função para inicializar o checklist baseado na descrição
   const handleOpenDeliveryModal = async () => {
@@ -203,11 +209,11 @@ const RequestDetailPage: React.FC = () => {
           return;
         }
         setRequest(fetchedRequest);
-      } catch (error: any) {
+      } catch (error) {
         if (!import.meta.env.PROD) console.error('Erro ao buscar solicitação:', error);
         toast({
           title: 'Erro',
-          description: error?.message || 'Falha ao carregar a solicitação. Por favor, tente novamente.',
+          description: error instanceof Error ? error.message : 'Falha ao carregar a solicitação. Por favor, tente novamente.',
           variant: 'destructive',
         });
       } finally {
@@ -241,14 +247,9 @@ const RequestDetailPage: React.FC = () => {
       // Se for um ONboarding, busca se já houve algum OFFboarding para ele
       if (action === 'onboarding' || request.title?.toLowerCase().startsWith('onboarding')) {
         try {
-          // Busca reversa: solicitações que citam este ID no metadata
-          const { data } = await supabase
-            .from('solicitacoes')
-            .select('*')
-            .contains('metadata', { form_data: { relatedOnboardingId: request.id } });
-          
-          if (data && data.length > 0) {
-            setRelatedOffboardingReqs(data as ITRequest[]);
+          const data = await findOffboardingsByOnboardingId(request.id);
+          if (data.length > 0) {
+            setRelatedOffboardingReqs(data);
           }
         } catch (err) {
           if (!import.meta.env.PROD) console.error("Erro na busca reversa de offboarding:", err);
@@ -262,12 +263,8 @@ const RequestDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const { data, error } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('role', 'admin');
-        if (error) throw error;
-        setAdminUsers(data || []);
+        const admins = await listAdmins();
+        setAdminUsers(admins);
       } catch (err) {
         if (!import.meta.env.PROD) console.error('Erro ao buscar administradores:', err);
         setAdminUsers([]);
@@ -304,10 +301,10 @@ const RequestDetailPage: React.FC = () => {
           id
         );
       } else if (user.role === 'admin' && request.requesteremail) {
-        const { data: solicitanteUser } = await supabase.from('usuarios').select('id').eq('email', request.requesteremail).single();
-        if (solicitanteUser && solicitanteUser.id && solicitanteUser.id !== user.id) {
+        const solicitanteId = await getUserIdByEmail(request.requesteremail);
+        if (solicitanteId && solicitanteId !== user.id) {
           await notificationService.send({
-            para: solicitanteUser.id,
+            para: solicitanteId,
             mensagem: `Novo comentário do administrador na sua solicitação #${id}.`,
             tipo: 'comentario',
             request_id: id
@@ -371,11 +368,11 @@ const RequestDetailPage: React.FC = () => {
         title: 'Status Atualizado',
         description: `Status da solicitação alterado para ${statusLabel}`,
       });
-    } catch (error: any) {
+    } catch (error) {
       if (!import.meta.env.PROD) console.error('Erro ao atualizar status:', error);
       toast({
         title: 'Erro',
-        description: error?.message || 'Falha ao atualizar status. Por favor, tente novamente.',
+        description: error instanceof Error ? error.message : 'Falha ao atualizar status. Por favor, tente novamente.',
         variant: 'destructive',
       });
     } finally {
@@ -384,7 +381,7 @@ const RequestDetailPage: React.FC = () => {
   };
   
   const getStatusColor = (status: string | null | undefined) => {
-    return getStatusStyle(status).color || 'bg-slate-500';
+    return getStatusStyle(status).color || 'bg-muted-foreground';
   };
   
   const getPriorityBadge = (priority: string | null | undefined) => {
@@ -431,9 +428,9 @@ const RequestDetailPage: React.FC = () => {
     if (!isValid(deadline)) return '';
     const diffTime = deadline.getTime() - now.getTime();
     const diffDays = diffTime / (1000 * 3600 * 24);
-    if (diffDays < 0) return 'text-red-500 font-bold';
-    if (diffDays < 1) return 'text-amber-500 font-bold';
-    if (diffDays < 2) return 'text-amber-400';
+    if (diffDays < 0) return 'text-destructive font-bold';
+    if (diffDays < 1) return 'text-warning font-bold';
+    if (diffDays < 2) return 'text-warning/80';
     return '';
   };
   
@@ -507,28 +504,6 @@ const RequestDetailPage: React.FC = () => {
     }
   };
   
-  const handleRating = async (rating: number) => {
-    if (!request || !id) return;
-    try {
-      setSubmitting(true);
-      const updatedRequest = await updateRequest(id, { rating });
-      setRequest(updatedRequest);
-      toast({
-        title: 'Avaliação Enviada',
-        description: 'Obrigado por avaliar esta solicitação.',
-      });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao enviar avaliação:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao enviar avaliação. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleCopyAcceptanceLink = () => {
     const baseUrl = window.location.origin;
     const acceptanceUrl = `${baseUrl}/aceite/${id}`;
@@ -610,9 +585,13 @@ const RequestDetailPage: React.FC = () => {
     }
   };
   
-  const handleDeleteRequest = async () => {
+  const handleDeleteRequest = () => {
     if (!request || !id || !user) return;
-    if (!window.confirm('Tem certeza que deseja excluir esta solicitação? Esta ação não poderá ser desfeita.')) return;
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteRequest = async () => {
+    if (!request || !id || !user) return;
     try {
       setSubmitting(true);
       const success = await deleteRequest(id);
@@ -621,10 +600,11 @@ const RequestDetailPage: React.FC = () => {
           title: 'Solicitação Excluída',
           description: 'A solicitação foi excluída com sucesso.',
         });
-        
+
         // Invalidar cache do React Query antes de voltar
         queryClient.invalidateQueries({ queryKey: ['requests'] });
-        
+
+        setShowDeleteDialog(false);
         navigate('/dashboard');
       } else {
         toast({
@@ -634,6 +614,7 @@ const RequestDetailPage: React.FC = () => {
         });
       }
     } catch (error) {
+      if (!import.meta.env.PROD) console.error('Erro ao excluir a solicitação:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao excluir a solicitação. Por favor, tente novamente.',
@@ -647,14 +628,8 @@ const RequestDetailPage: React.FC = () => {
   const handleViewAttachment = async (filePath: string) => {
     setDownloading(filePath);
     try {
-      const { data, error } = await supabase
-        .storage
-        .from('anexos-solicitacoes')
-        .createSignedUrl(filePath, 60);
-      if (error) throw error;
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank');
-      }
+      const signedUrl = await getAttachmentSignedUrl(filePath);
+      window.open(signedUrl, '_blank');
     } catch (err) {
       toast({
         title: 'Erro ao abrir anexo',
@@ -693,7 +668,7 @@ const RequestDetailPage: React.FC = () => {
         createdAt: new Date().toISOString(),
         attachments: newAttachments.length > 0 ? newAttachments : undefined,
       };
-      const updates = {
+      const updates: Partial<ITRequest> = {
         status: 'reopened',
         comments: [...(request.comments || []), reopenCommentObj],
         attachments: updatedAttachments,
@@ -705,6 +680,7 @@ const RequestDetailPage: React.FC = () => {
       setReopenFiles([]);
       toast({ title: 'Solicitação Reaberta', description: 'Motivo registrado com sucesso.' });
     } catch (error) {
+      if (!import.meta.env.PROD) console.error('Erro ao reabrir a solicitação:', error);
       toast({ title: 'Erro', description: 'Falha ao reabrir solicitação.', variant: 'destructive' });
     } finally {
       setReopenUploading(false);
@@ -719,7 +695,7 @@ const RequestDetailPage: React.FC = () => {
       if (rejectFiles.length > 0) {
         for (const file of rejectFiles) {
           try {
-            const uploadedFile = await uploadFile(file, `anexos-solicitacoes/${id}/rejeicao/`);
+            const uploadedFile = await uploadFile(file, id);
             rejectAttachments.push({
               id: crypto.randomUUID(),
               fileName: file.name,
@@ -764,16 +740,17 @@ const RequestDetailPage: React.FC = () => {
         title: 'Solicitação Rejeitada',
         description: 'A solicitação foi rejeitada com sucesso.',
       });
-      const { data: solicitanteUser } = await supabase.from('usuarios').select('id').eq('email', request.requesteremail).single();
-      if (solicitanteUser && solicitanteUser.id && solicitanteUser.id !== user.id) {
+      const solicitanteId = request.requesteremail ? await getUserIdByEmail(request.requesteremail) : null;
+      if (solicitanteId && solicitanteId !== user.id) {
         await notificationService.send({
-          para: solicitanteUser.id,
+          para: solicitanteId,
           mensagem: `Sua solicitação #${id} foi rejeitada. Motivo: ${rejectReason.trim()}`,
           tipo: 'rejeicao',
           request_id: id
         });
       }
     } catch (error) {
+      if (!import.meta.env.PROD) console.error('Erro ao rejeitar a solicitação:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao rejeitar a solicitação. Por favor, tente novamente.',
@@ -810,10 +787,10 @@ const RequestDetailPage: React.FC = () => {
         description: 'O novo prazo foi registrado e o solicitante notificado.',
       });
       if (request.requesteremail) {
-        const { data: solicitanteUser } = await supabase.from('usuarios').select('id').eq('email', request.requesteremail).single();
-        if (solicitanteUser && solicitanteUser.id && solicitanteUser.id !== user.id) {
+        const solicitanteId = await getUserIdByEmail(request.requesteremail);
+        if (solicitanteId && solicitanteId !== user.id) {
           await notificationService.send({
-            para: solicitanteUser.id,
+            para: solicitanteId,
             mensagem: `O prazo da sua solicitação #${id} foi alterado para ${tryFormatDateTime(newDeadline + 'T12:00:00', 'dd/MM/yyyy') ?? newDeadline}. Motivo: ${extendReason.trim()}`,
             tipo: 'prazo_estendido',
             request_id: id
@@ -821,6 +798,7 @@ const RequestDetailPage: React.FC = () => {
         }
       }
     } catch (error) {
+      if (!import.meta.env.PROD) console.error('Erro ao estender prazo:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao estender prazo. Por favor, tente novamente.',
@@ -830,7 +808,7 @@ const RequestDetailPage: React.FC = () => {
       setSubmitting(false);
     }
   };
-  
+
   const handleOpenResolutionModal = () => {
     setResolutionText("");
     setResolutionFiles([]);
@@ -864,7 +842,7 @@ const RequestDetailPage: React.FC = () => {
         createdAt: new Date().toISOString(),
         attachments: newAttachments.length > 0 ? newAttachments : undefined,
       };
-      const updates = {
+      const updates: Partial<ITRequest> = {
         status: 'resolved',
         resolvedat: new Date().toISOString(),
         resolution: resolutionText,
@@ -876,6 +854,7 @@ const RequestDetailPage: React.FC = () => {
       setShowResolutionModal(false);
       toast({ title: 'Solicitação Resolvida', description: 'Resolução registrada com sucesso.' });
     } catch (error) {
+      if (!import.meta.env.PROD) console.error('Erro ao submeter resolução:', error);
       toast({ title: 'Erro', description: 'Falha ao registrar resolução.', variant: 'destructive' });
     } finally {
       setResolutionUploading(false);
@@ -926,15 +905,15 @@ const RequestDetailPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-4 w-4" />
+              {getSemanticIcon('action-back', { className: 'h-4 w-4' })}
               <span className="sr-only">Voltar</span>
             </Button>
             <h1 className="text-2xl font-bold tracking-tight">Solicitação #{request.id}</h1>
           </div>
           <div className="flex gap-2">
-            {user?.role === 'admin' && !['resolved', 'resolvida', 'closed', 'fechada'].includes(request.status) && request.approvalstatus !== 'rejected' && (
+            {user?.role === 'admin' && !['resolved', 'resolvida', 'closed', 'fechada'].includes(request.status ?? '') && request.approvalstatus !== 'rejected' && (
               <>
-                {(['assigned', 'atribuida', 'new', 'nova'].includes(request.status)) && (
+                {(['assigned', 'atribuida', 'new', 'nova'].includes(request.status ?? '')) && (
                   <Button onClick={() => handleStatusChange('in_progress')} variant="outline" size="sm" disabled={submitting}>
                     Iniciar Progresso
                   </Button>
@@ -956,7 +935,7 @@ const RequestDetailPage: React.FC = () => {
                   className="bg-status-rejected text-white border-status-rejected px-3"
                   title="Rejeitar Solicitação"
                 >
-                  <X className="h-4 w-4" />
+                  {getSemanticIcon('action-close', { className: 'h-4 w-4' })}
                 </Button>
               </>
             )}
@@ -969,7 +948,7 @@ const RequestDetailPage: React.FC = () => {
                 className="bg-status-rejected text-white border-status-rejected px-3"
                 title="Excluir Solicitação"
               >
-                <Trash2 className="h-4 w-4" />
+                {getSemanticIcon('action-delete', { className: 'h-4 w-4' })}
               </Button>
             )}
           </div>
@@ -986,12 +965,12 @@ const RequestDetailPage: React.FC = () => {
                   </CardTitle>
                   <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <FileText className="h-4 w-4" />
+                      {getSemanticIcon('file', { className: 'h-4 w-4' })}
                       <span>{formatRequestType(request.type)}</span>
                     </div>
                     <span className="hidden sm:inline">•</span>
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
+                      {getSemanticIcon('calendar', { className: 'h-4 w-4' })}
                       <span>Criada em {tryFormatDateTime(request.createdat, 'dd/MM/yyyy') ?? '—'}</span>
                     </div>
                   </div>
@@ -1014,7 +993,7 @@ const RequestDetailPage: React.FC = () => {
                 {request.resolution && (request.status === 'resolved' || request.status === 'resolvida') && (
                   <div>
                     <h3 className="text-sm font-medium mb-2">Resolução</h3>
-                    <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-green-500 shadow-none">
+                    <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-success shadow-none">
                       <p>{request.resolution}</p>
                       {request.comments && request.comments.length > 0 && (
                         (() => {
@@ -1026,7 +1005,7 @@ const RequestDetailPage: React.FC = () => {
                                 <div className="space-y-2">
                                   {resComment.attachments.map((attachment: Attachment) => (
                                     <div key={attachment.id} className="flex items-center gap-2 p-2">
-                                      <PaperclipIcon className="h-4 w-4 text-muted-foreground" />
+                                      {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium truncate">{attachment.fileName}</p>
                                         <p className="text-xs text-muted-foreground">
@@ -1066,7 +1045,7 @@ const RequestDetailPage: React.FC = () => {
                     return (
                       <div className="mt-4">
                         <h3 className="text-sm font-medium mb-2">Reaberta</h3>
-                        <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-slate-500 shadow-none">
+                        <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-muted-foreground shadow-none">
                           <p>{reopen.text.replace('[REABERTURA]', '').trim()}</p>
                           {reopen.attachments && reopen.attachments.length > 0 && (
                             <div className="mt-2">
@@ -1074,7 +1053,7 @@ const RequestDetailPage: React.FC = () => {
                               <div className="space-y-2">
                                 {reopen.attachments.map((attachment: Attachment) => (
                                   <div key={attachment.id} className="flex items-center gap-2 p-2">
-                                    <PaperclipIcon className="h-4 w-4 text-muted-foreground" />
+                                    {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
                                     <div className="min-w-0 flex-1">
                                       <p className="text-sm font-medium truncate">{attachment.fileName}</p>
                                       <p className="text-xs text-muted-foreground">
@@ -1110,7 +1089,7 @@ const RequestDetailPage: React.FC = () => {
                     return (
                       <div className="mt-4">
                         <h3 className="text-sm font-medium mb-2">Rejeitada</h3>
-                        <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-red-500 shadow-none">
+                        <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-destructive shadow-none">
                           <p>{reject.text.replace('[REJEITADA]', '').trim()}</p>
                           {reject.attachments && reject.attachments.length > 0 && (
                             <div className="mt-2">
@@ -1118,7 +1097,7 @@ const RequestDetailPage: React.FC = () => {
                               <div className="space-y-2">
                               {reject.attachments.map((attachment: Attachment) => (
                                 <div key={attachment.id} className="flex items-center gap-2 p-2">
-                                    <PaperclipIcon className="h-4 w-4 text-muted-foreground" />
+                                    {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
                                     <div className="min-w-0 flex-1">
                                       <p className="text-sm font-medium truncate">{attachment.fileName}</p>
                                       <p className="text-xs text-muted-foreground">
@@ -1168,14 +1147,14 @@ const RequestDetailPage: React.FC = () => {
                         <div className="space-y-2">
                           {userAttachments.map((attachment) => (
                             <div key={attachment.id} className="flex items-center gap-2 p-2">
-                              <PaperclipIcon className="h-4 w-4 text-muted-foreground" />
+                              {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium truncate">{attachment.fileName}</p>
                                 <p className="text-xs text-muted-foreground">
                                   {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Tamanho desconhecido'}
                                 </p>
                               </div>
-                              <Button variant="ghost" size="sm" onClick={() => handleViewAttachment(attachment.fileUrl)} disabled={downloading === attachment.fileUrl}>
+                              <Button variant="ghost" size="sm" onClick={() => attachment.fileUrl && handleViewAttachment(attachment.fileUrl)} disabled={!attachment.fileUrl || downloading === attachment.fileUrl}>
                                 {downloading === attachment.fileUrl ? 'Abrindo...' : 'Visualizar'}
                               </Button>
                             </div>
@@ -1198,7 +1177,7 @@ const RequestDetailPage: React.FC = () => {
                         <div key={comment.id} className="p-3 rounded relative group">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 text-sm">
-                              <UserIcon className="h-4 w-4 text-muted-foreground" />
+                              {getSemanticIcon('user', { className: 'h-4 w-4 text-muted-foreground' })}
                               <span className="text-muted-foreground">Comentado por:</span>
                               <span>{comment.userName}</span>
                             </div>
@@ -1214,7 +1193,7 @@ const RequestDetailPage: React.FC = () => {
                                   onClick={() => handleDeleteComment(comment.id)}
                                   disabled={submitting}
                                 >
-                                  <X className="h-3 w-3" />
+                                  {getSemanticIcon('action-close', { className: 'h-3 w-3' })}
                                 </Button>
                               )}
                             </div>
@@ -1224,7 +1203,7 @@ const RequestDetailPage: React.FC = () => {
                             <div className="mt-2 space-y-2 border-t pt-2 border-muted">
                               {comment.attachments.map((attachment) => (
                                 <div key={attachment.id} className="flex items-center gap-2 p-1.5 bg-muted/30 rounded-md">
-                                  <PaperclipIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                  {getSemanticIcon('attachment', { className: 'h-3.5 w-3.5 text-muted-foreground' })}
                                   <div className="min-w-0 flex-1">
                                     <p className="text-xs font-medium truncate">{attachment.fileName}</p>
                                     <p className="text-[10px] text-muted-foreground">
@@ -1258,7 +1237,7 @@ const RequestDetailPage: React.FC = () => {
                     />
                     <div className="flex justify-end">
                       <Button onClick={handleAddComment} disabled={!comment.trim() || submitting}>
-                        <Send className="h-4 w-4 mr-2" />
+                        {getSemanticIcon('action-send', { className: 'h-4 w-4 mr-2' })}
                         Adicionar Comentário
                       </Button>
                     </div>
@@ -1290,7 +1269,7 @@ const RequestDetailPage: React.FC = () => {
                       if (!deadline || !resolved || !isValid(deadline) || !isValid(resolved)) {
                         return (
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
+                            {getSemanticIcon('clock', { className: 'h-4 w-4' })}
                             <p className="font-medium">{tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm') ?? '—'}</p>
                           </div>
                         );
@@ -1298,8 +1277,8 @@ const RequestDetailPage: React.FC = () => {
                       const isOnTime = resolved <= deadline;
                       return (
                         <div className="flex items-center gap-2">
-                          <Clock className={`h-4 w-4 ${isOnTime ? 'text-green-500' : 'text-red-500'}`} />
-                          <p className={`font-medium ${isOnTime ? 'text-green-600' : 'text-red-600'}`}>
+                          {getSemanticIcon('clock', { className: `h-4 w-4 ${isOnTime ? 'text-success' : 'text-destructive'}` })}
+                          <p className={`font-medium ${isOnTime ? 'text-success' : 'text-destructive'}`}>
                             {isOnTime ? '✅ Resolvida no prazo' : '❌ Resolvida fora do prazo'}
                           </p>
                         </div>
@@ -1308,12 +1287,12 @@ const RequestDetailPage: React.FC = () => {
                   ) : (
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Clock className={`h-4 w-4 ${isDeadlinePassed(request.deadlineat) ? 'text-destructive' : ''}`} />
+                        {getSemanticIcon('clock', { className: `h-4 w-4 ${isDeadlinePassed(request.deadlineat) ? 'text-destructive' : ''}` })}
                         <p className={`font-medium ${getDeadlineColorClass(request.deadlineat)}`}>
                           {tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm') ?? '—'}
                         </p>
                       </div>
-                      {user?.role === 'admin' && !['rejected', 'rejeitada', 'resolved', 'resolvida'].includes(request.status) && (
+                      {user?.role === 'admin' && !['rejected', 'rejeitada', 'resolved', 'resolvida'].includes(request.status ?? '') && (
                         <Button onClick={() => setShowExtendDeadline(true)} variant="outline" size="sm" disabled={submitting}>
                           Estender Prazo
                         </Button>
@@ -1327,7 +1306,7 @@ const RequestDetailPage: React.FC = () => {
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Solicitante</p>
                   <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4" />
+                    {getSemanticIcon('user', { className: 'h-4 w-4' })}
                     <div>
                       <p className="font-medium">{request.requestername}</p>
                       <p className="text-xs text-muted-foreground">{request.requesteremail}</p>
@@ -1381,7 +1360,7 @@ const RequestDetailPage: React.FC = () => {
                     <Separator />
                     <div className="space-y-3 py-2">
                       <div className="flex items-center gap-2 text-primary">
-                        <ShieldCheck className="h-4 w-4" />
+                        {getSemanticIcon('status-closed', { className: 'h-4 w-4' })}
                         <p className="text-sm font-semibold">Ações do Administrador</p>
                       </div>
                       
@@ -1391,16 +1370,16 @@ const RequestDetailPage: React.FC = () => {
                           {!['resolvida', 'resolved', 'closed', 'fechada'].includes(normalizeStatus(request.status)) ? (
                             <div className="flex flex-col gap-2">
                               <Button onClick={handleOpenDeliveryModal} variant="outline" size="sm" className="w-full flex items-center justify-center gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10">
-                                <FileText className="h-3.5 w-3.5" /> 
+                                {getSemanticIcon('file', { className: 'h-3.5 w-3.5' })}
                                 {request.metadata?.form_data?.action === 'offboarding' ? '1 - Itens a coletar' : '1. Definir Itens de Entrega'}
                               </Button>
                               <Button onClick={handleCopyAcceptanceLink} variant="outline" size="sm" className="w-full flex items-center justify-center gap-2 border-primary/30 hover:bg-primary/5">
-                                <LinkIcon className="h-3.5 w-3.5" /> 2. Copiar Link de Aceite
+                                {getSemanticIcon('link', { className: 'h-3.5 w-3.5' })} 2. Copiar Link de Aceite
                               </Button>
                             </div>
                           ) : (
-                            <Button onClick={() => window.open(`${window.location.origin}/aceite/${id}`, '_blank')} variant="default" size="sm" className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Assinado - Ver Termo
+                            <Button onClick={() => window.open(`${window.location.origin}/aceite/${id}`, '_blank')} variant="default" size="sm" className="w-full flex items-center justify-center gap-2 bg-success hover:bg-success/90 text-success-foreground">
+                              {getSemanticIcon('success', { className: 'h-3.5 w-3.5' })} Assinado - Ver Termo
                             </Button>
                           )}
                           <Separator className="my-2" />
@@ -1417,10 +1396,10 @@ const RequestDetailPage: React.FC = () => {
                               <p className="text-xs text-muted-foreground">Esta solicitação requer aprovação</p>
                               <div className="flex gap-2">
                                 <Button onClick={() => handleApproval(true)} className="w-1/2" variant="outline" disabled={submitting}>
-                                  <ThumbsUp className="h-4 w-4 mr-2" /> Aprovar
+                                  {getSemanticIcon('action-approve', { className: 'h-4 w-4 mr-2' })} Aprovar
                                 </Button>
                                 <Button onClick={() => handleApproval(false)} className="w-1/2" variant="outline" disabled={submitting}>
-                                  <ThumbsDown className="h-4 w-4 mr-2" /> Rejeitar
+                                  {getSemanticIcon('action-reject', { className: 'h-4 w-4 mr-2' })} Rejeitar
                                 </Button>
                               </div>
                             </div>
@@ -1431,17 +1410,20 @@ const RequestDetailPage: React.FC = () => {
                              <div className="space-y-2">
                                <p className="text-xs text-muted-foreground">Atribuir a um técnico específico</p>
                                <div className="space-y-2">
-                                 <select 
-                                    value={selectedTechnician} 
-                                    onChange={(e) => setSelectedTechnician(e.target.value)}
-                                    className="w-full p-2 border rounded-md text-sm bg-background text-foreground"
-                                    disabled={submitting}
-                                  >
-                                   <option value="">Selecione um técnico</option>
-                                   {adminUsers.map(admin => (
-                                     <option key={admin.id} value={admin.id}>{admin.name}</option>
-                                   ))}
-                                 </select>
+                                 <Select
+                                   value={selectedTechnician || undefined}
+                                   onValueChange={setSelectedTechnician}
+                                   disabled={submitting}
+                                 >
+                                   <SelectTrigger className="w-full">
+                                     <SelectValue placeholder="Selecione um técnico" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                     {adminUsers.map(admin => (
+                                       <SelectItem key={admin.id} value={admin.id}>{admin.name}</SelectItem>
+                                     ))}
+                                   </SelectContent>
+                                 </Select>
                                  <Button onClick={handleAssignToTechnician} className="w-full" variant="outline" size="sm" disabled={!selectedTechnician || submitting}>
                                    {submitting ? 'Atribuindo...' : 'Atribuir Solicitação'}
                                  </Button>
@@ -1458,7 +1440,7 @@ const RequestDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {user?.role !== 'admin' && ['resolved', 'resolvida'].includes(request.status) && (
+        {user?.role !== 'admin' && ['resolved', 'resolvida'].includes(request.status ?? '') && (
           <div className="mb-4">
             {!showReopen ? (
               <Button variant="outline" onClick={() => setShowReopen(true)}>Reabrir solicitação</Button>
@@ -1557,7 +1539,7 @@ const RequestDetailPage: React.FC = () => {
                           className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
                           onClick={() => removeDeliveryItem(item.id)}
                         >
-                          <X className="h-4 w-4" />
+                          {getSemanticIcon('action-close', { className: 'h-4 w-4' })}
                         </Button>
                       </div>
                       {item.checked && request.metadata?.form_data?.action === 'offboarding' && (
@@ -1587,7 +1569,7 @@ const RequestDetailPage: React.FC = () => {
                </div>
 
                <div className="p-3 rounded-md border flex gap-3">
-                 <Info className="h-5 w-5 text-foreground shrink-0 mt-0.5" />
+                 {getSemanticIcon('info', { className: 'h-5 w-5 text-foreground shrink-0 mt-0.5' })}
                  <p className="text-[11px] text-foreground leading-normal">
                    Ao salvar, a descrição do chamado será atualizada com esta lista e a original será arquivada nos comentários.
                  </p>
@@ -1621,6 +1603,28 @@ const RequestDetailPage: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Confirmação de exclusão da solicitação */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={(open) => !open && !submitting && setShowDeleteDialog(false)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir solicitação?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação removerá permanentemente a solicitação #{id} e seus anexos. Não é possível desfazer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteRequest}
+                disabled={submitting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {submitting ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

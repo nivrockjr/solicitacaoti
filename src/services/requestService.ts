@@ -1,55 +1,54 @@
 import { ITRequest, RequestType, RequestPriority, RequestStatus } from '../types';
 import { notificationService } from './notificationService';
 import { supabase } from '../lib/supabase';
-import { v4 as uuidv4 } from 'uuid';
-import { translate } from '../lib/utils';
+import { translate, buildRequestNotificationType } from '../lib/utils';
+import { getAdminForRequestType } from '../config/adminAssignments';
+import { findAdminByName, getUserIdByEmail } from './userService';
+import { deleteAttachmentFolder, uploadAttachment } from './storageService';
 
-/** 
- * Prazo (SLA) a partir da criação. 
- * Baseado na prioridade e tipo do chamado.
+/**
+ * SLA oficial em horas corridas, indexado pelo tipo de chamado.
+ * Fonte da verdade: README.md § 6.1 e CLAUDE.md § 2.4.
+ *
+ * Variantes em PT-BR são aceitas como dados legados (banco contém 17 linhas
+ * com type/status em PT-BR — migração planejada em DIAGNOSTICO.md Fase 1.14).
+ */
+const SLA_HOURS_BY_TYPE: Record<string, number> = {
+  // EN-US — canônico
+  general: 120,                  // 5 dias
+  systems: 240,                  // 10 dias
+  equipment_request: 240,        // 10 dias
+  employee_lifecycle: 120,       // 5 dias (Onboarding / Offboarding / Treinamento)
+  ajuste_estoque: 72,            // 3 dias
+  preventive_maintenance: 960,   // 40 dias
+
+  // PT-BR — legados, mantidos para compatibilidade com dados existentes.
+  geral: 120,
+  sistemas: 240,
+  solicitacao_equipamento: 240,
+  ciclo_colaborador: 120,
+  manutencao_preventiva: 960,
+};
+
+/**
+ * Calcula o prazo (deadline) a partir da criação, com base no tipo do chamado.
+ * Lança erro se o tipo for desconhecido — não há SLA fallback silencioso.
  */
 function calculateDeadline(
   type: RequestType | null | undefined,
-  priority: RequestPriority | null | undefined
+  _priority: RequestPriority | null | undefined
 ): Date {
   const t = String(type ?? '').toLowerCase();
-  const p = String(priority ?? '').toLowerCase();
-  
-  // Padrão Geral: 48 horas (2 dias) se nada for especificado
-  let hours = 48;
+  const hours = SLA_HOURS_BY_TYPE[t];
 
-  // Regras Oficiais por Tipo (SLA Principal)
-  if (t === 'general' || t === 'geral') {
-    hours = 120; // 5 dias
-  } else if (t === 'systems' || t === 'sistemas' || t === 'equipment_request' || t === 'solicitacao_equipamento') {
-    hours = 240; // 10 dias
-  } else if (t === 'employee_lifecycle' || t === 'ciclo_colaborador') {
-    hours = 120; // 5 dias
-  } else if (t === 'ajuste_estoque') {
-    hours = 24;  // 1 dia
-  } else if (t === 'preventive_maintenance' || t === 'manutencao_preventiva') {
-    hours = 120; // 5 dias (Padrão sugerido para Manutenção)
-  }
-
-  // Ajuste por Prioridade (Opcional: Alta pode reduzir o prazo em 50%, Baixa aumentar em 50%)
-  // No entanto, para manter a fidelidade ao pedido do usuário, usaremos os prazos fixos.
-  if (p === 'high' || p === 'alta') {
-    // Para ajuste de estoque, mantém 24h. Para os outros, podemos reduzir se necessário, 
-    // mas o usuário pediu especificamente os dias fixos.
-    if (t === 'ajuste_estoque') hours = 24;
+  if (hours === undefined) {
+    throw new Error(`Tipo de solicitação desconhecido: "${type}". Verifique o tipo enviado em RequestType.`);
   }
 
   const d = new Date();
   d.setTime(d.getTime() + hours * 60 * 60 * 1000);
   return d;
 }
-
-/**
- * Utilitário para sanitizar nomes de arquivos
- */
-const sanitizeFileName = (name: string): string => {
-  return name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-};
 
 export const getRequests = async (
   userEmailOrId?: string,
@@ -115,10 +114,26 @@ export const getRequests = async (
   return { data: data || [], count: count || 0 };
 };
 
-export const getRequestById = async (id: string): Promise<ITRequest | undefined> => {
+export const getRequestById = async (id: string): Promise<ITRequest> => {
   const { data, error } = await supabase.from('solicitacoes').select('*').eq('id', id).single();
   if (error) throw new Error('Solicitação não encontrada');
   return data;
+};
+
+/**
+ * Busca reversa: encontra todas as solicitações cujo `metadata.form_data.relatedOnboardingId`
+ * aponta para o `onboardingId` informado. Usado para descobrir os offboardings vinculados
+ * a um onboarding específico no fluxo de Ciclo de Vida do Colaborador.
+ *
+ * Retorna `[]` se não houver vínculos. Erros são silenciados aqui (caller pode usar o
+ * default vazio com segurança); para logar, ler via try/catch externo.
+ */
+export const findOffboardingsByOnboardingId = async (onboardingId: string): Promise<ITRequest[]> => {
+  const { data } = await supabase
+    .from('solicitacoes')
+    .select('*')
+    .contains('metadata', { form_data: { relatedOnboardingId: onboardingId } });
+  return (data ?? []) as ITRequest[];
 };
 
 export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdat' | 'deadlineat'>): Promise<ITRequest> => {
@@ -130,19 +145,15 @@ export const createRequest = async (request: Omit<ITRequest, 'id' | 'createdat' 
   let assignedtoname = null;
   let finalStatus: RequestStatus = 'new';
   
-  // Atribuição automática para estoque
-  if (request.type === 'ajuste_estoque') {
+  // Atribuição automática conforme regras declaradas em src/config/adminAssignments.ts
+  const autoAssignment = request.type ? getAdminForRequestType(request.type) : null;
+  if (autoAssignment) {
     try {
-      const { data: nivaldoUser } = await supabase
-        .from('usuarios')
-        .select('id, name')
-        .eq('name', 'Nivaldo')
-        .eq('role', 'admin')
-        .maybeSingle();
-      
-      if (nivaldoUser) {
-        assignedto = nivaldoUser.id;
-        assignedtoname = nivaldoUser.name;
+      const assignedAdmin = await findAdminByName(autoAssignment.adminName);
+
+      if (assignedAdmin) {
+        assignedto = assignedAdmin.id;
+        assignedtoname = assignedAdmin.name;
         finalStatus = 'assigned';
       }
     } catch (error) {
@@ -196,8 +207,7 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   // Lógica de notificações simplificada
   let solicitanteId: string | null = null;
   if (oldRequest.requesteremail) {
-    const { data: sUser } = await supabase.from('usuarios').select('id').eq('email', oldRequest.requesteremail).maybeSingle();
-    solicitanteId = sUser?.id || null;
+    solicitanteId = await getUserIdByEmail(oldRequest.requesteremail);
   }
 
   if (updates.assignedto && updates.assignedto !== oldRequest.assignedto) {
@@ -207,31 +217,29 @@ export const updateRequest = async (id: string, updates: Partial<ITRequest>): Pr
   
   if (updates.status && updates.status !== oldRequest.status) {
     const statusDesc = translate('status', updates.status);
-    if (solicitanteId) await notificationService.send({ para: solicitanteId, mensagem: `Sua solicitação #${id} está ${statusDesc}.`, tipo: `request_${updates.status}`, request_id: id });
+    if (solicitanteId) await notificationService.send({ para: solicitanteId, mensagem: `Sua solicitação #${id} está ${statusDesc}.`, tipo: buildRequestNotificationType(updates.status), request_id: id });
   }
   
   return data;
 };
 
 export const deleteRequest = async (id: string): Promise<boolean> => {
-  // Limpar anexos no storage (opcional, silencia erro se falhar)
+  // Limpar anexos no storage (opcional — falha aqui não bloqueia a exclusão da linha).
   try {
-    await supabase.storage.from('anexos-solicitacoes').remove([`solicitacao_${id}`]);
-  } catch (e) {}
+    await deleteAttachmentFolder(id);
+  } catch (e) {
+    if (!import.meta.env.PROD) console.warn('Falha ao limpar anexos do Storage (não-crítico):', e);
+  }
 
   const { error } = await supabase.from('solicitacoes').delete().eq('id', id);
   if (error) throw new Error('Erro ao deletar solicitação');
   return true;
 };
 
-export const uploadFile = async (file: File, requestId?: string): Promise<string> => {
-  const folder = requestId ? `solicitacao_${requestId}` : 'geral';
-  const sanitized = sanitizeFileName(file.name);
-  const uniqueName = `${uuidv4()}_${sanitized}`;
-  const filePath = `${folder}/${uniqueName}`;
-  
-  const { error } = await supabase.storage.from('anexos-solicitacoes').upload(filePath, file);
-  if (error) throw new Error('Erro ao enviar arquivo');
-  
-  return filePath;
-};
+/**
+ * Wrapper retrocompatível com o nome histórico `uploadFile`. Delega ao
+ * `storageService.uploadAttachment`. Mantido para preservar callers existentes
+ * em RequestDetailPage e RequestForm.
+ */
+export const uploadFile = (file: File, requestId?: string): Promise<string> =>
+  uploadAttachment(file, requestId);

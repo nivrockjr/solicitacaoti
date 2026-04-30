@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Notification } from '@/types';
 import { useAuth } from './AuthContext';
-import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/services/notificationService';
 
 interface NotificationContextType {
@@ -21,7 +20,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
 
-  // Busca notificações do Supabase
+  // Polling consome `notificationService.listRecent` (janela de 15 dias)
+  // para evitar acesso direto ao Supabase neste contexto.
+  const NOTIFICATION_WINDOW_DAYS = 15;
+
   const fetchNotifications = async () => {
     if (!user?.id) {
       setNotifications([]);
@@ -31,20 +33,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     setLoading(true);
     setError(null);
-    try {
-      const { data, error } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('para', user.id)
-        .order('criada_em', { ascending: false });
-      if (error) throw error;
-      setNotifications(data || []);
-    } catch (err) {
-      setError(err as Error);
+    const { data, error } = await notificationService.listRecent(user.id, NOTIFICATION_WINDOW_DAYS);
+    if (error) {
+      setError(error);
       setNotifications([]);
-    } finally {
-      setLoading(false);
+    } else {
+      setNotifications(data);
     }
+    setLoading(false);
   };
 
   // Pooling: busca notificações a cada 2 minutos

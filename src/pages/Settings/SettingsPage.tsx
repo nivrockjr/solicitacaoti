@@ -10,7 +10,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { supabase } from '@/lib/supabase';
+import {
+  getUserSettings,
+  createDefaultUserSettings,
+  updateNotificationsEnabled,
+} from '@/services/userSettingsService';
 
 const NotificationSettingsSchema = z.object({
   browserNotifications: z.boolean(),
@@ -37,29 +41,21 @@ const SettingsPage: React.FC = () => {
 
     const loadUserSettings = async () => {
       try {
-        // Requisição padrão supabase
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        const { data, notFound, error } = await getUserSettings(user.id);
 
-        if (error && error.code === 'PGRST116') {
-          // Não existe registro, criar um novo padrão
-          const { error: insertError } = await supabase
-            .from('user_settings')
-            .insert({ id: user.id, theme: 'light', notifications_enabled: true, language: 'pt' });
-          if (insertError && insertError.code !== '23505') {
-            // Só exibe erro se NÃO for duplicidade
-            if (!import.meta.env.PROD) console.error('Erro ao criar configurações padrão:', insertError);
+        if (error) {
+          if (!import.meta.env.PROD) console.error('Erro ao carregar configurações:', error);
+          return;
+        }
+
+        if (notFound) {
+          // Não existe registro: cria padrão e relê.
+          const { error: createError } = await createDefaultUserSettings(user.id);
+          if (createError) {
+            if (!import.meta.env.PROD) console.error('Erro ao criar configurações padrão:', createError);
             return;
           }
-          // Buscar novamente após criar (ou se já existe)
-          const { data: newData } = await supabase
-            .from('user_settings')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+          const { data: newData } = await getUserSettings(user.id);
           if (newData) {
             form.reset({
               browserNotifications: newData.notifications_enabled ?? true,
@@ -85,20 +81,10 @@ const SettingsPage: React.FC = () => {
     if (!user) return;
     
     setIsLoading(true);
-    
-    try {
-      // Salvar configurações no Supabase
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          id: user.id,
-          browser_notifications: data.browserNotifications,
-        }, { onConflict: 'id' });
 
-      if (error) {
-        throw error;
-      }
-      
+    try {
+      await updateNotificationsEnabled(user.id, data.browserNotifications);
+
       toast({
         title: 'Configurações Salvas',
         description: 'Suas preferências de notificação foram salvas com sucesso!',

@@ -3,17 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Upload, X } from 'lucide-react';
+import { getSemanticIcon } from '@/lib/utils';
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { RequestType, RequestPriority } from '@/types';
-import { createRequest, uploadFile } from '@/services/apiService';
+import { createRequest, uploadFile } from '@/services/requestService';
+import { ITRequest } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -51,7 +50,6 @@ const RequestForm: React.FC = () => {
     if (!user) return;
     try {
       setIsSubmitting(true);
-      const now = new Date().toISOString();
       // Upload files first (if any)
       const attachmentsFinal = [];
       for (const file of files) {
@@ -89,7 +87,7 @@ const RequestForm: React.FC = () => {
         }
       }
       // Criar a solicitação usando o serviço para garantir atribuição automática
-      const requestData = {
+      const requestData: Omit<ITRequest, 'id' | 'createdat' | 'deadlineat'> = {
         requesterid: user.id || '',
         requestername: user.name,
         requesteremail: user.email,
@@ -97,7 +95,7 @@ const RequestForm: React.FC = () => {
         description: values.description,
         type: values.type,
         priority: values.priority,
-        status: 'new' as const,
+        status: 'new',
         attachments: attachmentsFinal,
         comments: [],
       };
@@ -291,7 +289,7 @@ const RequestForm: React.FC = () => {
                           onClick={() => removeFile(index)}
                           disabled={isSubmitting}
                         >
-                          <X className="h-4 w-4" />
+                          {getSemanticIcon('action-close', { className: 'h-4 w-4' })}
                         </Button>
                       </div>
                     ))}
@@ -306,7 +304,7 @@ const RequestForm: React.FC = () => {
                     disabled={isSubmitting}
                     className="h-10 px-3"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
+                    {getSemanticIcon('action-upload', { className: 'h-4 w-4 mr-2' })}
                     Selecionar Arquivos
                   </Button>
                   <input

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { User } from '../types';
+import { getUsuarioRowByEmail } from '../services/userService';
 
 interface AuthContextType {
   user: User | null;
@@ -19,9 +19,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Recupera usuário do localStorage ao iniciar
     const saved = localStorage.getItem('usuarioLogado');
     if (saved) {
-      const user = JSON.parse(saved);
-      user.email = user.email?.toLowerCase(); // Garante minúsculo
-      setUser(user);
+      try {
+        const user = JSON.parse(saved);
+        user.email = user.email?.toLowerCase(); // Garante minúsculo
+        setUser(user);
+      } catch (error) {
+        // JSON corrompido em localStorage — limpa para evitar loop e segue como deslogado.
+        if (!import.meta.env.PROD) console.error('Sessão local corrompida, limpando:', error);
+        localStorage.removeItem('usuarioLogado');
+      }
     }
     setIsLoading(false);
   }, []);
@@ -29,15 +35,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, senha: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('email', email.toLowerCase()) // Busca sempre em minúsculo
-        .single();
-      if (error || !data) throw new Error('Usuário não encontrado');
+      const data = await getUsuarioRowByEmail(email);
+      if (!data) throw new Error('Usuário não encontrado');
       // Aqui você pode usar hash de senha se desejar
       if (data.senha !== senha) throw new Error('Senha incorreta');
-      
+
       // Criar objeto de usuário seguro (sem a senha) para o estado e localStorage
       const secureUser: User = {
         id: data.id,

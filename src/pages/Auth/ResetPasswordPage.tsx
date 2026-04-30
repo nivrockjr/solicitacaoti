@@ -1,11 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 
-// Remover lógica de supabase.auth e exibir mensagem informativa
 const ResetPasswordPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">

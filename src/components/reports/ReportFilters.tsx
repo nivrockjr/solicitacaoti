@@ -1,21 +1,21 @@
-import React from 'react';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, getSemanticIcon } from '@/lib/utils';
+
+export interface ReportFiltersValue {
+  status: string;
+  type: string;
+  startDate: Date | null;
+  endDate: Date | null;
+}
 
 interface FiltersProps {
-  filters: {
-    status: string;
-    type: string;
-    startDate: Date | null;
-    endDate: Date | null;
-  };
-  onFilterChange: (filters: any) => void;
+  filters: ReportFiltersValue;
+  onFilterChange: (filters: ReportFiltersValue) => void;
 }
 
 export function ReportFilters({ filters, onFilterChange }: FiltersProps) {
@@ -97,7 +97,7 @@ export function ReportFilters({ filters, onFilterChange }: FiltersProps) {
                   !filters.startDate && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                {getSemanticIcon('calendar', { className: 'mr-2 h-4 w-4' })}
                 {filters.startDate ? (
                   format(filters.startDate, "dd/MM/yyyy")
                 ) : (
@@ -128,7 +128,7 @@ export function ReportFilters({ filters, onFilterChange }: FiltersProps) {
                   !filters.endDate && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                {getSemanticIcon('calendar', { className: 'mr-2 h-4 w-4' })}
                 {filters.endDate ? (
                   format(filters.endDate, "dd/MM/yyyy")
                 ) : (

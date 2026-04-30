@@ -1,4 +1,4 @@
-import { supabase, checkSupabaseConnection, clearSupabaseCache } from '../lib/supabase';
+import { checkSupabaseConnection, clearSupabaseCache } from '../lib/supabase';
 
 /**
  * InfrastructureService
@@ -74,7 +74,5 @@ export const infrastructureService = {
   async handleCriticalError() {
     if (!import.meta.env.PROD) console.log('🚨 Erro crítico detectado. Executando limpeza de emergência...');
     await clearSupabaseCache();
-    // Força recarregamento da página se necessário em casos extremos
-    // window.location.reload();
   }
 };

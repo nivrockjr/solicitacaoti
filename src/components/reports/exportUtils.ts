@@ -8,8 +8,8 @@ import { translate } from '@/lib/utils';
 export interface ReportExportFilters {
   status?: string;
   type?: string;
-  startDate?: Date;
-  endDate?: Date;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }
 
 // Função utilitária para formatação segura de datas
@@ -192,7 +192,9 @@ export function exportToPdf(requests: ITRequest[], filters: ReportExportFilters)
 }
 
 // Função para exportar para Excel
-export function exportToExcel(requests: ITRequest[], filters: ReportExportFilters) {
+// `_filters` mantido por simetria com `exportToPdf` e por compatibilidade do call site;
+// o Excel atual não consome cabeçalho de filtros, só os dados.
+export function exportToExcel(requests: ITRequest[], _filters: ReportExportFilters) {
   // Preparar os dados para o Excel
   const worksheetData = requests.map(request => ({
     'ID': request.id,

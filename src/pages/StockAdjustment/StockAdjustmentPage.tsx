@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Plus, Save } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -31,8 +30,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
-import { createRequest } from '@/services/apiService';
+import { getSemanticIcon } from '@/lib/utils';
+import { createRequest } from '@/services/requestService';
 
 // Define a lot entry type
 interface LotEntry {
@@ -64,7 +63,7 @@ const StockAdjustmentPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const [products, setProducts] = useState<ProductEntry[]>([{ 
     id: '1', 
     productName: '', 
@@ -228,84 +227,6 @@ const StockAdjustmentPage: React.FC = () => {
     ));
   };
 
-  const sendToWhatsApp = async () => {
-    const isFormValid = await form.trigger();
-    if (!isFormValid) {
-      toast({
-        title: "Formulário incompleto",
-        description: "Por favor, preencha todos os campos obrigatórios antes de enviar.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // Validate products and lots
-    if (products.some(p => !p.productName || p.cost === undefined || p.cost < 0.01)) {
-      toast({
-        title: "Dados do produto obrigatórios",
-        description: "Por favor, preencha o nome e um custo válido (> 0) para todos os produtos",
-        variant: "destructive",
-      });
-      return;
-    }
-    for (const product of products) {
-      if (product.lots.some(lot => !lot.lotNumber)) {
-        toast({
-          title: "Número de lote obrigatório",
-          description: "Por favor, preencha o número do lote para todos os itens",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (product.lots.some(lot => !lot.weight || lot.weight <= 0)) {
-        toast({
-          title: "Peso obrigatório",
-          description: "Por favor, preencha o peso (> 0) para todos os lotes",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    const formData = form.getValues();
-    const productsInfo = products.map((p) => {
-      const lotsInfo = p.lots.map((lot, lIndex) => 
-        `Lote ${lIndex + 1}: ${lot.lotNumber}, Peso: ${lot.weight || 0} kg`
-      ).join('\n');
-      return `Nome do Produto: ${p.productName}\nCusto: R$ ${(p.cost || 0).toFixed(2)}\n\nLotes:\n${lotsInfo}`;
-    }).join('\n\n------------------------\n\n');
-
-         const message = `
-*Genius PQVIRK - Solicitação de Ajuste de Estoque*
-
-Nome: ${formData.name}
-Setor: ${formData.department}
-Data: ${format(formData.requestDate, 'dd/MM/yyyy')}
-
-*Detalhes do Ajuste*
-Tipo: ${formData.adjustmentType}
-Categoria: ${formData.category}
-
-${productsInfo}
-
-Motivo: ${formData.reason}
-     `.trim();
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
-  const validateFormBeforeWhatsApp = (): boolean => {
-    const result = form.trigger();
-    if (!result) {
-      toast({
-        title: "Formulário incompleto",
-        description: "Por favor, preencha todos os campos obrigatórios antes de enviar.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    return true;
-  };
-
   const saveAndSendToWhatsApp = async () => {
     const isFormValid = await form.trigger();
     if (!isFormValid) {
@@ -367,7 +288,7 @@ Motivo: ${formData.reason}
 
   return (
     <div className="flex flex-col items-center w-full">
-      <div className="w-full max-w-xl mx-auto bg-card shadow rounded-2xl border p-6 hover:bg-muted/80 dark:hover:bg-gradient-to-r dark:hover:from-[#23272f] dark:hover:to-[#2d3748]">
+      <div className="w-full max-w-xl mx-auto bg-card shadow rounded-2xl border p-6 dark-hover-gradient">
         <h1 className="text-xl font-bold mb-6 mt-2">Ajuste de Estoque</h1>
         <Form {...form}>
           <form className="w-full" onSubmit={form.handleSubmit(onSubmit)}>
@@ -375,7 +296,7 @@ Motivo: ${formData.reason}
               {/* Nome */}
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Nome <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm">Nome <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} className="h-10" />
                   </FormControl>
@@ -385,7 +306,7 @@ Motivo: ${formData.reason}
               {/* Setor */}
               <FormField control={form.control} name="department" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Setor <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm">Setor <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} className="h-10" />
                   </FormControl>
@@ -395,7 +316,7 @@ Motivo: ${formData.reason}
               {/* Tipo de Ajuste */}
               <FormField control={form.control} name="adjustmentType" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Tipo de Ajuste <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm">Tipo de Ajuste <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="h-10">
@@ -414,7 +335,7 @@ Motivo: ${formData.reason}
               {/* Categoria */}
               <FormField control={form.control} name="category" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Categoria <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm">Categoria <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="h-10">
@@ -437,7 +358,7 @@ Motivo: ${formData.reason}
                   <div className="grid grid-cols-2 gap-3">
                     {/* Nome do Produto */}
                     <div className="col-span-1">
-                      <FormLabel className="text-sm">Nome do Produto <span className="text-red-500">*</span></FormLabel>
+                      <FormLabel className="text-sm">Nome do Produto <span className="text-destructive">*</span></FormLabel>
                       <Input
                         type="text"
                         placeholder="Digite o nome do produto"
@@ -450,7 +371,7 @@ Motivo: ${formData.reason}
                     {/* Custo + Botão Adicionar Produto */}
                     <div className="col-span-1 flex gap-2 items-end">
                       <div className="flex-1">
-                        <FormLabel className="text-sm">Custo (R$) <span className="text-red-500">*</span></FormLabel>
+                        <FormLabel className="text-sm">Custo (R$) <span className="text-destructive">*</span></FormLabel>
                         <Input
                           type="number"
                           min="0"
@@ -464,7 +385,7 @@ Motivo: ${formData.reason}
                       </div>
                       {pIndex === products.length - 1 && (
                         <Button type="button" size="icon" variant="outline" onClick={addProduct} title="Adicionar Novo Produto" className="mb-0 mt-6 shrink-0">
-                          <Plus className="h-4 w-4" />
+                          {getSemanticIcon('action-add', { className: 'h-4 w-4' })}
                         </Button>
                       )}
                       {products.length > 1 && (
@@ -479,7 +400,7 @@ Motivo: ${formData.reason}
                       <React.Fragment key={lot.id}>
                         {/* Número do Lote */}
                         <div className="col-span-1">
-                          <FormLabel className="text-sm">Número do Lote <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel className="text-sm">Número do Lote <span className="text-destructive">*</span></FormLabel>
                           <Input
                             type="text"
                             placeholder="Digite o número do lote"
@@ -492,7 +413,7 @@ Motivo: ${formData.reason}
                         {/* Peso (kg) + Botão Adicionar Lote */}
                         <div className="col-span-1 flex gap-2 items-end">
                           <div className="flex-1">
-                            <FormLabel className="text-sm">Peso (kg) <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel className="text-sm">Peso (kg) <span className="text-destructive">*</span></FormLabel>
                             <Input
                               type="number"
                               min="0"
@@ -506,7 +427,7 @@ Motivo: ${formData.reason}
                           </div>
                           {lIndex === product.lots.length - 1 && (
                             <Button type="button" size="icon" variant="outline" onClick={() => addLot(product.id)} title="Adicionar Lote" className="mb-0 mt-6 shrink-0">
-                              <Plus className="h-4 w-4" />
+                              {getSemanticIcon('action-add', { className: 'h-4 w-4' })}
                             </Button>
                           )}
                           {product.lots.length > 1 && (
@@ -523,7 +444,7 @@ Motivo: ${formData.reason}
               {/* Motivo do Ajuste (colSpan=2) */}
               <FormField control={form.control} name="reason" render={({ field }) => (
                 <FormItem className="col-span-2">
-                  <FormLabel className="text-sm">Motivo do Ajuste <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm">Motivo do Ajuste <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Textarea {...field} className="min-h-[40px] h-20" placeholder="Descreva o motivo do ajuste" />
                   </FormControl>
@@ -533,7 +454,7 @@ Motivo: ${formData.reason}
               {/* Data da Solicitação (colSpan=2) */}
               <FormField control={form.control} name="requestDate" render={({ field }) => (
                 <FormItem className="col-span-2">
-                  <FormLabel className="text-sm">Data da Solicitação <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm">Data da Solicitação <span className="text-destructive">*</span></FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>

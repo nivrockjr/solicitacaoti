@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FilePlus, Search } from 'lucide-react';
+import { getSemanticIcon } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ITRequest } from '@/types';
-import { getRequests } from '@/services/apiService';
+import { getRequests } from '@/services/requestService';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
 
@@ -84,7 +84,7 @@ const MyRequestsPage: React.FC = () => {
       );
     }
 
-    filtered = filtered.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+    filtered = filtered.sort((a, b) => new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime());
     return filtered;
   }, [requests, tab, searchQuery]);
 
@@ -132,17 +132,17 @@ const MyRequestsPage: React.FC = () => {
         <h1 className="text-2xl font-bold tracking-tight">Minhas Solicitações</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            {getSemanticIcon('action-search', { className: 'absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' })}
             <Input
               placeholder="Buscar solicitações..."
-              className="pl-8 w-full md:w-[250px] hover:bg-muted/80 dark:hover:bg-gradient-to-r dark:hover:from-[#23272f] dark:hover:to-[#2d3748] transition-colors"
+              className="pl-8 w-full md:w-[250px] dark-hover-gradient transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <Button variant='ghost' asChild>
             <Link to="/request/new">
-              <FilePlus className="h-4 w-4 mr-2" />
+              {getSemanticIcon('file-add', { className: 'h-4 w-4 mr-2' })}
               Nova Solicitação
             </Link>
           </Button>
@@ -189,7 +189,7 @@ const MyRequestsPage: React.FC = () => {
               </p>
               <Button variant='ghost' asChild>
                 <Link to="/request/new">
-                  <FilePlus className="h-4 w-4 mr-2" />
+                  {getSemanticIcon('file-add', { className: 'h-4 w-4 mr-2' })}
                   Criar Nova Solicitação
                 </Link>
               </Button>
@@ -278,7 +278,7 @@ const MyRequestsPage: React.FC = () => {
         <span className="px-2">Página {page}</span>
         <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNextPage}>Próxima</Button>
       </div>
-      {error && <div className="text-red-500 text-center my-4">{error}</div>}
+      {error && <div className="text-destructive text-center my-4">{error}</div>}
     </div>
   );
 };

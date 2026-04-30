@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getRequestById, updateRequest } from '@/services/requestService';
-import { ITRequest } from '@/types';
+import { ITRequest, DeliveryItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SignatureCanvas } from '@/components/ui/signature-canvas';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, ShieldCheck, Info, FileText } from 'lucide-react';
-import { tryFormatDateTime } from '@/lib/utils';
+import { tryFormatDateTime, getSemanticIcon } from '@/lib/utils';
+import { getGuidePdfUrl } from '@/services/storageService';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -123,8 +123,8 @@ const AcceptancePage: React.FC = () => {
     const metaItems = request?.metadata?.delivery_items;
     if (Array.isArray(metaItems)) {
       return metaItems
-        .filter((it: any) => it.checked)
-        .map((it: any) => `- ${it.text}${it.avaria ? ` (Obs TI: ${it.avaria})` : ''}`)
+        .filter((it: DeliveryItem) => it.checked)
+        .map((it: DeliveryItem) => `- ${it.text}${it.avaria ? ` (Obs TI: ${it.avaria})` : ''}`)
         .join('\n');
     }
 
@@ -339,7 +339,7 @@ const AcceptancePage: React.FC = () => {
   };
 
   const handleOpenGuide = () => {
-    window.open('https://bwzqbxyqnxygoukhrtxh.supabase.co/storage/v1/object/public/guideit/guideit.pdf', '_blank');
+    window.open(getGuidePdfUrl(), '_blank');
   };
 
   useEffect(() => {
@@ -424,7 +424,7 @@ const AcceptancePage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {getSemanticIcon('spinner', { className: 'h-8 w-8 animate-spin text-primary' })}
       </div>
     );
   }
@@ -460,10 +460,10 @@ const AcceptancePage: React.FC = () => {
   if (completed && showCompactSuccess && !revealFullReceipt) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
-        <Card className="max-w-md w-full shadow-lg border-t-4 border-t-green-500">
+        <Card className="max-w-md w-full shadow-lg border-t-4 border-t-success">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-2">
-              <CheckCircle2 className="h-14 w-14 text-green-500" />
+              {getSemanticIcon('success', { className: 'h-14 w-14 text-success' })}
             </div>
             <CardTitle className="text-xl">Aceite registrado</CardTitle>
             <CardDescription className="text-base pt-2">
@@ -511,10 +511,10 @@ const AcceptancePage: React.FC = () => {
             }
           }
         ` }} />
-        <Card className="max-w-2xl w-full shadow-lg border-t-4 border-t-green-500 print:shadow-none print:border-none print:max-w-none">
+        <Card className="max-w-2xl w-full shadow-lg border-t-4 border-t-success print:shadow-none print:border-none print:max-w-none">
           <CardHeader className="text-center border-b bg-card py-4 print:hidden">
             <div className="flex justify-center mb-2">
-              <CheckCircle2 className="h-10 w-10 text-green-500" />
+              {getSemanticIcon('success', { className: 'h-10 w-10 text-success' })}
             </div>
             <CardTitle className="text-xl">Termo Digital de TI</CardTitle>
             <CardDescription>Aceite e comprovante do ciclo do colaborador</CardDescription>
@@ -563,7 +563,7 @@ const AcceptancePage: React.FC = () => {
                   className="flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5"
                   onClick={handleOpenGuide}
                 >
-                  <FileText className="h-4 w-4" />
+                  {getSemanticIcon('file', { className: 'h-4 w-4' })}
                   Acessar Guia de Solicitação de TI
                 </Button>
               </div>
@@ -580,7 +580,7 @@ const AcceptancePage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground italic print:text-[8pt] print:text-neutral-600">Assinado em: {tryFormatDateTime(request.resolvedat, "dd/MM/yyyy 'às' HH:mm") ?? 'Data não registrada'}</p>
                   </div>
                 ) : (
-                  <div className="text-center p-4 border border-border rounded-md bg-yellow-500/10 text-yellow-800 dark:text-yellow-200 text-xs">
+                  <div className="text-center p-4 border border-border rounded-md bg-warning/10 text-warning text-xs">
                     Assinatura não encontrada nos registros.
                   </div>
                 )}
@@ -622,7 +622,7 @@ const AcceptancePage: React.FC = () => {
       <Card className="max-w-2xl w-full shadow-lg border-t-4 border-t-primary print:border-none print:shadow-none print:max-w-none print:w-full">
         <CardHeader className="text-center border-b bg-card print:p-2 print:bg-white print:border-none">
           <div className="flex justify-center mb-2">
-            <ShieldCheck className="h-10 w-10 text-primary" />
+            {getSemanticIcon('status-closed', { className: 'h-10 w-10 text-primary' })}
           </div>
           <CardTitle className="text-xl">Termo Digital de TI</CardTitle>
           <CardDescription>Aceite e comprovante do ciclo do colaborador</CardDescription>
@@ -671,7 +671,7 @@ const AcceptancePage: React.FC = () => {
                 className="h-8 text-[11px] flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5"
                 onClick={handleOpenGuide}
               >
-                <FileText className="h-3.5 w-3.5" />
+                {getSemanticIcon('file', { className: 'h-3.5 w-3.5' })}
                 Abrir Guia de TI para Leitura
               </Button>
             </div>
@@ -723,7 +723,7 @@ const AcceptancePage: React.FC = () => {
 
             <div className="space-y-3 print:space-y-1 print:pt-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-primary print:text-black print:text-[11px]">
-                <Info className="h-4 w-4 print:hidden" />
+                {getSemanticIcon('info', { className: 'h-4 w-4 print:hidden' })}
                 <span>
                   {isTraining ? "Assinatura do Treinando:" : "Assinatura do Colaborador:"}
                 </span>
@@ -746,7 +746,7 @@ const AcceptancePage: React.FC = () => {
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  {getSemanticIcon('spinner', { className: 'mr-2 h-5 w-5 animate-spin' })}
                   Registrando...
                 </>
               ) : isTraining ? "Confirmar Treinamento" : "Confirmar Recebimento"}

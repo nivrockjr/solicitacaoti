@@ -1,6 +1,5 @@
 import { createRequest } from './requestService';
-// import { users } from './authService';
-import { ITRequest } from '../types';
+import { listUsuariosByRoles } from './userService';
 
 // Função para verificar se hoje é uma das datas de manutenção preventiva
 export const isPreventiveMaintenanceDate = (): boolean => {
@@ -17,12 +16,8 @@ export const createPreventiveMaintenanceRequests = async (): Promise<void> => {
   if (!import.meta.env.PROD) console.log('Iniciando criação de solicitações de manutenção preventiva...');
   
   try {
-    // Buscar todos os usuários do banco de dados
-    const { data: allUsers, error } = await import('../lib/supabase').then(({ supabase }) =>
-      supabase.from('usuarios').select('*').in('role', ['requester', 'admin'])
-    );
-    if (error) throw error;
-    if (!allUsers) throw new Error('Nenhum usuário encontrado para manutenção preventiva.');
+    const allUsers = await listUsuariosByRoles(['requester', 'admin']);
+    if (allUsers.length === 0) throw new Error('Nenhum usuário encontrado para manutenção preventiva.');
 
     for (const user of allUsers) {
       const requestData = {
@@ -30,7 +25,7 @@ export const createPreventiveMaintenanceRequests = async (): Promise<void> => {
         requestername: user.name,
         requesteremail: user.email,
         description: `Manutenção preventiva semestral - Verificação geral de equipamentos e sistemas do departamento ${user.department || 'não especificado'}.`,
-        type: 'manutencao_preventiva' as const,
+        type: 'preventive_maintenance' as const,
         priority: 'medium' as const,
         status: 'new' as const,
         title: 'Manutenção Preventiva Semestral'

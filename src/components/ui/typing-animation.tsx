@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 import { motion, MotionProps } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -71,6 +69,9 @@ export function TypingAnimation({
     };
   }, [children, duration, started]);
 
+  // framer-motion v11: as overloads de motion() não casam com React.ElementType
+  // (string | ComponentType) sem perder o tipo do ref. Mantemos o cast pragmático.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ComponentToRender = motion(Component as any);
   
   return (

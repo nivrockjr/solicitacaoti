@@ -409,8 +409,8 @@ const BarChart = React.forwardRef<
           <RechartsPrimitive.Tooltip
             content={
               <ChartTooltipContent
-                formatter={(value: number, name) => [
-                  valueFormatter(value),
+                formatter={(value, name) => [
+                  valueFormatter(Number(value)),
                   name,
                 ]}
               />

@@ -1,61 +1,61 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, FilePlus, FileText, Settings, Users, FileSpreadsheet, Package } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+import { cn, getSemanticIcon } from '@/lib/utils';
 
 const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  
+
+  const navIconClass = 'h-5 w-5';
   const navItems = [
     {
       title: 'Dashboard',
       href: '/dashboard',
-      icon: <BarChart3 className="h-5 w-5" />,
+      icon: getSemanticIcon('dashboard', { className: navIconClass }),
       showFor: 'both',
     },
     {
       title: 'Nova Solicitação',
       href: '/request/new',
-      icon: <FilePlus className="h-5 w-5" />,
+      icon: getSemanticIcon('file-add', { className: navIconClass }),
       showFor: 'both',
     },
     {
       title: 'Ajuste de Estoque',
       href: '/stock-adjustment',
-      icon: <Package className="h-5 w-5" />,
+      icon: getSemanticIcon('package', { className: navIconClass }),
       showFor: 'both',
     },
     {
       title: 'Minhas Solicitações',
       href: '/requests/my',
-      icon: <FileText className="h-5 w-5" />,
+      icon: getSemanticIcon('file', { className: navIconClass }),
       showFor: 'requester',
     },
     {
       title: 'Todas Solicitações',
       href: '/requests',
-      icon: <FileText className="h-5 w-5" />,
+      icon: getSemanticIcon('file', { className: navIconClass }),
       showFor: 'admin',
     },
     {
       title: 'Relatórios',
       href: '/reports',
-      icon: <FileSpreadsheet className="h-5 w-5" />,
+      icon: getSemanticIcon('file-spreadsheet', { className: navIconClass }),
       showFor: 'admin',
     },
     {
       title: 'Usuários',
       href: '/users',
-      icon: <Users className="h-5 w-5" />,
+      icon: getSemanticIcon('users', { className: navIconClass }),
       showFor: 'admin',
     },
     {
       title: 'Configurações',
       href: '/settings',
-      icon: <Settings className="h-5 w-5" />,
+      icon: getSemanticIcon('settings', { className: navIconClass }),
       showFor: 'both',
     },
   ];
@@ -79,11 +79,11 @@ const Sidebar: React.FC = () => {
         <ul className="space-y-2">
           {filteredNavItems.map((item) => (
             <li key={item.href}>
-              <NavLink to={item.href} className={({ isActive }) => 
+              <NavLink to={item.href} className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-2 py-2 rounded-full text-sm transition-colors hover:bg-muted/80 dark:hover:bg-gradient-to-r dark:hover:from-[#23272f] dark:hover:to-[#2d3748]",
-                  isActive 
-                    ? "font-semibold shadow-sm text-foreground bg-muted/60 dark:bg-[#23272f]/60"
+                  "flex items-center gap-3 px-2 py-2 rounded-full text-sm transition-colors dark-hover-gradient",
+                  isActive
+                    ? "font-semibold shadow-sm text-foreground bg-muted/60 dark:dark-active-tone"
                     : ""
                 )
               }>

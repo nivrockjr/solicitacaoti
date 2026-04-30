@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, Calendar, CheckCircle2, PaperclipIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -45,7 +44,14 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
 
   const resolvedAtLabel = tryFormatDateTime(request.resolvedat, 'dd/MM/yyyy HH:mm');
   const deadlineAtLabel = tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm');
-  
+
+  // `productName` pode ser anexado ao request em fluxos de Ajuste de Estoque;
+  // não faz parte do schema canônico de `solicitacoes`, por isso a interseção local.
+  const stockProductName =
+    request.type === 'ajuste_estoque'
+      ? (request as ITRequest & { productName?: string }).productName
+      : undefined;
+
   return (
     <Card className="overflow-hidden">
       <div
@@ -55,8 +61,8 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-medium leading-tight line-clamp-1">
-              {request.type === 'ajuste_estoque' && (request as ITRequest & { productName?: string }).productName
-                ? `Ajuste de Estoque: ${(request as ITRequest & { productName?: string }).productName}`
+              {stockProductName
+                ? `Ajuste de Estoque: ${stockProductName}`
                 : request.type === 'employee_lifecycle' && request.title
                   ? request.title
                   : request.description?.substring(0, 50)}
@@ -66,9 +72,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
               {request.type && (
                 <span className="ml-1">• {translate('type', request.type)}</span>
               )}
-              {hasAttachments() && (
-                <PaperclipIcon className="h-3 w-3 text-muted-foreground ml-1" />
-              )}
+              {hasAttachments() && getSemanticIcon('attachment', { className: 'h-3 w-3 text-muted-foreground ml-1' })}
             </p>
           </div>
           <Badge 
@@ -91,7 +95,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
             {getStatusBadge()}
           </div>
           <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
+            {getSemanticIcon('calendar', { className: 'h-3 w-3' })}
             {request.approvalstatus === 'rejected' ? (
               <span>N/A</span>
             ) : (request.status === 'resolvida' || request.status === 'resolved') ? (

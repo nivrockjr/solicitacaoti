@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { PaperclipIcon, ArrowRight } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { getSemanticIcon } from '@/lib/utils';
 
 interface ChatMessage {
   type: 'user' | 'bot';
@@ -15,7 +14,6 @@ const ChatAssistant: React.FC = () => {
   const [image, setImage] = useState<File | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { theme } = useTheme();
 
   const handleSend = () => {
     if (!message.trim() && !image) return;
@@ -76,7 +74,7 @@ const ChatAssistant: React.FC = () => {
             onClick={() => fileInputRef.current?.click()}
             className="h-8 w-8 p-0"
           >
-            <PaperclipIcon className="h-4 w-4" />
+            {getSemanticIcon('attachment', { className: 'h-4 w-4' })}
           </Button>
           <Button
             type="button"
@@ -86,7 +84,7 @@ const ChatAssistant: React.FC = () => {
             disabled={!message.trim() && !image}
             className="h-8 w-8 p-0"
           >
-            <ArrowRight className="h-4 w-4" />
+            {getSemanticIcon('action-forward', { className: 'h-4 w-4' })}
           </Button>
         </div>
       </div>

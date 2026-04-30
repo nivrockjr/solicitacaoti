@@ -3,6 +3,30 @@
  * Isso evita que o Chrome detecte o site como inglês e ofereça tradução
  */
 
+interface PtBrFormatters {
+  number: Intl.NumberFormat;
+  date: Intl.DateTimeFormat;
+  currency: Intl.NumberFormat;
+}
+
+interface LocaleUtils {
+  configure: () => boolean;
+  check: () => { checks: Record<string, boolean>; allCorrect: boolean };
+  force: () => void;
+  detectTranslation: () => {
+    hasTranslateElements: boolean;
+    hasTranslateAttributes: boolean;
+    shouldOfferTranslation: boolean;
+  };
+}
+
+declare global {
+  interface Window {
+    ptBRFormatters?: PtBrFormatters;
+    localeUtils?: LocaleUtils;
+  }
+}
+
 // Configurar locale padrão para português do Brasil
 export const configureLocale = () => {
   try {
@@ -35,7 +59,7 @@ export const configureLocale = () => {
 
     // Expor formatadores globalmente para uso consistente
     if (typeof window !== 'undefined') {
-      (window as any).ptBRFormatters = {
+      window.ptBRFormatters = {
         number: numberFormatter,
         date: dateFormatter,
         currency: currencyFormatter,
@@ -129,7 +153,7 @@ if (typeof window !== 'undefined') {
   }, 1000);
 
   // Expor funções globalmente para debugging
-  (window as any).localeUtils = {
+  window.localeUtils = {
     configure: configureLocale,
     check: checkLocaleConfiguration,
     force: forceLocaleConfiguration,

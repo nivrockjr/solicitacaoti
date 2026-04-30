@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, Menu, Sun, Moon, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,8 +9,8 @@ import NotificationsList from '../notifications/NotificationsList';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Sidebar from './Sidebar';
-import { supabase } from '@/lib/supabase';
-import { translate } from '@/lib/utils';
+import { translate, getSemanticIcon } from '@/lib/utils';
+import { getGuidePdfUrl } from '@/services/storageService';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -27,7 +26,7 @@ const Navbar: React.FC = () => {
   
   // Função para abrir o manual do usuário
   const handleOpenGuide = () => {
-    window.open('https://bwzqbxyqnxygoukhrtxh.supabase.co/storage/v1/object/public/guideit/guideit.pdf', '_blank');
+    window.open(getGuidePdfUrl(), '_blank');
   };
   
   return (
@@ -37,7 +36,7 @@ const Navbar: React.FC = () => {
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden mr-2" title="Menu">
-                <Menu className="h-5 w-5" />
+                {getSemanticIcon('menu', { className: 'h-5 w-5' })}
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
@@ -46,9 +45,7 @@ const Navbar: React.FC = () => {
             </SheetContent>
           </Sheet>
         )}
-        
-        {/* <h1 className="text-xl font-semibold text-foreground">Solicitação de TI</h1> */}
-        
+
         <div className="ml-auto flex items-center space-x-2">
           {/* Botão de ajuda */}
           <Button
@@ -58,7 +55,7 @@ const Navbar: React.FC = () => {
             aria-label="Ajuda"
             title="Manual do Usuário"
           >
-            <HelpCircle className="h-5 w-5" />
+            {getSemanticIcon('help', { className: 'h-5 w-5' })}
           </Button>
           
           <Button 
@@ -67,18 +64,16 @@ const Navbar: React.FC = () => {
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
           >
-            {theme === 'dark' ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
+            {theme === 'dark'
+              ? getSemanticIcon('theme-light', { className: 'h-5 w-5' })
+              : getSemanticIcon('theme-dark', { className: 'h-5 w-5' })}
             <span className="sr-only">Toggle theme</span>
           </Button>
           
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="relative" title="Notificações">
-                <Bell className="h-5 w-5" />
+                {getSemanticIcon('notification', { className: 'h-5 w-5' })}
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -99,7 +94,7 @@ const Navbar: React.FC = () => {
             </div>
             
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
-              <LogOut className="h-5 w-5" />
+              {getSemanticIcon('logout', { className: 'h-5 w-5' })}
               <span className="sr-only">Logout</span>
             </Button>
           </div>

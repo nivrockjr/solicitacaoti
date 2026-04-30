@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tryFormatDateTime } from '@/lib/utils';
-import { Bell } from 'lucide-react';
+import { tryFormatDateTime, translate, getSemanticIcon } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Notification } from '@/types';
@@ -36,7 +35,7 @@ const NotificationsList: React.FC = () => {
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <Bell className="h-10 w-10 mb-2" />
+            {getSemanticIcon('notification', { className: 'h-10 w-10 mb-2' })}
             <p>Sem notificações</p>
           </div>
         ) : (
@@ -51,7 +50,7 @@ const NotificationsList: React.FC = () => {
                 >
                   <div className="space-y-1 w-full">
                     <div className="flex items-center justify-between">
-                      <p className={`font-medium text-sm ${!notification.lida ? 'text-primary' : ''}`}>{traduzirTitulo(notification.tipo)}</p>
+                      <p className={`font-medium text-sm ${!notification.lida ? 'text-primary' : ''}`}>{translate('notificationType', notification.tipo)}</p>
                       <time className="text-xs text-muted-foreground">
                         {tryFormatDateTime(notification.criada_em, 'dd/MM, HH:mm') ?? '—'}
                       </time>
@@ -69,23 +68,3 @@ const NotificationsList: React.FC = () => {
 };
 
 export default NotificationsList;
-
-// Função para traduzir o tipo de notificação para um nome amigável
-function traduzirTitulo(tipo: string) {
-  switch (tipo) {
-    case 'request_resolved':
-      return 'Solicitação resolvida';
-    case 'comentario':
-      return 'Comentário';
-    case 'request_in_progress':
-      return 'Solicitação em andamento';
-    case 'request_assigned':
-      return 'Solicitação atribuída';
-    case 'request_reopened':
-      return 'Solicitação reaberta';
-    case 'request_created':
-      return 'Nova solicitação';
-    default:
-      return tipo;
-  }
-}

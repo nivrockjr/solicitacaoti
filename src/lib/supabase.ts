@@ -39,19 +39,9 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: true,
       flowType: 'pkce',
-      // Configurações de cookie mais seguras
-      cookieOptions: {
-        // Usar apenas cookies essenciais
-        name: 'sb-auth-token',
-        // Configurar SameSite para evitar cookies de terceiros
-        sameSite: 'Lax',
-        // Usar secure apenas em HTTPS
-        secure: window.location.protocol === 'https:',
-        // Tempo de expiração mais curto
-        maxAge: 60 * 60 * 24 * 7, // 7 dias
-        // Apenas HTTP (não JavaScript)
-        httpOnly: false, // Necessário para funcionamento do Supabase
-      },
+      // Nota: `cookieOptions` foi removido das versões recentes de @supabase/supabase-js.
+      // A persistência de sessão é controlada exclusivamente pelo `storage` adapter abaixo
+      // (localStorage com prefixo `sb-`), o que basta para o nosso fluxo SPA.
       // Configurações de storage mais seguras
       storage: {
         // Usar localStorage com prefixo específico
@@ -133,7 +123,7 @@ export const checkSupabaseConnection = async (timeoutMs: number = 5000) => {
     );
 
     const connectionPromise = (async () => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('solicitacoes')
         .select('count', { count: 'exact', head: true });
       
@@ -155,11 +145,9 @@ export const checkSupabaseConnection = async (timeoutMs: number = 5000) => {
 };
 
 // Interceptor para detectar problemas de dados corrompidos
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') {
     // Limpa dados quando usuário faz logout
     clearSupabaseCache();
   }
 });
-
-window.supabase = supabase;

@@ -1,18 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { FileSpreadsheet, FileText, Filter } from 'lucide-react';
+import { getSemanticIcon } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { getRequests } from '@/services/apiService';
-import { ITRequest, RequestType, RequestPriority, RequestStatus } from '@/types';
+import { getRequests } from '@/services/requestService';
+import { ITRequest } from '@/types';
 import { translate } from '@/lib/utils';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { exportToPdf, exportToExcel } from '@/components/reports/exportUtils';
-import { differenceInHours } from 'date-fns';
 
 const ReportsPage = () => {
   const [filters, setFilters] = useState({
@@ -63,10 +61,10 @@ const ReportsPage = () => {
     } else if (filters.status && filters.status !== 'all') {
       if (filters.status === 'pending') {
         const pendingStatuses = ['new', 'nova', 'assigned', 'atribuida', 'in_progress', 'em_andamento', 'reopened', 'reaberta'];
-        if (!pendingStatuses.includes(request.status)) return false;
+        if (!pendingStatuses.includes(request.status ?? '')) return false;
       } else if (filters.status === 'resolvida') {
         const resolvedStatuses = ['resolved', 'resolvida'];
-        if (!resolvedStatuses.includes(request.status)) return false;
+        if (!resolvedStatuses.includes(request.status ?? '')) return false;
       }
     }
     // Filtro por tipo
@@ -75,13 +73,13 @@ const ReportsPage = () => {
     }
     // Filtro por período
     if (filters.startDate) {
-      const requestDate = new Date(request.createdat);
+      const requestDate = new Date(request.createdat ?? 0);
       if (requestDate < filters.startDate) {
         return false;
       }
     }
     if (filters.endDate) {
-      const requestDate = new Date(request.createdat);
+      const requestDate = new Date(request.createdat ?? 0);
       const endOfDay = new Date(filters.endDate);
       endOfDay.setHours(23, 59, 59, 999);
       if (requestDate > endOfDay) {
@@ -99,26 +97,6 @@ const ReportsPage = () => {
     exportToExcel(filteredRequests, filters);
   };
 
-  // Função para calcular o tempo médio de resolução
-  const calculateAverageResolutionTime = (requests: ITRequest[], filterByType?: string, filterByTechnician?: string) => {
-    const resolvedRequests = requests.filter(req => 
-      (req.status === 'resolved' || req.status === 'resolvida') &&
-      req.resolvedat &&
-      (!filterByType || req.type === filterByType) &&
-      (!filterByTechnician || req.assignedto === filterByTechnician)
-    );
-    
-    if (resolvedRequests.length === 0) return 0;
-    
-    const totalHours = resolvedRequests.reduce((sum, req) => {
-      const createdDate = new Date(req.createdat);
-      const resolvedDate = new Date(req.resolvedat!);
-      return sum + differenceInHours(resolvedDate, createdDate);
-    }, 0);
-    
-    return totalHours / resolvedRequests.length;
-  };
-
   // Função utilitária para formatação segura de datas
   function formatDateSafe(date: string | Date | null | undefined) {
     if (!date) return '-';
@@ -134,11 +112,11 @@ const ReportsPage = () => {
         <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
         <div className="flex gap-2">
           <Button onClick={handleExportToPdf} variant="outline" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
+            {getSemanticIcon('file', { className: 'h-4 w-4' })}
             Exportar PDF
           </Button>
           <Button onClick={handleExportToExcel} variant="outline" className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
+            {getSemanticIcon('file-spreadsheet', { className: 'h-4 w-4' })}
             Exportar Excel
           </Button>
         </div>
@@ -147,7 +125,7 @@ const ReportsPage = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+            {getSemanticIcon('action-filter', { className: 'h-5 w-5' })}
             Filtros Avançados
           </CardTitle>
         </CardHeader>
@@ -172,7 +150,7 @@ const ReportsPage = () => {
               <p className="text-muted-foreground">Selecione um status para visualizar o relatório.</p>
             </div>
           ) : error ? (
-            <div className="text-red-500 text-center my-4">{error}</div>
+            <div className="text-destructive text-center my-4">{error}</div>
           ) : isLoading ? (
             <div className="flex justify-center py-8">
               <p>Carregando relatório...</p>

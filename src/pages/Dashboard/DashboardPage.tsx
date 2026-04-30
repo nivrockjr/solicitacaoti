@@ -1,15 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowUp, CheckCircle2, Clock, FilePlus, Hourglass } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRequestsData } from '@/hooks/use-requests-data';
 import RequestCard from '@/components/requests/RequestCard';
-import { Fragment } from 'react';
-import { BarChart } from '@/components/ui/chart';
 import ChatAssistant from '@/components/ai/ChatAssistant';
-import { isResolved, isPending, translate } from '@/lib/utils';
+import { isResolved, isPending, getSemanticIcon } from '@/lib/utils';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -29,8 +26,7 @@ const DashboardPage: React.FC = () => {
       new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime()
     );
   
-  // Função utilitária para normalizar status e prioridade
-  const normalizeStatus = (status: string | null | undefined) => (status || '').toLowerCase().trim();
+  // Função utilitária para normalizar prioridade
   const normalizePriority = (priority: string | null | undefined) => (priority || '').toLowerCase().trim();
 
   const isHighPriority = (priority: string | null | undefined) => ['alta', 'high'].includes(normalizePriority(priority));
@@ -38,26 +34,9 @@ const DashboardPage: React.FC = () => {
 
   // Recent requests: 3 mais recentes
   const recentRequests = [...requests]
-    .sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime())
+    .sort((a, b) => new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime())
     .slice(0, 3);
-  
-  // Chart data (simplified for demo)
-  const chartData = [
-    { name: translate('type', 'ajuste_estoque'), value: requests.filter(r => r.type === 'ajuste_estoque').length },
-    { name: translate('type', 'systems'), value: requests.filter(r => r.type === 'systems' || r.type === 'sistemas').length },
-    { name: translate('type', 'general'), value: requests.filter(r => r.type === 'general' || r.type === 'geral').length },
-    { name: translate('type', 'other'), value: requests.filter(r => r.type === 'other').length },
-  ];
-  
-  const statusData = [
-    { name: translate('status', 'new'), value: requests.filter(r => ['new', 'nova'].includes(normalizeStatus(r.status))).length },
-    { name: translate('status', 'assigned'), value: requests.filter(r => ['assigned', 'atribuida'].includes(normalizeStatus(r.status))).length },
-    { name: translate('status', 'in_progress'), value: requests.filter(r => ['in_progress', 'em_andamento'].includes(normalizeStatus(r.status))).length },
-    { name: translate('status', 'resolved'), value: requests.filter(r => ['resolved', 'resolvida'].includes(normalizeStatus(r.status))).length },
-    { name: translate('status', 'closed'), value: requests.filter(r => ['closed', 'fechada'].includes(normalizeStatus(r.status))).length },
-  ];
-  
-  // Corrigir definição das variáveis para evitar ReferenceError
+
   const pendingRequests = requests.filter(r => isPending(r.status)).length;
   const resolvedRequests = requests.filter(r => isResolved(r.status)).length;
   
@@ -77,7 +56,7 @@ const DashboardPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
             <Button asChild variant="ghost">
               <Link to="/request/new">
-                <FilePlus className="h-4 w-4 mr-2" />
+                {getSemanticIcon('file-add', { className: 'h-4 w-4 mr-2' })}
                 Nova Solicitação
               </Link>
             </Button>
@@ -87,7 +66,7 @@ const DashboardPage: React.FC = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">Total de Solicitações</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                {getSemanticIcon('clock', { className: 'h-4 w-4 text-muted-foreground' })}
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalRequests}</div>
@@ -100,7 +79,7 @@ const DashboardPage: React.FC = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">Solicitações Pendentes</CardTitle>
-                <Hourglass className="h-4 w-4 text-amber-500" />
+                {getSemanticIcon('pending', { className: 'h-4 w-4 text-warning' })}
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{pendingRequests}</div>
@@ -113,7 +92,7 @@ const DashboardPage: React.FC = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">Solicitações Resolvidas</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                {getSemanticIcon('success', { className: 'h-4 w-4 text-success' })}
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{resolvedRequests}</div>
@@ -126,7 +105,7 @@ const DashboardPage: React.FC = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">Alta Prioridade</CardTitle>
-                <ArrowUp className="h-4 w-4 text-destructive" />
+                {getSemanticIcon('action-up', { className: 'h-4 w-4 text-destructive' })}
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{highPriorityRequests}</div>
@@ -142,7 +121,7 @@ const DashboardPage: React.FC = () => {
               <CardTitle>Solicitações Recentes</CardTitle>
               <Link to={user?.role === 'admin' ? '/requests' : '/requests/my'} className="text-sm text-muted-foreground hover:text-foreground flex items-center">
                 Ver todas
-                <ArrowRight className="h-4 w-4 ml-1" />
+                {getSemanticIcon('action-forward', { className: 'h-4 w-4 ml-1' })}
               </Link>
             </CardHeader>
             <CardContent>
@@ -165,7 +144,7 @@ const DashboardPage: React.FC = () => {
             <CardFooter>
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/request/new">
-                  <FilePlus className="h-4 w-4 mr-2" />
+                  {getSemanticIcon('file-add', { className: 'h-4 w-4 mr-2' })}
                   Criar Nova Solicitação
                 </Link>
               </Button>

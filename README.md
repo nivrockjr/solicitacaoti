@@ -44,11 +44,11 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anon-publica
 ## 3. Stack Técnica
 O sistema utiliza tecnologias modernas para garantir performance, segurança e escalabilidade:
 
-- **Frontend:** React 18 (Vite) com TypeScript (Strict Mode).
+- **Frontend:** React 18 (Vite) com TypeScript. *(Strict Mode em saneamento progressivo — ver `CONTRIBUTING.md § 1`.)*
 - **Estilização:** Tailwind CSS + Radix UI (shadcn/ui).
 - **Backend:** Supabase (PostgreSQL + Realtime).
 - **Gerenciamento de Estado:** TanStack Query v5 (React Query).
-- **Autenticação:** Sistema de sessão customizado (Zero Persistência de senha no cliente).
+- **Autenticação:** Sistema de sessão customizado, sem uso do Supabase Auth nativo. ⚠️ **As senhas estão atualmente em texto plano no banco** — saneamento de segurança pendente. Ver `DIAGNOSTICO.md` Seção 5.1.
 
 ## 4. Arquitetura e Organização do Código
 
@@ -72,13 +72,15 @@ O sistema utiliza tecnologias modernas para garantir performance, segurança e e
 
 ### Silent Logging (Produção)
 - **Estratégia de Supressão**: Implementação mandatória de `if (!import.meta.env.PROD)` em todos os comandos `console.log`, `error` e `warn`. Isso garante que informações técnicas sensíveis (UUIDs, URLs de API, detalhes de erro) não vazem para o console do navegador em produção.
+- ✅ Auditoria 29/04/2026: 100% dos `console.*` no projeto agora estão encapsulados.
 
 ### Blindagem de Sessão (Chrome-Ready)
 - Implementação de "fechou a aba, deslogou" via `infrastructureService.ts`, garantindo que sessões não persistam indevidamente após o fechamento do navegador.
 
-### Conformidade ISO 9001 & LGPD
-- **ISO 9001:2015:** Rastreabilidade total (quem solicitou, quem entregou e quem recebeu).
-- **LGPD:** Coleta mínima de dados e transparência nos termos de consentimento integrados.
+### Conformidade — em saneamento
+O sistema foi **projetado** com objetivo de aderência à **ISO 9001:2015** (rastreabilidade total: quem solicitou, quem entregou, quem recebeu) e à **LGPD** (coleta mínima de dados e transparência nos termos de consentimento integrados).
+
+⚠️ **Estado atual (28/04/2026):** o saneamento de segurança está pendente. Senhas em texto plano e RLS aberto comprometem a aderência declarada à LGPD. **Não declare conformidade publicamente** até concluir a Fase 0 do `DIAGNOSTICO.md`.
 
 ### Neutralidade Documental (Ciclo de Vida)
 - Os termos digitais de devolução de equipamentos adotam uma postura **Técnica e Neutra**. A TI atua exclusivamente como registradora da custódia de coleta (incluindo laudos de *avarias* técnicas), direcionando qualquer resolução de litígio para o RH. Link público não deve conter aprovações mistas (Gestor vs Funcionário).
@@ -87,12 +89,14 @@ O sistema utiliza tecnologias modernas para garantir performance, segurança e e
 
 ### 6.1 Acordo de Nível de Serviço (SLA)
 Os prazos de vencimento são calculados automaticamente no momento da criação, com base em **horas corridas** (não dias úteis — o desconto de fins de semana e feriados está planejado para implementação futura via `holidayService`):
-- **Solicitação Geral:** 120 horas corridas (~5 dias).
-- **Sistemas:** 240 horas corridas (~10 dias).
-- **Solicitação de Equipamentos:** 240 horas corridas (~10 dias).
-- **Ciclo de Vida (Onboarding/Offboarding):** 120 horas corridas (~5 dias).
-- **Manutenção Preventiva:** 120 horas corridas (~5 dias).
-- **Ajuste de Estoque:** 24 horas.
+- **Solicitação Geral:** 120 horas corridas (5 dias).
+- **Sistemas:** 240 horas corridas (10 dias).
+- **Solicitação de Equipamentos:** 240 horas corridas (10 dias).
+- **Ciclo de Vida (Onboarding/Offboarding/Treinamento):** 120 horas corridas (5 dias).
+- **Manutenção Preventiva:** 960 horas corridas (40 dias).
+- **Ajuste de Estoque:** 72 horas corridas (3 dias).
+
+> Tipos de solicitação fora desta lista oficial fazem `calculateDeadline` lançar erro — não há SLA fallback silencioso.
 
 ### 6.2 Módulos do Sistema
 - **Ciclo de Vida de Chamados:** Fluxo completo (`nova` -> `atribuida` -> `em_andamento` -> `resolvida` -> `fechada`).
@@ -108,6 +112,30 @@ O sistema é hospedado como um site estático na **KingHost**.
 1. Execute `npm run build`.
 2. Faça o upload do conteúdo da pasta `/dist` via FTP (FileZilla).
 3. Certifique-se de que o arquivo `.htaccess` está na raiz do servidor para gerenciar as rotas do SPA e a segurança (CSP, HSTS).
+
+## 8. Diagnóstico Auditado (Snapshot)
+
+A última auditoria completa do sistema (frontend + Supabase) foi realizada em **28/04/2026** e está documentada em [`DIAGNOSTICO.md`](./DIAGNOSTICO.md) na raiz do projeto.
+
+A auditoria identificou inicialmente:
+- **6 brechas críticas de segurança** (Fase 0 emergencial)
+- **28 bugs funcionais** confirmados
+- **~75 violações** do protocolo interno
+- **20 decisões pendentes** do Operador
+
+**Status pós-correções (atualizado 29/04/2026):**
+- ✅ **Caixas 1 a 6 do plano de correção concluídas** (20 lotes, 40+ itens). Resumo:
+  - Bugs funcionais críticos do front corrigidos: `<Toaster />`, mismatch de coluna em SettingsPage, `uploadFile` com path errado, `meta.onError` morto em `useRobustQuery`, etc.
+  - Brechas de exposição reduzidas: removido `window.supabase` global, URL Supabase migrada para `.env`.
+  - Limpeza: ~640 linhas de código morto/boilerplate removidas (4 componentes UI mortos, imports órfãos, App.css boilerplate, `"use client"` inúteis).
+  - Tipagem: `RequestStatus` ganhou `'rejected'`; `NotificationType` virou união literal de 12 valores; `error: any` e `as any` eliminados de `RequestDetailPage` e `AllRequestsPage`.
+  - Hardcodes ("Nivaldo", UUID do "Eugênio") extraídos para `src/config/`.
+  - SLAs reescritos como tabela declarativa em `requestService.ts` — tipos desconhecidos lançam erro.
+  - Camada de services completada com `userService.ts` e `storageService.ts` (23 chamadas Supabase diretas migradas).
+  - Vitrine UI: zero imports diretos de `lucide-react` em código de domínio (mapeamento central com 59 ícones); zero hex inline; cores cruas substituídas por tokens semânticos.
+- 🚨 **Pendente:** Fase 0 do banco (RLS, hash de senhas, Storage policies) e refatoração de `RequestDetailPage.tsx`.
+
+**Antes de qualquer feature nova, leia `DIAGNOSTICO.md` Seção 5 (segurança) e Seção 12 (decisões pendentes).**
 
 ---
 *Documentação Técnica de Propriedade Intelectual. Informação Confidencial.*

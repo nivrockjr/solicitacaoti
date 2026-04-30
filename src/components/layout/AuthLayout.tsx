@@ -36,8 +36,6 @@ const AuthLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        {/* <h1 className="text-3xl font-bold text-primary">Solicitação de TI</h1> */}
-        {/* <p className="text-muted-foreground mt-2">Manage IT requests efficiently</p> */}
         <Outlet />
       </div>
     </div>

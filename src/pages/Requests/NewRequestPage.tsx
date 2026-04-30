@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, FilePlus2 } from 'lucide-react';
+import { getSemanticIcon } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import RequestForm from '@/components/requests/RequestForm';
 import LifecycleRequestForm from '@/components/requests/LifecycleRequestForm';
@@ -19,7 +19,7 @@ const NewRequestPage: React.FC = () => {
           size="icon"
           onClick={() => (entryMode === 'select' ? navigate(-1) : setEntryMode('select'))}
         >
-          <ArrowLeft className="h-4 w-4" />
+          {getSemanticIcon('action-back', { className: 'h-4 w-4' })}
           <span className="sr-only">Voltar</span>
         </Button>
       </div>
@@ -29,7 +29,7 @@ const NewRequestPage: React.FC = () => {
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <FilePlus2 className="h-4 w-4" />
+                {getSemanticIcon('file-add-alt', { className: 'h-4 w-4' })}
                 Solicitação Geral
               </CardTitle>
               <CardDescription>
@@ -46,7 +46,7 @@ const NewRequestPage: React.FC = () => {
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <RefreshCw className="h-4 w-4" />
+                {getSemanticIcon('action-refresh', { className: 'h-4 w-4' })}
                 Ciclo de Vida
               </CardTitle>
               <CardDescription>

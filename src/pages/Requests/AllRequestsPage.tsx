@@ -1,20 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FilePlus, Search, SlidersHorizontal, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ITRequest, RequestPriority, RequestStatus, RequestType } from '@/types';
+import { RequestPriority, RequestType } from '@/types';
 import RequestCard from '@/components/requests/RequestCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRequestsData, useRequestsCounters } from '@/hooks/use-requests-data';
 import { translate, getPriorityStyle, isResolved, isPending, getSemanticIcon } from '@/lib/utils';
+import { isAssignedToSistemaEugenio } from '@/config/specialUsers';
 
 interface Filters {
   types: RequestType[];
@@ -33,8 +31,6 @@ const AllRequestsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [tab, setTab] = useState<TabValue>('novas');
-  
-  const { logout } = useAuth();
 
   // Filtro do backend constante e leve (estável por identidade)
   const backendFilters = useMemo(() => ({ fullData: false }), []);
@@ -44,11 +40,7 @@ const AllRequestsPage: React.FC = () => {
     requests,
     loading,
     error,
-    totalCount,
-    refresh,
     clearError,
-    hasProblems,
-    problems,
   } = useRequestsData({
     page: 1,
     pageSize: 1000, // Buscar todas para calcular contadores
@@ -73,7 +65,7 @@ const AllRequestsPage: React.FC = () => {
     } else if (tab === 'high_priority') {
       filtered = filtered.filter(r => ['high', 'alta'].includes((r.priority || '').toLowerCase()) && isPending(r.status) && r.approvalstatus !== 'rejected');
     } else if (tab === 'sistema_eugenio') {
-      filtered = filtered.filter(r => r.assignedto === '5eb6f9f4-e0f0-4e4a-b7a6-32b2f3d23f45').filter(r => isPending(r.status));
+      filtered = filtered.filter(r => isAssignedToSistemaEugenio(r.assignedto)).filter(r => isPending(r.status));
     } else if (tab === 'in_progress') {
       filtered = filtered.filter(r => ['in_progress', 'em_andamento', 'assigned', 'atribuida', 'reopened', 'reaberta'].includes((r.status || '').toLowerCase()) && r.approvalstatus !== 'rejected');
     } else if (tab === 'resolved') {
@@ -82,7 +74,7 @@ const AllRequestsPage: React.FC = () => {
       filtered = filtered.filter(r => r.approvalstatus === 'rejected');
     }
 
-    filtered = filtered.sort((a, b) => new Date(b.createdat).getTime() - new Date(a.createdat).getTime());
+    filtered = filtered.sort((a, b) => new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime());
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -94,10 +86,10 @@ const AllRequestsPage: React.FC = () => {
       );
     }
     if (filters.types.length > 0) {
-      filtered = filtered.filter(r => filters.types.includes(r.type));
+      filtered = filtered.filter(r => r.type !== null && filters.types.includes(r.type));
     }
     if (filters.priorities.length > 0) {
-      filtered = filtered.filter(r => filters.priorities.includes(r.priority));
+      filtered = filtered.filter(r => r.priority !== null && filters.priorities.includes(r.priority));
     }
     return filtered;
   }, [requests, tab, searchQuery, filters.types, filters.priorities]);
@@ -107,9 +99,6 @@ const AllRequestsPage: React.FC = () => {
     const to = from + pageSize;
     return filteredRequests.slice(from, to);
   }, [filteredRequests, page]);
-  
-  const normalizeStatus = (status: string | null | undefined) => (status || '').toLowerCase();
-  const normalizePriority = (priority: string | null | undefined) => (priority || '').toLowerCase();
   
   const handleTypeFilterChange = (type: RequestType) => {
     setFilters(prev => {
@@ -143,9 +132,9 @@ const AllRequestsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Alerta de erro */}
       {error && (
-        <Alert className="border-red-200 bg-red-50">
-          {getSemanticIcon('error', { className: "h-4 w-4 text-red-600" })}
-          <AlertDescription className="text-red-700">
+        <Alert className="border-destructive/30 bg-destructive/10">
+          {getSemanticIcon('error', { className: 'h-4 w-4 text-destructive' })}
+          <AlertDescription className="text-destructive">
             <div className="flex items-center justify-between">
               <span>{error}</span>
               <Button size="sm" variant="outline" onClick={clearError}>
@@ -160,7 +149,7 @@ const AllRequestsPage: React.FC = () => {
         <h1 className="text-2xl font-bold tracking-tight">Todas as Solicitações</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            {getSemanticIcon('action-search', { className: 'absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' })}
             <Input
               placeholder="Buscar solicitações..."
               value={searchQuery}
@@ -172,7 +161,7 @@ const AllRequestsPage: React.FC = () => {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4" />
+                {getSemanticIcon('action-tune', { className: 'h-4 w-4' })}
                 Filtros
                 {hasActiveFilters && (
                   <Badge variant="secondary" className="ml-1">
@@ -211,26 +200,26 @@ const AllRequestsPage: React.FC = () => {
                       <Label htmlFor="type-ajuste_estoque">Ajuste de Estoque</Label>
                     </div>
                     <div className="flex items-center space-x-2 hover:bg-muted/60 dark:hover:bg-muted/40 rounded-md transition-colors p-1">
-                      <Checkbox 
-                        id="type-employee_lifecycle" 
-                        checked={filters.types.includes('employee_lifecycle' as any)}
-                        onCheckedChange={() => handleTypeFilterChange('employee_lifecycle' as any)}
+                      <Checkbox
+                        id="type-employee_lifecycle"
+                        checked={filters.types.includes('employee_lifecycle')}
+                        onCheckedChange={() => handleTypeFilterChange('employee_lifecycle')}
                       />
                       <Label htmlFor="type-employee_lifecycle">Ciclo de Vida</Label>
                     </div>
                     <div className="flex items-center space-x-2 hover:bg-muted/60 dark:hover:bg-muted/40 rounded-md transition-colors p-1">
-                      <Checkbox 
-                        id="type-equipment_request" 
-                        checked={filters.types.includes('equipment_request' as any)}
-                        onCheckedChange={() => handleTypeFilterChange('equipment_request' as any)}
+                      <Checkbox
+                        id="type-equipment_request"
+                        checked={filters.types.includes('equipment_request')}
+                        onCheckedChange={() => handleTypeFilterChange('equipment_request')}
                       />
                       <Label htmlFor="type-equipment_request">Solicitação de Equipamento</Label>
                     </div>
                     <div className="flex items-center space-x-2 hover:bg-muted/60 dark:hover:bg-muted/40 rounded-md transition-colors p-1">
-                      <Checkbox 
-                        id="type-preventive_maintenance" 
-                        checked={filters.types.includes('preventive_maintenance' as any)}
-                        onCheckedChange={() => handleTypeFilterChange('preventive_maintenance' as any)}
+                      <Checkbox
+                        id="type-preventive_maintenance"
+                        checked={filters.types.includes('preventive_maintenance')}
+                        onCheckedChange={() => handleTypeFilterChange('preventive_maintenance')}
                       />
                       <Label htmlFor="type-preventive_maintenance">Manutenção Preventiva</Label>
                     </div>
@@ -241,26 +230,26 @@ const AllRequestsPage: React.FC = () => {
                   <h4 className="font-medium mb-2">Prioridade</h4>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 hover:bg-muted/60 dark:hover:bg-muted/40 rounded-md transition-colors p-1">
-                      <Checkbox 
-                        id="priority-high" 
-                        checked={filters.priorities.includes('high' as any)}
-                        onCheckedChange={() => handlePriorityFilterChange('high' as any)}
+                      <Checkbox
+                        id="priority-high"
+                        checked={filters.priorities.includes('high')}
+                        onCheckedChange={() => handlePriorityFilterChange('high')}
                       />
                       <Label htmlFor="priority-high">Alta</Label>
                     </div>
                     <div className="flex items-center space-x-2 hover:bg-muted/60 dark:hover:bg-muted/40 rounded-md transition-colors p-1">
-                      <Checkbox 
-                        id="priority-medium" 
-                        checked={filters.priorities.includes('medium' as any)}
-                        onCheckedChange={() => handlePriorityFilterChange('medium' as any)}
+                      <Checkbox
+                        id="priority-medium"
+                        checked={filters.priorities.includes('medium')}
+                        onCheckedChange={() => handlePriorityFilterChange('medium')}
                       />
                       <Label htmlFor="priority-medium">Média</Label>
                     </div>
                     <div className="flex items-center space-x-2 hover:bg-muted/60 dark:hover:bg-muted/40 rounded-md transition-colors p-1">
-                      <Checkbox 
-                        id="priority-low" 
-                        checked={filters.priorities.includes('low' as any)}
-                        onCheckedChange={() => handlePriorityFilterChange('low' as any)}
+                      <Checkbox
+                        id="priority-low"
+                        checked={filters.priorities.includes('low')}
+                        onCheckedChange={() => handlePriorityFilterChange('low')}
                       />
                       <Label htmlFor="priority-low">Baixa</Label>
                     </div>
@@ -277,7 +266,7 @@ const AllRequestsPage: React.FC = () => {
           </Popover>
           
           <Button variant='ghost' className="flex items-center gap-2">
-            <FilePlus className="h-4 w-4" />
+            {getSemanticIcon('file-add', { className: 'h-4 w-4' })}
             Nova Solicitação
           </Button>
         </div>
@@ -386,7 +375,7 @@ const AllRequestsPage: React.FC = () => {
         <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page * pageSize >= filteredRequests.length}>Próxima</Button>
       </div>
       
-      {error && <div className="text-red-500 text-center my-4">{error}</div>}
+      {error && <div className="text-destructive text-center my-4">{error}</div>}
     </div>
   );
 };

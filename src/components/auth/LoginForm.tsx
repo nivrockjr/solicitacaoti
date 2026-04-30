@@ -58,7 +58,7 @@ const LoginForm: React.FC = () => {
           <div className="w-full max-w-xs">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {error && (
-                <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm">
+                <div className="p-4 bg-destructive/20 border border-destructive/30 rounded-lg text-destructive text-sm">
                   {error}
                 </div>
               )}
@@ -72,7 +72,7 @@ const LoginForm: React.FC = () => {
                     className="w-full max-w-[200px] mx-auto block px-4 py-3 bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/10 rounded-xl text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300 text-sm"
                   />
                   {form.formState.errors.email && (
-                    <p className="text-red-400 text-xs mt-1 text-center">{form.formState.errors.email.message}</p>
+                    <p className="text-destructive text-xs mt-1 text-center">{form.formState.errors.email.message}</p>
                   )}
                 </div>
                 
@@ -84,7 +84,7 @@ const LoginForm: React.FC = () => {
                     className="w-full max-w-[200px] mx-auto block px-4 py-3 bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/10 rounded-xl text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300 text-sm"
                   />
                   {form.formState.errors.senha && (
-                    <p className="text-red-400 text-xs mt-1 text-center">{form.formState.errors.senha.message}</p>
+                    <p className="text-destructive text-xs mt-1 text-center">{form.formState.errors.senha.message}</p>
                   )}
                 </div>
               </div>

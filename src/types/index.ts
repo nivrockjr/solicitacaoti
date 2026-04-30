@@ -10,9 +10,71 @@ export interface User {
   whatsapp?: string;
 }
 
-export type RequestType = 'general' | 'systems' | 'ajuste_estoque' | 'employee_lifecycle' | 'equipment_request' | 'preventive_maintenance' | 'other';
-export type RequestPriority = 'low' | 'medium' | 'high';
-export type RequestStatus = 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'reopened' | 'cancelled';
+/**
+ * Vocabulário canônico das solicitações.
+ *
+ * **Regra do projeto:** banco e código em inglês; tradução só na UI via `translate()`.
+ *
+ * Os literais em **PT-BR** abaixo (`'sistemas'`, `'alta'`, `'resolvida'`, etc.) NÃO são
+ * suporte bilíngue. São **defesa contra dados legados** — em 28/04/2026 a auditoria
+ * encontrou 17 linhas em `solicitacoes` salvas em PT-BR (origem em funções SQL legadas
+ * e edição manual via SQL Editor). Mantemos os literais aqui apenas para o `tsc`
+ * aceitar comparações como `request.status === 'resolvida'`.
+ *
+ * **Quando remover:** depois que uma migração SQL converter as 17 linhas legadas para
+ * EN-US (registrada em `DIAGNOSTICO.md` Fase 1.14). Aí estes literais marcados como
+ * `@deprecated` devem sumir em uma única passada — frontend e DB simultaneamente.
+ *
+ * **Novas implementações DEVEM gravar EN-US.**
+ */
+export type RequestType =
+  | 'general'
+  | 'systems'
+  | 'ajuste_estoque'
+  | 'employee_lifecycle'
+  | 'equipment_request'
+  | 'preventive_maintenance'
+  | 'other'
+  // @deprecated — legados PT-BR, remover após migração SQL.
+  | 'sistemas'
+  | 'solicitacao_equipamento'
+  | 'manutencao_preventiva'
+  | 'ciclo_colaborador';
+
+export type RequestPriority =
+  | 'low'
+  | 'medium'
+  | 'high'
+  // @deprecated — legados PT-BR, remover após migração SQL.
+  | 'alta'
+  | 'media'
+  | 'baixa';
+
+export type RequestStatus =
+  | 'new'
+  | 'assigned'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed'
+  | 'reopened'
+  | 'cancelled'
+  | 'rejected'
+  // @deprecated — legados PT-BR, remover após migração SQL.
+  | 'nova'
+  | 'atribuida'
+  | 'em_andamento'
+  | 'resolvida'
+  | 'fechada'
+  | 'reaberta'
+  | 'rejeitada'
+  | 'cancelada';
+
+export interface DeliveryItem {
+  id: string;
+  text: string;
+  checked: boolean;
+  avaria?: string;
+}
 
 export interface ITRequestMetadata {
   form_data?: {
@@ -23,12 +85,7 @@ export interface ITRequestMetadata {
     accessItems?: string[];
     [key: string]: unknown;
   };
-  delivery_items?: Array<{
-    id: string;
-    text: string;
-    checked: boolean;
-    avaria?: string;
-  }>;
+  delivery_items?: DeliveryItem[];
   [key: string]: unknown;
 }
 
@@ -78,11 +135,26 @@ export interface Comment {
   attachments?: Attachment[];
 }
 
-export interface Holiday {
-  id: string;
-  name: string;
-  date: string; // ISO date string
-}
+/**
+ * Vocabulário fechado de tipos de notificação.
+ * EN-US é canônico. Variantes PT-BR são legadas — mantidas até a migração
+ * planejada em DIAGNOSTICO.md Fase 1.14.
+ */
+export type NotificationType =
+  // EN-US — canônico (gerados no ciclo de vida do chamado)
+  | 'request_created'
+  | 'request_assigned'
+  | 'request_new'
+  | 'request_in_progress'
+  | 'request_resolved'
+  | 'request_reopened'
+  | 'request_closed'
+  | 'request_cancelled'
+  | 'request_rejected'
+  // PT-BR — legados, mantidos para compatibilidade
+  | 'comentario'
+  | 'rejeicao'
+  | 'prazo_estendido';
 
 export interface Notification {
   id: string;
@@ -90,7 +162,7 @@ export interface Notification {
   mensagem: string;
   lida: boolean;
   criada_em: string;
-  tipo: string;
+  tipo: NotificationType;
   request_id?: string;
 }
 

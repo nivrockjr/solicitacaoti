@@ -38,17 +38,10 @@ export const getRequestTypesWithAutoAssignment = (): string[] => {
 // Função para validar se um admin existe no sistema
 export const validateAdminExists = async (adminName: string): Promise<boolean> => {
   try {
-    const { supabase } = await import('@/lib/supabase');
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id')
-      .eq('name', adminName)
-      .eq('role', 'admin')
-      .single();
-    
-    return !error && !!data;
+    const { adminExistsByName } = await import('@/services/userService');
+    return await adminExistsByName(adminName);
   } catch (error) {
-    console.error(`[VALIDATE ADMIN] Erro ao validar admin ${adminName}:`, error);
+    if (!import.meta.env.PROD) console.error(`[VALIDATE ADMIN] Erro ao validar admin ${adminName}:`, error);
     return false;
   }
-}; 
+};

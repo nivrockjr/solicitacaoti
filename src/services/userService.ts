@@ -14,11 +14,12 @@ import { User, UserRole } from '../types';
 
 /**
  * Linha bruta como gravada na tabela `usuarios`.
- * Inclui campos sensíveis (`senha`, `precisa_alterar_senha`) que NÃO devem
- * vazar para a UI — usar `User` para qualquer dado renderizado.
+ * Não inclui mais campo de senha — autenticação é feita exclusivamente
+ * via funções SECURITY DEFINER (`validate_login`, `update_user_password`).
+ * `precisa_alterar_senha` é uma flag herdada que ainda existe no banco mas
+ * o frontend atual não consome (manter pra compatibilidade até reavaliar).
  */
 export interface UsuarioRow extends User {
-  senha?: string;
   precisa_alterar_senha?: boolean;
   created_at?: string;
 }
@@ -46,22 +47,6 @@ interface UpdateUserPayload {
   position?: string;
   whatsapp?: string;
 }
-
-/**
- * Lê o registro completo do usuário pelo email (case-insensitive).
- * Inclui campos sensíveis — uso restrito.
- * @deprecated A partir de J.4: use `validateLogin(email, senha)` para autenticação.
- *   Será removido junto com a coluna `senha` em texto plano (Item J.6 do DIAGNOSTICO).
- */
-export const getUsuarioRowByEmail = async (email: string): Promise<UsuarioRow | null> => {
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('*')
-    .eq('email', email.toLowerCase())
-    .single();
-  if (error) return null;
-  return data as UsuarioRow;
-};
 
 /**
  * Autenticação segura via função SQL `validate_login` (SECURITY DEFINER + bcrypt).

@@ -31,11 +31,19 @@ const userFormSchema = z.object({
   email: z.string().email('Email inválido'),
   role: z.enum(['admin', 'requester']),
   department: z.string().optional(),
-  position: z.string().optional(), 
+  position: z.string().optional(),
   whatsapp: z.string().optional(),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
+
+// Criação exige senha definida pelo admin no momento da criação.
+// Edição não pede senha (existe Dialog dedicado "Redefinir Senha").
+const createUserFormSchema = userFormSchema.extend({
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
+
+type CreateUserFormValues = z.infer<typeof createUserFormSchema>;
 
 const passwordFormSchema = z.object({
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
@@ -60,8 +68,8 @@ const UsersPage: React.FC = () => {
   
   const isAdmin = currentUser?.role === 'admin';
   
-  const userForm = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
+  const userForm = useForm<CreateUserFormValues>({
+    resolver: zodResolver(createUserFormSchema),
     defaultValues: {
       name: '',
       email: '',
@@ -69,6 +77,7 @@ const UsersPage: React.FC = () => {
       department: '',
       position: '',
       whatsapp: '',
+      password: '',
     },
   });
   
@@ -138,7 +147,7 @@ const UsersPage: React.FC = () => {
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   ), [users, searchQuery]);
   
-  const handleCreateUser = async (values: UserFormValues) => {
+  const handleCreateUser = async (values: CreateUserFormValues) => {
     try {
       const newId = uuidv4();
       if (!import.meta.env.PROD) console.log('UUID gerado para novo usuário:', newId);
@@ -150,8 +159,8 @@ const UsersPage: React.FC = () => {
         department: values.department || '',
         position: values.position || '',
         whatsapp: values.whatsapp || '',
-        senha: 'senha123', // campo correto na tabela
-        precisa_alterar_senha: true,
+        senha: values.password,
+        precisa_alterar_senha: false,
         created_at: new Date().toISOString()
       };
       await createUsuario(userData);

@@ -7,9 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getSemanticIcon } from '@/lib/utils';
 import { UserFormValues } from './EditUserDialog';
 
+// Criação exige que o admin defina a senha do novo usuário no momento da criação.
+// `EditUserDialog` não usa esse tipo — edição não pede senha (Dialog separado).
+export interface CreateUserFormValues extends UserFormValues {
+  password: string;
+}
+
 interface CreateUserDialogProps {
-  form: UseFormReturn<UserFormValues>;
-  onSubmit: (values: UserFormValues) => void;
+  form: UseFormReturn<CreateUserFormValues>;
+  onSubmit: (values: CreateUserFormValues) => void;
 }
 
 export function CreateUserDialog({ form, onSubmit }: CreateUserDialogProps) {
@@ -123,6 +129,25 @@ export function CreateUserDialog({ form, onSubmit }: CreateUserDialogProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha do novo usuário</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      autoComplete="new-password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <DialogClose asChild>

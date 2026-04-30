@@ -177,28 +177,60 @@ export const getUsuarioById = async (id: string): Promise<User[]> => {
 };
 
 /**
- * Cria um novo usuário (operação administrativa).
- * 1) INSERT na tabela `usuarios` SEM o campo de senha (a coluna `senha` em
- *    texto plano será removida — Item J.6 do DIAGNOSTICO).
- * 2) Após o INSERT, chama `update_user_password` para gravar o hash bcrypt
- *    em `senha_hash`.
+ * Lê o id do admin logado (gravado pelo AuthContext em localStorage).
+ * Necessário para as funções `admin_*` que validam quem está chamando.
+ * Retorna null se não houver sessão — operação será rejeitada pelo banco.
  */
-export const createUsuario = async (payload: CreateUserPayload): Promise<void> => {
-  const { password, ...userRow } = payload;
-  const { error: insertError } = await supabase.from('usuarios').insert([userRow]);
-  if (insertError) throw insertError;
-  const { error: passwordError } = await supabase.rpc('update_user_password', {
-    p_user_id: payload.id,
-    p_new_password: password,
-  });
-  if (passwordError) throw passwordError;
+const getCurrentAdminId = (): string | null => {
+  try {
+    const saved = localStorage.getItem('usuarioLogado');
+    if (!saved) return null;
+    const user = JSON.parse(saved);
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
 };
 
 /**
- * Atualiza dados básicos do usuário (sem mexer em senha).
+ * Cria um novo usuário via função SQL `admin_create_user` (SECURITY DEFINER).
+ * O banco valida que quem chama é admin antes de criar; aplica bcrypt no
+ * `senha_hash` em uma única transação.
+ */
+export const createUsuario = async (payload: CreateUserPayload): Promise<void> => {
+  const adminId = getCurrentAdminId();
+  if (!adminId) throw new Error('Sessão de admin não encontrada');
+  const { error } = await supabase.rpc('admin_create_user', {
+    p_admin_id: adminId,
+    p_new_user_id: payload.id,
+    p_name: payload.name,
+    p_email: payload.email,
+    p_role: payload.role,
+    p_password: payload.password,
+    p_department: payload.department ?? null,
+    p_position: payload.position ?? null,
+    p_whatsapp: payload.whatsapp ?? null,
+  });
+  if (error) throw error;
+};
+
+/**
+ * Atualiza dados básicos via função SQL `admin_update_user` (SECURITY DEFINER).
+ * Banco valida que quem chama é admin. Campos `null` são preservados.
  */
 export const updateUsuario = async (id: string, payload: UpdateUserPayload): Promise<void> => {
-  const { error } = await supabase.from('usuarios').update(payload).eq('id', id);
+  const adminId = getCurrentAdminId();
+  if (!adminId) throw new Error('Sessão de admin não encontrada');
+  const { error } = await supabase.rpc('admin_update_user', {
+    p_admin_id: adminId,
+    p_target_id: id,
+    p_name: payload.name ?? null,
+    p_email: payload.email ?? null,
+    p_role: payload.role ?? null,
+    p_department: payload.department ?? null,
+    p_position: payload.position ?? null,
+    p_whatsapp: payload.whatsapp ?? null,
+  });
   if (error) throw error;
 };
 
@@ -217,9 +249,15 @@ export const resetUsuarioPassword = async (id: string, newPassword: string): Pro
 };
 
 /**
- * Remove um usuário do sistema. Operação administrativa irreversível.
+ * Remove um usuário via função SQL `admin_delete_user` (SECURITY DEFINER).
+ * Banco valida que quem chama é admin e bloqueia auto-exclusão.
  */
 export const deleteUsuario = async (id: string): Promise<void> => {
-  const { error } = await supabase.from('usuarios').delete().eq('id', id);
+  const adminId = getCurrentAdminId();
+  if (!adminId) throw new Error('Sessão de admin não encontrada');
+  const { error } = await supabase.rpc('admin_delete_user', {
+    p_admin_id: adminId,
+    p_target_id: id,
+  });
   if (error) throw error;
 };

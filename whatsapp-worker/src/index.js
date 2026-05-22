@@ -369,9 +369,11 @@ async function handleMetaMessage(request, env) {
                 });
               }
             } else if (['text', 'audio', 'image', 'video', 'sticker', 'document'].includes(msg.type)) {
-              // 5. Responder com mensagem automática informando que o número não recebe mensagens
+              // 5. Responder com mensagem automática e Cartões de Contato
               const waUrl = `https://graph.facebook.com/v25.0/${env.WHATSAPP_PHONE_ID}/messages`;
-              const autoReply = "🤖 *Aviso Automático*\n\nEste número do WhatsApp é utilizado exclusivamente pelo sistema de TI para envio de notificações e validações de chamados.\n\nPor favor, não envie mensagens ou áudios para este número, pois esta caixa de entrada não é monitorada por humanos.\n\nPara novas solicitações, acesse o portal da TI.";
+              
+              // Disparo 1: Texto Curto
+              const autoReply = "🤖 *Aviso Automático*\n\nEste canal é exclusivo para notificações do sistema e não é monitorado.\n\nPara atendimento humano, por favor, acesse o contato do setor desejado abaixo: 👇";
               
               await fetch(waUrl, {
                 method: 'POST',
@@ -385,6 +387,44 @@ async function handleMetaMessage(request, env) {
                   to: senderPhone,
                   type: "text",
                   text: { body: autoReply }
+                })
+              });
+
+              // Disparo 2: Cartões de Contato Nativos (vCard)
+              await fetch(waUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${env.WHATSAPP_TOKEN}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: senderPhone,
+                  type: "contacts",
+                  contacts: [
+                    {
+                      name: { formatted_name: "Comercial", first_name: "Comercial" },
+                      phones: [
+                        { phone: "+55 85 99430-2216", type: "CELL" },
+                        { phone: "+55 85 3033-2160", type: "WORK" }
+                      ]
+                    },
+                    {
+                      name: { formatted_name: "Compras", first_name: "Compras" },
+                      phones: [
+                        { phone: "+55 85 99980-0578", type: "CELL" },
+                        { phone: "+55 85 3033-2162", type: "WORK" }
+                      ]
+                    },
+                    {
+                      name: { formatted_name: "Financeiro", first_name: "Financeiro" },
+                      phones: [
+                        { phone: "+55 85 99636-7348", type: "CELL" },
+                        { phone: "+55 85 99980-0586", type: "WORK" }
+                      ]
+                    }
+                  ]
                 })
               });
             }

@@ -406,22 +406,22 @@ async function handleMetaMessage(request, env) {
                     {
                       name: { formatted_name: "Comercial", first_name: "Comercial" },
                       phones: [
-                        { phone: "+55 85 99430-2216", type: "CELL", wa_id: "5585994302216" },
+                        { phone: "+55 85 99430-2216", type: "CELL", wa_id: "558594302216" },
                         { phone: "+55 85 3033-2160", type: "WORK", wa_id: "558530332160" }
                       ]
                     },
                     {
                       name: { formatted_name: "Compras", first_name: "Compras" },
                       phones: [
-                        { phone: "+55 85 99980-0578", type: "CELL", wa_id: "5585999800578" },
+                        { phone: "+55 85 99980-0578", type: "CELL", wa_id: "558599800578" },
                         { phone: "+55 85 3033-2162", type: "WORK", wa_id: "558530332162" }
                       ]
                     },
                     {
                       name: { formatted_name: "Financeiro", first_name: "Financeiro" },
                       phones: [
-                        { phone: "+55 85 99636-7348", type: "CELL", wa_id: "5585996367348" },
-                        { phone: "+55 85 99980-0586", type: "WORK", wa_id: "5585999800586" }
+                        { phone: "+55 85 99636-7348", type: "CELL", wa_id: "558596367348" },
+                        { phone: "+55 85 99980-0586", type: "WORK", wa_id: "558599800586" }
                       ]
                     }
                   ]

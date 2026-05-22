@@ -373,7 +373,7 @@ async function handleMetaMessage(request, env) {
               const waUrl = `https://graph.facebook.com/v25.0/${env.WHATSAPP_PHONE_ID}/messages`;
               
               // Disparo 1: Texto Curto
-              const autoReply = "🤖 *Aviso Automático*\n\nEste canal é exclusivo para notificações do sistema e não é monitorado.\n\nPara atendimento humano, por favor, acesse o contato do setor desejado abaixo: 👇";
+              const autoReply = "🤖 *Assistente Virtual PQVIRK*\n\nOlá! \nEste WhatsApp envia apenas notificações automáticas.\nPara garantir um atendimento rápido e humano, por favor, clique no setor desejado abaixo e inicie sua conversa: 👇";
               
               await fetch(waUrl, {
                 method: 'POST',

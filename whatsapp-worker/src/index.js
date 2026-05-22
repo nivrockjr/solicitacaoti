@@ -160,14 +160,14 @@ async function handleSupabaseWebhook(request, env) {
         else if (record.type === 'access') intro = `Sua requisição de ${iconeStr} com a ID #${record.id} foi registrada com sucesso!`;
         else intro = `Sua solicitação ${iconeStr} com a ID #${record.id} foi aberta e logo será analisada!`;
 
-        let blocoResumo = `📋 *Resumo da Solicitação*\n\n*Título:* ${nomeChamado}\n\n*Prioridade:* ${prioridadeTraduzida}`;
+        let blocoResumo = `📋 *Resumo da Solicitação*\n\n*Título:* ${nomeChamado}\n*Prioridade:* ${prioridadeTraduzida}`;
         
         let headerDetalhe = '📝 *Detalhes:*';
         if (record.type === 'systems') headerDetalhe = '📝 *Descrição do Problema/Pedido:*';
         else if (record.type === 'equipment_request') headerDetalhe = '📝 *Motivo / Descrição:*';
         else if (record.type === 'preventive_maintenance') headerDetalhe = '📝 *Escopo / Detalhes:*';
 
-        textoMensagem = `${saudacao}\n${intro}\n\n${blocoResumo}\n\n${headerDetalhe}\n\n_${detalhes}_\n\n📌 *Status:* ${statusTraduzido}`;
+        textoMensagem = `${saudacao}\n${intro}\n\n${blocoResumo}\n\n${headerDetalhe}\n${detalhes}\n\n📌 *Status:* ${statusTraduzido}`;
       }
     } else if (type === 'UPDATE') {
       if (statusMudou) {

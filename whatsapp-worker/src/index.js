@@ -368,6 +368,25 @@ async function handleMetaMessage(request, env) {
                   })
                 });
               }
+            } else if (['text', 'audio', 'image', 'video', 'sticker', 'document'].includes(msg.type)) {
+              // 5. Responder com mensagem automática informando que o número não recebe mensagens
+              const waUrl = `https://graph.facebook.com/v25.0/${env.WHATSAPP_PHONE_ID}/messages`;
+              const autoReply = "🤖 *Aviso Automático*\n\nEste número do WhatsApp é utilizado exclusivamente pelo sistema de TI para envio de notificações e validações de chamados.\n\nPor favor, não envie mensagens ou áudios para este número, pois esta caixa de entrada não é monitorada por humanos.\n\nPara novas solicitações, acesse o portal da TI.";
+              
+              await fetch(waUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${env.WHATSAPP_TOKEN}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: senderPhone,
+                  type: "text",
+                  text: { body: autoReply }
+                })
+              });
             }
           }
         }

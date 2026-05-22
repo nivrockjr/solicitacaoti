@@ -15,7 +15,8 @@ Solicitantes registram pedidos pelo formulário; administradores atribuem, resol
 | Estilo | Tailwind 3.4 + Radix UI via shadcn/ui |
 | Estado remoto | TanStack Query v5 (`staleTime: 0`, leitura síncrona) |
 | Forms | react-hook-form + Zod |
-| Backend | Supabase (PostgreSQL + Storage + RLS) |
+| Backend | Supabase (PostgreSQL + Storage + RLS) + Cloudflare Workers (Webhooks) |
+| Integração | Meta Graph API (WhatsApp Business) |
 | Auth | Custom (bcrypt via `pgcrypto` + funções `SECURITY DEFINER`) |
 
 ---
@@ -68,6 +69,9 @@ src/
 ├── pages/           # rotas: Dashboard, Requests, Reports, Users, Settings, Acceptance
 ├── services/        # única camada que conversa com o Supabase
 └── types/           # tipos canônicos (ITRequest, User, Notification...)
+whatsapp-worker/     # Webhook serverless (Cloudflare) para envio/recebimento de mensagens
+├── src/index.js     # Lógica central de integração Meta <-> Supabase
+└── wrangler.toml    # Variáveis públicas e configuração de deploy
 ```
 
 ### Camada de serviços
@@ -120,7 +124,8 @@ Sistema é um SPA estático. Build via `npm run build` gera `/dist`, que é serv
 2. Upload do conteúdo de `/dist` para a raiz do servidor.
 3. O `.htaccess` na raiz cuida das rotas.
 
-> Não há Node.js no servidor — o artefato é estático.
+> Não há Node.js no servidor web — o artefato frontend é estático.
+> O bot do WhatsApp roda de forma serverless na Cloudflare (deploy via `npx wrangler deploy`).
 
 ---
 

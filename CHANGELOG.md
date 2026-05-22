@@ -6,6 +6,14 @@ Formato inspirado em [Keep a Changelog](https://keepachangelog.com/), adaptado p
 
 ---
 
+## 2026-05-22 — Integração WhatsApp e refinamento visual
+
+- **WhatsApp Cloud API** — Integração ponta-a-ponta com a API oficial da Meta utilizando Cloudflare Workers (`whatsapp-worker`) para intermediar as mensagens sem onerar o frontend.
+- **Ações interativas** — Ao resolver um chamado, o sistema envia botões proativos pelo WhatsApp ("Verificado ✅" e "Não Resolvido ❌"). A resposta do usuário cai direto no Supabase validando ou reabrindo o ticket.
+- **Automação via Webhooks** — Banco de dados configurado para notificar o Cloudflare a cada mudança de status ou novos comentários, acionando o envio de mensagens em tempo real.
+- **Refinamento de UI** — Token de cor `success` no Tailwind alinhado ao hexadecimal oficial de chamados resolvidos (`#22c55e`). Layout do histórico da solicitação ajustado para exibir a assinatura e data exata da validação do usuário via WhatsApp.
+
+---
 ## 2026-04-30 — Segurança do banco e refatoração estrutural
 
 Ciclo intenso. Banco de dados auditado e blindado; frontend decomposto em pedaços menores.

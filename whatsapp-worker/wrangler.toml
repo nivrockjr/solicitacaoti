@@ -1,0 +1,10 @@
+name = "whatsapp-bot-ti"
+main = "src/index.js"
+compatibility_date = "2024-03-20"
+
+# Rotas do Supabase (para acessar os dados caso necessário, embora usaremos a URL direta nos fetches)
+[vars]
+# SUPABASE_URL = "coloque-sua-url" (Colocaremos isso de forma secreta depois)
+
+# As chaves secretas como WHATSAPP_TOKEN serão inseridas via "wrangler secret put" para segurança.
+WHATSAPP_PHONE_ID = "1132835589913100"

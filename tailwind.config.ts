@@ -66,7 +66,7 @@ export default {
 				},
 				// Custom colors
 				success: {
-					DEFAULT: '#10b981',
+					DEFAULT: '#22c55e',
 					foreground: '#ffffff'
 				},
 				warning: {

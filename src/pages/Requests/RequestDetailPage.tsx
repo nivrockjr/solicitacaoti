@@ -966,6 +966,12 @@ const RequestDetailPage: React.FC = () => {
                       {request.resolvedat && (
                         <p className="text-xs text-muted-foreground mt-2">
                           Resolvida por {request.assignedtoname || 'Administrador'} em {tryFormatDateTime(request.resolvedat, 'dd/MM/yyyy HH:mm') ?? '—'}
+                          {request.comments?.find(c => c.text.includes('validada pelo usuário via WhatsApp')) && (
+                            <>
+                              <br />
+                              Validada pelo usuário via WhatsApp em {tryFormatDateTime(request.comments.find(c => c.text.includes('validada pelo usuário via WhatsApp'))?.createdAt, 'dd/MM/yyyy HH:mm') ?? '—'}
+                            </>
+                          )}
                         </p>
                       )}
                     </div>

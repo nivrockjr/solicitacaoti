@@ -150,7 +150,8 @@ Nenhuma chave sensível é salva no código. Para que o Worker funcione (ou para
 ## Documentação interna
 
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — padrões de código e arquitetura.
-- [`CLAUDE.md`](./CLAUDE.md) — instruções para sessões com o Claude Code.
+- [`AGENTS.md`](./AGENTS.md) — fonte única de instruções para agentes de IA (contexto, regras, higiene, norte de design). Portável entre ferramentas (Claude Code, Antigravity, etc.).
+- [`CLAUDE.md`](./CLAUDE.md) — camada específica do Claude Code; importa o `AGENTS.md` e adiciona o protocolo de auditoria.
 - [`CHANGELOG.md`](./CHANGELOG.md) — histórico das mudanças importantes.
 
 ---

@@ -1,20 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { getRequestById, updateRequest, deleteRequest, uploadFile } from '@/services/requestService';
-import { notificationService } from '@/services/notificationService';
-import { listAdmins, getUserIdByEmail } from '@/services/userService';
-import { getAttachmentSignedUrl } from '@/services/storageService';
-import { ITRequest, User, Comment, Attachment, RequestStatus, DeliveryItem } from '@/types';
-import { cn, tryFormatDateTime, translate, getStatusStyle, getPriorityStyle, getSemanticIcon, SemanticIconName } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { cn, tryFormatDateTime, translate, getStatusStyle, getPriorityStyle, getSemanticIcon, SemanticIconName } from '@/lib/utils';
 import { RejectRequestModal } from '@/components/requests/modals/RejectRequestModal';
 import { ExtendDeadlineModal } from '@/components/requests/modals/ExtendDeadlineModal';
 import { EditDeliveryModal } from '@/components/requests/modals/EditDeliveryModal';
@@ -22,273 +14,97 @@ import { ResolutionModal } from '@/components/requests/modals/ResolutionModal';
 import { DeleteRequestDialog } from '@/components/requests/modals/DeleteRequestDialog';
 import { RequestHeader } from '@/components/requests/sections/RequestHeader';
 import { RequestAttachments } from '@/components/requests/sections/RequestAttachments';
-import { AttachmentList } from '@/components/requests/sections/AttachmentList';
+import { ResolutionPanel } from '@/components/requests/sections/ResolutionPanel';
+import { StatusFlowPanel } from '@/components/requests/sections/StatusFlowPanel';
 import { RequestComments } from '@/components/requests/sections/RequestComments';
 import { RequestSidebar } from '@/components/requests/sections/RequestSidebar';
 import { extractLifecycleLinks } from '@/utils/lifecycle-links';
-import { extractDeliveryItemsFromOnboarding, extractDeliveryItemsFromDescription } from '@/utils/delivery-items';
+import { useRequestDetail } from '@/hooks/use-request-detail';
 
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [request, setRequest] = useState<ITRequest | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedTechnician, setSelectedTechnician] = useState<string>('');
-  const [adminUsers, setAdminUsers] = useState<User[]>([]);
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [downloading, setDownloading] = useState<string | null>(null);
-  const [reopenComment, setReopenComment] = useState('');
-  const [showReopen, setShowReopen] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejectFiles, setRejectFiles] = useState<File[]>([]);
-  const [rejectUploading, setRejectUploading] = useState(false);
-  const [showExtendDeadline, setShowExtendDeadline] = useState(false);
-  const [newDeadline, setNewDeadline] = useState('');
-  const [extendReason, setExtendReason] = useState('');
-  const [showResolutionModal, setShowResolutionModal] = useState(false);
-  const [resolutionText, setResolutionText] = useState("");
-  const [resolutionFiles, setResolutionFiles] = useState<File[]>([]);
-  const [resolutionUploading, setResolutionUploading] = useState(false);
-  const [reopenFiles, setReopenFiles] = useState<File[]>([]);
-  const [reopenUploading, setReopenUploading] = useState(false);
-  const [showEditDeliveryModal, setShowEditDeliveryModal] = useState(false);
-  const [deliveryItemsList, setDeliveryItemsList] = useState<DeliveryItem[]>([]);
-  const [newDeliveryItem, setNewDeliveryItem] = useState("");
-  const [updatingDelivery, setUpdatingDelivery] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  
-  // Inicializa o checklist de itens de entrega. O parsing puro vive em
-  // utils/delivery-items; aqui apenas orquestramos a busca do onboarding de
-  // origem (em offboarding) e o fallback para a descrição atual.
-  const handleOpenDeliveryModal = async () => {
-    if (!request) return;
+  const {
+    request,
+    loading,
+    comment,
+    setComment,
+    submitting,
+    selectedTechnician,
+    setSelectedTechnician,
+    adminUsers,
+    user,
+    navigate,
+    downloading,
+    reopenComment,
+    setReopenComment,
+    showReopen,
+    setShowReopen,
+    setReopenFiles,
+    reopenUploading,
+    showRejectModal,
+    setShowRejectModal,
+    rejectReason,
+    setRejectReason,
+    setRejectFiles,
+    rejectUploading,
+    showExtendDeadline,
+    setShowExtendDeadline,
+    newDeadline,
+    setNewDeadline,
+    extendReason,
+    setExtendReason,
+    showResolutionModal,
+    setShowResolutionModal,
+    resolutionText,
+    setResolutionText,
+    setResolutionFiles,
+    resolutionUploading,
+    showEditDeliveryModal,
+    setShowEditDeliveryModal,
+    deliveryItemsList,
+    setDeliveryItemsList,
+    newDeliveryItem,
+    setNewDeliveryItem,
+    updatingDelivery,
+    showDeleteDialog,
+    setShowDeleteDialog,
+    handleOpenDeliveryModal,
+    addDeliveryItem,
+    removeDeliveryItem,
+    toggleDeliveryItem,
+    handleAddComment,
+    handleDeleteComment,
+    handleStatusChange,
+    handleApproval,
+    handleAssignToTechnician,
+    handleCopyAcceptanceLink,
+    handleUpdateDeliveryItems,
+    handleDeleteRequest,
+    confirmDeleteRequest,
+    handleViewAttachment,
+    handleReopenRequest,
+    handleReject,
+    handleExtendDeadline,
+    handleOpenResolutionModal,
+    handleSubmitResolution,
+  } = useRequestDetail(id);
 
-    let items: DeliveryItem[] = [];
-
-    const action = request.metadata?.form_data?.action;
-    const relatedOnboardingId = request.metadata?.form_data?.relatedOnboardingId;
-
-    // Se for OFFBOARDING, tentamos buscar o que foi entregue no onboarding original.
-    if (action === 'offboarding' && relatedOnboardingId) {
-      try {
-        const related = await getRequestById(relatedOnboardingId);
-        if (related) {
-          items = extractDeliveryItemsFromOnboarding(related);
-        }
-      } catch (err) {
-        if (!import.meta.env.PROD) console.error("Erro ao buscar itens do Onboarding original:", err);
-      }
-    }
-
-    // Se a lista ainda estiver vazia ou for Onboarding, lê a descrição atual.
-    if (items.length === 0) {
-      items = extractDeliveryItemsFromDescription(request.description);
-    }
-
-    setDeliveryItemsList(items);
-    setShowEditDeliveryModal(true);
-  };
-
-  const addDeliveryItem = () => {
-    if (!newDeliveryItem.trim()) return;
-    setDeliveryItemsList([...deliveryItemsList, {
-      id: crypto.randomUUID(),
-      text: newDeliveryItem.trim(),
-      checked: true
-    }]);
-    setNewDeliveryItem("");
-  };
-
-  const removeDeliveryItem = (id: string) => {
-    setDeliveryItemsList(deliveryItemsList.filter(item => item.id !== id));
-  };
-
-  const toggleDeliveryItem = (id: string) => {
-    setDeliveryItemsList(deliveryItemsList.map(item => 
-      item.id === id ? { ...item, checked: !item.checked } : item
-    ));
-  };
-  
-  useEffect(() => {
-    const fetchRequest = async () => {
-      if (!id) return;
-      try {
-        setLoading(true);
-        const fetchedRequest = await getRequestById(id);
-        if (!fetchedRequest) {
-          toast({
-            title: 'Solicitação Não Encontrada',
-            description: `A solicitação #${id} não existe ou você não tem permissão para visualizá-la.`,
-            variant: 'destructive',
-          });
-          navigate('/dashboard');
-          return;
-        }
-        if (user?.role !== 'admin' && fetchedRequest.requesteremail !== user?.email) {
-          toast({
-            title: 'Acesso Negado',
-            description: 'Você não tem permissão para visualizar esta solicitação.',
-            variant: 'destructive',
-          });
-          navigate('/dashboard');
-          return;
-        }
-        setRequest(fetchedRequest);
-      } catch (error) {
-        if (!import.meta.env.PROD) console.error('Erro ao buscar solicitação:', error);
-        toast({
-          title: 'Erro',
-          description: error instanceof Error ? error.message : 'Falha ao carregar a solicitação. Por favor, tente novamente.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRequest();
-  }, [id, toast, navigate, user]);
-
-  useEffect(() => {
-    const fetchAdmins = async () => {
-      try {
-        const admins = await listAdmins();
-        setAdminUsers(admins);
-      } catch (err) {
-        if (!import.meta.env.PROD) console.error('Erro ao buscar administradores:', err);
-        setAdminUsers([]);
-      }
-    };
-    fetchAdmins();
-  }, []);
-
-  const handleAddComment = async () => {
-    if (!request || !id || !user || !comment.trim()) return;
-    try {
-      setSubmitting(true);
-      const newComment: Comment = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        userName: user.name,
-        text: comment.trim(),
-        createdAt: new Date().toISOString(),
-      };
-      const updatedRequest = await updateRequest(id, {
-        comments: [...(request.comments || []), newComment],
-      });
-      setRequest(updatedRequest);
-      setComment('');
-      toast({
-        title: 'Comentário Adicionado',
-        description: 'Seu comentário foi adicionado à solicitação.',
-      });
-      
-      if (user.email === request.requesteremail) {
-        await notificationService.notifyAdmins(
-          `Novo comentário do solicitante na solicitação #${id}.`,
-          'comentario',
-          id
-        );
-      } else if (user.role === 'admin' && request.requesteremail) {
-        const solicitanteId = await getUserIdByEmail(request.requesteremail);
-        if (solicitanteId && solicitanteId !== user.id) {
-          await notificationService.send({
-            para: solicitanteId,
-            mensagem: `Novo comentário do administrador na sua solicitação #${id}.`,
-            tipo: 'comentario',
-            request_id: id
-          });
-        }
-      }
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao adicionar comentário:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao adicionar comentário. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (!request || !id || !user || user.role !== 'admin') return;
-    try {
-      setSubmitting(true);
-      const updatedComments = request.comments?.filter(comment => comment.id !== commentId) || [];
-      const updatedRequest = await updateRequest(id, {
-        comments: updatedComments,
-      });
-      setRequest(updatedRequest);
-      toast({
-        title: 'Comentário Excluído',
-        description: 'O comentário foi removido da solicitação.',
-      });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao excluir comentário:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao excluir comentário. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  
-  const handleStatusChange = async (newStatus: string) => {
-    if (!request || !id) return;
-    try {
-      setSubmitting(true);
-      const updates: Partial<ITRequest> = {
-        status: newStatus as RequestStatus,
-      };
-      if (newStatus === 'resolved' && !request.resolvedat) {
-        updates.resolvedat = new Date().toISOString();
-        updates.resolution = `Resolvido por ${user?.name}`;
-      }
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      
-      const statusLabel = getStatusStyle(newStatus).label;
-      
-      toast({
-        title: 'Status Atualizado',
-        description: `Status da solicitação alterado para ${statusLabel}`,
-      });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao atualizar status:', error);
-      toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Falha ao atualizar status. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  
   const getStatusColor = (status: string | null | undefined) => {
     return getStatusStyle(status).color || 'bg-muted-foreground';
   };
-  
+
   const getPriorityBadge = (priority: string | null | undefined) => {
     const style = getPriorityStyle(priority);
     const isHigh = priority === 'high';
     const isMedium = priority === 'medium';
-    
+
     let iconName: SemanticIconName = 'priority-low';
     if (isHigh) iconName = 'priority-high';
     else if (isMedium) iconName = 'priority-medium';
 
     return (
-      <Badge 
-        variant={style.variant || 'default'} 
+      <Badge
+        variant={style.variant || 'default'}
         className={cn("font-bold", style.color, isHigh && "text-white")}
       >
         <span className="flex items-center gap-1">
@@ -298,438 +114,11 @@ const RequestDetailPage: React.FC = () => {
       </Badge>
     );
   };
-  
+
   const formatRequestType = (type: string | null | undefined) => {
     return translate('type', type);
   };
-  
-  const handleApproval = async (isApproved: boolean) => {
-    if (!request || !id || !user) return;
-    try {
-      setSubmitting(true);
-      const updates: Partial<ITRequest> = {
-        approvalstatus: isApproved ? 'approved' : 'rejected',
-        approvedby: user.id,
-        approvedbyname: user.name
-      };
-      if (isApproved && request.type !== 'equipment_request' && request.type !== 'systems') {
-        updates.status = 'assigned';
-      }
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      toast({
-        title: isApproved ? 'Solicitação Aprovada' : 'Solicitação Rejeitada',
-        description: isApproved 
-          ? 'A solicitação foi aprovada com sucesso.'
-          : 'A solicitação foi rejeitada.',
-      });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao processar aprovação:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao processar aprovação. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  
-  const handleAssignToTechnician = async () => {
-    if (!request || !id || !selectedTechnician) {
-      toast({
-        title: 'Erro',
-        description: 'Dados inválidos para atribuição.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      setSubmitting(true);
-      const technician = adminUsers.find(admin => admin.id === selectedTechnician);
-      if (!technician) {
-        throw new Error('Técnico não encontrado');
-      }
-      const updates: Partial<ITRequest> = {
-        assignedto: selectedTechnician,
-        assignedtoname: technician?.name || null,
-        status: 'assigned',
-      };
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      toast({
-        title: 'Solicitação Atribuída',
-        description: `A solicitação foi atribuída a ${technician.name}.`,
-      });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao atribuir solicitação:', error);
-      toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Falha ao atribuir solicitação. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  
-  const handleCopyAcceptanceLink = () => {
-    const baseUrl = window.location.origin;
-    const acceptanceUrl = `${baseUrl}/aceite/${id}`;
-    navigator.clipboard.writeText(acceptanceUrl).then(() => {
-      toast({
-        title: 'Link Copiado!',
-        description: 'O link do termo de aceite foi copiado para a área de transferência.',
-      });
-    }).catch(err => {
-      if (!import.meta.env.PROD) console.error('Erro ao copiar link:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível copiar o link.',
-        variant: 'destructive',
-      });
-    });
-  };
 
-  const handleUpdateDeliveryItems = async () => {
-    if (!request || !id || !user) return;
-    const activeItems = deliveryItemsList.filter(i => i.checked);
-    if (activeItems.length === 0) {
-      toast({
-        title: "Atenção",
-        description: "Selecione ou adicione ao menos um item para entrega.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setUpdatingDelivery(true);
-      
-      // Formata a nova descrição
-      const isOffboarding = (request.title || "").toLowerCase().includes("offboarding");
-      const actionLabel = isOffboarding ? "Itens a Devolver" : "Itens a Entregar";
-      
-      let newDescription = `Ação: ${request.title?.split(' - ')[0]}\n`;
-      newDescription += `Colaborador: ${request.title?.split(' - ')[1] || request.requestername}\n`;
-      newDescription += `SLA: Definido automaticamente\n\n`;
-      newDescription += `${actionLabel}:\n`;
-      activeItems.forEach(item => {
-        newDescription += `- ${item.text}${item.avaria ? ` (Obs TI: ${item.avaria})` : ''}\n`;
-      });
-
-      const originalDescComment: Comment = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        userName: `SISTEMA (Original: ${request.requestername})`,
-        text: `[SOLICITAÇÃO ORIGINAL] ${request.description}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      const updates = {
-        description: newDescription.trim(),
-        comments: [...(request.comments || []), originalDescComment],
-        metadata: {
-          ...(request.metadata || {}),
-          delivery_items: activeItems.map(it => ({ id: it.id, text: it.text, checked: it.checked, avaria: it.avaria }))
-        }
-      };
-
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      setShowEditDeliveryModal(false);
-      toast({
-        title: 'Itens de Entrega Atualizados',
-        description: 'A descrição foi atualizada e o link de aceite está pronto.',
-      });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao atualizar itens de entrega:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao atualizar os itens de entrega.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUpdatingDelivery(false);
-    }
-  };
-  
-  const handleDeleteRequest = () => {
-    if (!request || !id || !user) return;
-    setShowDeleteDialog(true);
-  };
-
-  const confirmDeleteRequest = async () => {
-    if (!request || !id || !user) return;
-    try {
-      setSubmitting(true);
-      const success = await deleteRequest(id);
-      if (success) {
-        toast({
-          title: 'Solicitação Excluída',
-          description: 'A solicitação foi excluída com sucesso.',
-        });
-
-        // Invalidar cache do React Query antes de voltar
-        queryClient.invalidateQueries({ queryKey: ['requests'] });
-
-        setShowDeleteDialog(false);
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: 'Erro',
-          description: 'Você não tem permissão para excluir esta solicitação.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao excluir a solicitação:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao excluir a solicitação. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  
-  const handleViewAttachment = async (filePath: string) => {
-    setDownloading(filePath);
-    try {
-      const signedUrl = await getAttachmentSignedUrl(filePath);
-      window.open(signedUrl, '_blank');
-    } catch (err) {
-      toast({
-        title: 'Erro ao abrir anexo',
-        description: 'Não foi possível gerar o link do anexo.',
-        variant: 'destructive',
-      });
-    } finally {
-      setDownloading(null);
-    }
-  };
-  
-  const handleReopenRequest = async () => {
-    if (!request || !id || !user || !reopenComment.trim()) return;
-    setReopenUploading(true);
-    try {
-      const newAttachments = [];
-      if (reopenFiles.length > 0) {
-        for (const file of reopenFiles) {
-          const filePath = await uploadFile(file);
-          newAttachments.push({
-            id: crypto.randomUUID(),
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-            fileUrl: filePath,
-            uploadedAt: new Date().toISOString(),
-          });
-        }
-      }
-      const updatedAttachments = [...(request.attachments || []), ...newAttachments];
-      const reopenCommentObj = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        userName: user.name,
-        text: `[REABERTURA] ${reopenComment}`,
-        createdAt: new Date().toISOString(),
-        attachments: newAttachments.length > 0 ? newAttachments : undefined,
-      };
-      const updates: Partial<ITRequest> = {
-        status: 'reopened',
-        comments: [...(request.comments || []), reopenCommentObj],
-        attachments: updatedAttachments,
-      };
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      setShowReopen(false);
-      setReopenComment('');
-      setReopenFiles([]);
-      toast({ title: 'Solicitação Reaberta', description: 'Motivo registrado com sucesso.' });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao reabrir a solicitação:', error);
-      toast({ title: 'Erro', description: 'Falha ao reabrir solicitação.', variant: 'destructive' });
-    } finally {
-      setReopenUploading(false);
-    }
-  };
-  
-  const handleReject = async () => {
-    if (!request || !id || !user || !rejectReason.trim()) return;
-    try {
-      setRejectUploading(true);
-      const rejectAttachments: Attachment[] = [];
-      if (rejectFiles.length > 0) {
-        for (const file of rejectFiles) {
-          try {
-            const uploadedFile = await uploadFile(file, id);
-            rejectAttachments.push({
-              id: crypto.randomUUID(),
-              fileName: file.name,
-              fileSize: file.size,
-              fileType: file.type,
-              fileUrl: uploadedFile,
-              uploadedAt: new Date().toISOString(),
-            });
-          } catch (error) {
-            if (!import.meta.env.PROD) console.error('Erro ao fazer upload do arquivo:', error);
-            toast({
-              title: 'Erro no Upload',
-              description: `Falha ao fazer upload do arquivo ${file.name}.`,
-              variant: 'destructive',
-            });
-          }
-        }
-      }
-      const newComment: Comment = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        userName: user.name,
-        text: `[REJEITADA] ${rejectReason.trim()}`,
-        createdAt: new Date().toISOString(),
-        attachments: rejectAttachments,
-      };
-      const updatedAttachments = [...(request.attachments || []), ...rejectAttachments];
-      const updates: Partial<ITRequest> = {
-        approvalstatus: 'rejected',
-        approvedby: user.id,
-        approvedbyname: user.name,
-        status: 'rejected',
-        comments: [...(request.comments || []), newComment],
-        attachments: updatedAttachments,
-      };
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      setShowRejectModal(false);
-      setRejectReason('');
-      setRejectFiles([]);
-      toast({
-        title: 'Solicitação Rejeitada',
-        description: 'A solicitação foi rejeitada com sucesso.',
-      });
-      const solicitanteId = request.requesteremail ? await getUserIdByEmail(request.requesteremail) : null;
-      if (solicitanteId && solicitanteId !== user.id) {
-        await notificationService.send({
-          para: solicitanteId,
-          mensagem: `Sua solicitação #${id} foi rejeitada. Motivo: ${rejectReason.trim()}`,
-          tipo: 'rejeicao',
-          request_id: id
-        });
-      }
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao rejeitar a solicitação:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao rejeitar a solicitação. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setRejectUploading(false);
-    }
-  };
-  
-  const handleExtendDeadline = async () => {
-    if (!request || !id || !user || !newDeadline || !extendReason.trim()) return;
-    try {
-      setSubmitting(true);
-      const updatedRequest = await updateRequest(id, {
-        deadlineat: new Date(newDeadline + 'T18:00:00').toISOString(),
-        comments: [
-          ...(request.comments || []),
-          {
-            id: crypto.randomUUID(),
-            userId: user.id,
-            userName: user.name,
-            text: `Prazo estendido para ${tryFormatDateTime(newDeadline + 'T12:00:00', 'dd/MM/yyyy') ?? newDeadline}. Motivo: ${extendReason.trim()}`,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      });
-      setRequest(updatedRequest);
-      setShowExtendDeadline(false);
-      setNewDeadline('');
-      setExtendReason('');
-      toast({
-        title: 'Prazo Estendido',
-        description: 'O novo prazo foi registrado e o solicitante notificado.',
-      });
-      if (request.requesteremail) {
-        const solicitanteId = await getUserIdByEmail(request.requesteremail);
-        if (solicitanteId && solicitanteId !== user.id) {
-          await notificationService.send({
-            para: solicitanteId,
-            mensagem: `O prazo da sua solicitação #${id} foi alterado para ${tryFormatDateTime(newDeadline + 'T12:00:00', 'dd/MM/yyyy') ?? newDeadline}. Motivo: ${extendReason.trim()}`,
-            tipo: 'prazo_estendido',
-            request_id: id
-          });
-        }
-      }
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao estender prazo:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao estender prazo. Por favor, tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleOpenResolutionModal = () => {
-    setResolutionText("");
-    setResolutionFiles([]);
-    setShowResolutionModal(true);
-  };
-
-  const handleSubmitResolution = async () => {
-    if (!request || !id || !user) return;
-    setResolutionUploading(true);
-    try {
-      const newAttachments = [];
-      if (resolutionFiles.length > 0) {
-        for (const file of resolutionFiles) {
-          const filePath = await uploadFile(file);
-          newAttachments.push({
-            id: crypto.randomUUID(),
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-            fileUrl: filePath,
-            uploadedAt: new Date().toISOString(),
-          });
-        }
-      }
-      const updatedAttachments = [...(request.attachments || []), ...newAttachments];
-      const resolutionComment = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        userName: user.name,
-        text: `[RESOLUÇÃO] ${resolutionText}`,
-        createdAt: new Date().toISOString(),
-        attachments: newAttachments.length > 0 ? newAttachments : undefined,
-      };
-      const updates: Partial<ITRequest> = {
-        status: 'resolved',
-        resolvedat: new Date().toISOString(),
-        resolution: resolutionText,
-        attachments: updatedAttachments,
-        comments: [...(request.comments || []), resolutionComment],
-      };
-      const updatedRequest = await updateRequest(id, updates);
-      setRequest(updatedRequest);
-      setShowResolutionModal(false);
-      toast({ title: 'Solicitação Resolvida', description: 'Resolução registrada com sucesso.' });
-    } catch (error) {
-      if (!import.meta.env.PROD) console.error('Erro ao submeter resolução:', error);
-      toast({ title: 'Erro', description: 'Falha ao registrar resolução.', variant: 'destructive' });
-    } finally {
-      setResolutionUploading(false);
-    }
-  };
-  
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -737,7 +126,7 @@ const RequestDetailPage: React.FC = () => {
       </div>
     );
   }
-  
+
   if (!request) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
@@ -755,15 +144,15 @@ const RequestDetailPage: React.FC = () => {
   const getStatusBadge = (status: string | null | undefined) => {
     const style = getStatusStyle(status);
     return (
-      <Badge 
-        variant={style.variant || 'default'} 
+      <Badge
+        variant={style.variant || 'default'}
         className={cn("text-white font-bold", style.color)}
       >
         {style.label}
       </Badge>
     );
   };
-  
+
   return (
     <div className="min-h-screen bg-background">
       <div className="space-y-6 p-6">
@@ -777,7 +166,7 @@ const RequestDetailPage: React.FC = () => {
           onOpenRejectModal={() => setShowRejectModal(true)}
           onDelete={handleDeleteRequest}
         />
-        
+
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card>
@@ -813,40 +202,9 @@ const RequestDetailPage: React.FC = () => {
                     {request.description}
                   </div>
                 </div>
-                
+
                 {request.resolution && request.status === 'resolved' && (
-                  <div>
-                    <h3 className="text-sm font-medium mb-2">Resolução</h3>
-                    <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-success shadow-none">
-                      <p>{request.resolution}</p>
-                      {request.comments && request.comments.length > 0 && (
-                        (() => {
-                          const resComment = request.comments.find(c => c.text.startsWith('[RESOLUÇÃO]'));
-                          if (resComment && resComment.attachments && resComment.attachments.length > 0) {
-                            return (
-                              <AttachmentList
-                                attachments={resComment.attachments}
-                                label="Anexos da Resolução:"
-                                onView={handleViewAttachment}
-                              />
-                            );
-                          }
-                          return null;
-                        })()
-                      )}
-                      {request.resolvedat && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Resolvida por {request.assignedtoname || 'Administrador'} em {tryFormatDateTime(request.resolvedat, 'dd/MM/yyyy HH:mm') ?? '—'}
-                          {request.comments?.find(c => c.text.includes('validada pelo usuário via WhatsApp')) && (
-                            <>
-                              <br />
-                              Validada pelo usuário via WhatsApp em {tryFormatDateTime(request.comments.find(c => c.text.includes('validada pelo usuário via WhatsApp'))?.createdAt, 'dd/MM/yyyy HH:mm') ?? '—'}
-                            </>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  <ResolutionPanel request={request} onView={handleViewAttachment} />
                 )}
 
                 {request.comments && request.comments.some(c => c.text.startsWith('[REABERTURA]')) && request.status === 'reopened' && (
@@ -854,22 +212,15 @@ const RequestDetailPage: React.FC = () => {
                     const reopen = request.comments.find(c => c.text.startsWith('[REABERTURA]'));
                     if (!reopen) return null;
                     return (
-                      <div className="mt-4">
-                        <h3 className="text-sm font-medium mb-2">Reaberta</h3>
-                        <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-muted-foreground shadow-none">
-                          <p>{reopen.text.replace('[REABERTURA]', '').trim()}</p>
-                          {reopen.attachments && reopen.attachments.length > 0 && (
-                            <AttachmentList
-                              attachments={reopen.attachments}
-                              label="Anexos da Reabertura:"
-                              onView={handleViewAttachment}
-                            />
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Reaberta por {reopen.userName} em {tryFormatDateTime(reopen.createdAt, 'dd/MM/yyyy HH:mm') ?? '—'}
-                          </p>
-                        </div>
-                      </div>
+                      <StatusFlowPanel
+                        comment={reopen}
+                        title="Reaberta"
+                        prefix="[REABERTURA]"
+                        accentClass="border-muted-foreground"
+                        attachmentsLabel="Anexos da Reabertura:"
+                        actorLabel="Reaberta por"
+                        onView={handleViewAttachment}
+                      />
                     );
                   })()
                 )}
@@ -879,22 +230,15 @@ const RequestDetailPage: React.FC = () => {
                     const reject = request.comments.find(c => c.text.startsWith('[REJEITADA]'));
                     if (!reject) return null;
                     return (
-                      <div className="mt-4">
-                        <h3 className="text-sm font-medium mb-2">Rejeitada</h3>
-                        <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-destructive shadow-none">
-                          <p>{reject.text.replace('[REJEITADA]', '').trim()}</p>
-                          {reject.attachments && reject.attachments.length > 0 && (
-                            <AttachmentList
-                              attachments={reject.attachments}
-                              label="Anexos da Rejeição:"
-                              onView={handleViewAttachment}
-                            />
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Rejeitada por {reject.userName} em {tryFormatDateTime(reject.createdAt, 'dd/MM/yyyy HH:mm') ?? '—'}
-                          </p>
-                        </div>
-                      </div>
+                      <StatusFlowPanel
+                        comment={reject}
+                        title="Rejeitada"
+                        prefix="[REJEITADA]"
+                        accentClass="border-destructive"
+                        attachmentsLabel="Anexos da Rejeição:"
+                        actorLabel="Rejeitada por"
+                        onView={handleViewAttachment}
+                      />
                     );
                   })()
                 )}
@@ -904,9 +248,9 @@ const RequestDetailPage: React.FC = () => {
                   downloading={downloading}
                   onView={handleViewAttachment}
                 />
-                
+
                 <Separator />
-                
+
                 <RequestComments
                   request={request}
                   user={user}
@@ -920,7 +264,7 @@ const RequestDetailPage: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-          
+
           <div className="space-y-6">
             <RequestSidebar
               request={request}
@@ -999,7 +343,7 @@ const RequestDetailPage: React.FC = () => {
            onConfirm={handleUpdateDeliveryItems}
            onCancel={() => setShowEditDeliveryModal(false)}
          />
-         
+
          <ResolutionModal
            open={showResolutionModal}
            onOpenChange={setShowResolutionModal}

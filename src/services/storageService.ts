@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
+import { Attachment } from '../types';
 
 /**
  * storageService
@@ -80,3 +81,36 @@ export const getPublicStorageUrl = (bucket: string, path: string): string => {
 
 /** URL pública direta para o guia do usuário (PDF). */
 export const getGuidePdfUrl = (): string => getPublicStorageUrl(GUIDE_BUCKET, 'guideit.pdf');
+
+/**
+ * Sobe uma lista de arquivos e devolve os objetos `Attachment` prontos.
+ * Centraliza o padrão antes repetido em `RequestDetailPage` (rejeitar/reabrir/resolver).
+ *
+ * Se `onFileError` for informado, a falha em um arquivo é tratada por ele e o upload
+ * dos demais continua (comportamento do fluxo de rejeição). Sem ele, o primeiro erro
+ * é propagado ao chamador (comportamento de reabrir/resolver).
+ */
+export const uploadFilesToAttachments = async (
+  files: File[],
+  requestId?: string,
+  onFileError?: (file: File, error: unknown) => void
+): Promise<Attachment[]> => {
+  const attachments: Attachment[] = [];
+  for (const file of files) {
+    try {
+      const fileUrl = await uploadAttachment(file, requestId);
+      attachments.push({
+        id: crypto.randomUUID(),
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        fileUrl,
+        uploadedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      if (onFileError) onFileError(file, error);
+      else throw error;
+    }
+  }
+  return attachments;
+};

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { getRequestById, updateRequest, deleteRequest, uploadFile, findOffboardingsByOnboardingId } from '@/services/requestService';
+import { getRequestById, updateRequest, deleteRequest, uploadFile } from '@/services/requestService';
 import { notificationService } from '@/services/notificationService';
 import { listAdmins, getUserIdByEmail } from '@/services/userService';
 import { getAttachmentSignedUrl } from '@/services/storageService';
@@ -22,9 +22,11 @@ import { ResolutionModal } from '@/components/requests/modals/ResolutionModal';
 import { DeleteRequestDialog } from '@/components/requests/modals/DeleteRequestDialog';
 import { RequestHeader } from '@/components/requests/sections/RequestHeader';
 import { RequestAttachments } from '@/components/requests/sections/RequestAttachments';
+import { AttachmentList } from '@/components/requests/sections/AttachmentList';
 import { RequestComments } from '@/components/requests/sections/RequestComments';
 import { RequestSidebar } from '@/components/requests/sections/RequestSidebar';
 import { extractLifecycleLinks } from '@/utils/lifecycle-links';
+import { extractDeliveryItemsFromOnboarding, extractDeliveryItemsFromDescription } from '@/utils/delivery-items';
 
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,109 +60,34 @@ const RequestDetailPage: React.FC = () => {
   const [deliveryItemsList, setDeliveryItemsList] = useState<DeliveryItem[]>([]);
   const [newDeliveryItem, setNewDeliveryItem] = useState("");
   const [updatingDelivery, setUpdatingDelivery] = useState(false);
-  // Estados populados pelas queries de busca reversa (linhas ~225+) mas atualmente
-  // não consumidos no JSX. Setters preservados para manter o efeito colateral
-  // do fetch e permitir religar a UI no futuro sem reintroduzir o estado.
-  const [, setRelatedOnboardingReq] = useState<ITRequest | null>(null);
-  const [, setRelatedOffboardingReqs] = useState<ITRequest[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  // Função para inicializar o checklist baseado na descrição
+  // Inicializa o checklist de itens de entrega. O parsing puro vive em
+  // utils/delivery-items; aqui apenas orquestramos a busca do onboarding de
+  // origem (em offboarding) e o fallback para a descrição atual.
   const handleOpenDeliveryModal = async () => {
     if (!request) return;
-    
-    // Tenta extrair itens da descrição ou usa itens padrão baseados no tipo
-    let items: { id: string, text: string, checked: boolean, avaria?: string }[] = [];
-    
-    // Se for OFFBOARDING, tentamos buscar o que foi entregue no onboarding original
+
+    let items: DeliveryItem[] = [];
+
     const action = request.metadata?.form_data?.action;
     const relatedOnboardingId = request.metadata?.form_data?.relatedOnboardingId;
 
+    // Se for OFFBOARDING, tentamos buscar o que foi entregue no onboarding original.
     if (action === 'offboarding' && relatedOnboardingId) {
       try {
         const related = await getRequestById(relatedOnboardingId);
         if (related) {
-          // Tenta extrair da meta estruturada (nova arquitetura) ou da descrição (fallback)
-          const metaItems = related.metadata?.delivery_items;
-          if (Array.isArray(metaItems)) {
-            items = metaItems.map(it => ({ ...it, checked: false })); // Inicia desmarcado para conferência
-          } else {
-            // Fallback: extrair por regex da descrição do onboarding original
-            const onbDesc = related.description || "";
-            const markerMatch = onbDesc.match(/Itens a (?:Entregar|Recebidos):\n([\s\S]*)/);
-            if (markerMatch && markerMatch[1]) {
-              const lines = markerMatch[1].trim().split('\n');
-              items = lines
-                .filter(l => l.trim().startsWith('-'))
-                .map(l => ({
-                   id: crypto.randomUUID(),
-                   text: l.trim().replace(/^- /, ""),
-                   checked: false
-                }));
-            }
-          }
+          items = extractDeliveryItemsFromOnboarding(related);
         }
       } catch (err) {
         if (!import.meta.env.PROD) console.error("Erro ao buscar itens do Onboarding original:", err);
       }
     }
 
-    // Se a lista ainda estiver vazia ou for Onboarding, usa a lógica padrão de ler o atual
+    // Se a lista ainda estiver vazia ou for Onboarding, lê a descrição atual.
     if (items.length === 0) {
-      const desc = request.description || "";
-      
-      // Se a descrição já contém uma lista formatada (ex: "- Item"), extraímos
-      const listMatches = desc.match(/^- .+/gm);
-      if (listMatches && listMatches.length > 0) {
-        items = listMatches.map(m => ({
-          id: crypto.randomUUID(),
-          text: m.replace(/^- /, "").trim(),
-          checked: true
-        }));
-      } else {
-        // Se não, tentamos encontrar a linha "Recursos/Acessos:"
-        const accessMatch = desc.match(/Recursos\/Acessos: (.+)/);
-        if (accessMatch && accessMatch[1]) {
-          // Filtrar termos genéricos que não são itens reais de entrega
-          const genericTerms = [
-            'equipamentos', 
-            'equipamento', 
-            'sistemas', 
-            'acesso aos sistemas e pastas', 
-            'contas e canais corporativos', 
-            'conta_canais'
-          ];
-          
-          const rawItems = accessMatch[1].split(',').map(s => s.trim());
-          items = rawItems
-            .filter(text => !genericTerms.includes(text.toLowerCase()))
-            .map(text => ({
-              id: crypto.randomUUID(),
-              text,
-              checked: true
-            }));
-        }
-
-        // Também tentamos extrair o que vier após "Observações:"
-        const obsMatch = desc.match(/Observações: (.+)/s);
-        if (obsMatch && obsMatch[1]) {
-          const obsText = obsMatch[1].trim();
-          // Se houver texto nas observações que não seja o padrão, adicionamos como item
-          if (obsText && obsText.length > 2) {
-            // Se tiver vírgulas, separa em itens, senão trata como um item só
-            const obsItems = obsText.includes(',') ? obsText.split(',') : [obsText];
-            obsItems.forEach(text => {
-              if (text.trim()) {
-                items.push({
-                  id: crypto.randomUUID(),
-                  text: text.trim(),
-                  checked: true
-                });
-              }
-            });
-          }
-        }
-      }
+      items = extractDeliveryItemsFromDescription(request.description);
     }
 
     setDeliveryItemsList(items);
@@ -226,43 +153,6 @@ const RequestDetailPage: React.FC = () => {
     fetchRequest();
   }, [id, toast, navigate, user]);
 
-  useEffect(() => {
-    const fetchRelatedLifecycle = async () => {
-      if (!request || request.type !== 'employee_lifecycle') {
-        setRelatedOnboardingReq(null);
-        setRelatedOffboardingReqs([]);
-        return;
-      }
-
-      const action = request.metadata?.form_data?.action;
-      const relatedId = request.metadata?.form_data?.relatedOnboardingId;
-
-      // Se for um OFFboarding, busca o ONboarding de origem
-      if ((action === 'offboarding' || request.title?.toLowerCase().startsWith('offboarding')) && relatedId) {
-        try {
-          const onb = await getRequestById(relatedId);
-          setRelatedOnboardingReq(onb);
-        } catch (err) {
-          if (!import.meta.env.PROD) console.error("Erro ao buscar onboarding relacionado:", err);
-        }
-      }
-
-      // Se for um ONboarding, busca se já houve algum OFFboarding para ele
-      if (action === 'onboarding' || request.title?.toLowerCase().startsWith('onboarding')) {
-        try {
-          const data = await findOffboardingsByOnboardingId(request.id);
-          if (data.length > 0) {
-            setRelatedOffboardingReqs(data);
-          }
-        } catch (err) {
-          if (!import.meta.env.PROD) console.error("Erro na busca reversa de offboarding:", err);
-        }
-      }
-    };
-
-    fetchRelatedLifecycle();
-  }, [request]);
-  
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
@@ -934,30 +824,11 @@ const RequestDetailPage: React.FC = () => {
                           const resComment = request.comments.find(c => c.text.startsWith('[RESOLUÇÃO]'));
                           if (resComment && resComment.attachments && resComment.attachments.length > 0) {
                             return (
-                              <div className="mt-2">
-                                <div className="text-xs font-medium mb-1">Anexos da Resolução:</div>
-                                <div className="space-y-2">
-                                  {resComment.attachments.map((attachment: Attachment) => (
-                                    <div key={attachment.id} className="flex items-center gap-2 p-2">
-                                      {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Tamanho desconhecido'}
-                                        </p>
-                                      </div>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => attachment.fileUrl && handleViewAttachment(attachment.fileUrl)}
-                                        disabled={!attachment.fileUrl}
-                                      >
-                                        Visualizar
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                              <AttachmentList
+                                attachments={resComment.attachments}
+                                label="Anexos da Resolução:"
+                                onView={handleViewAttachment}
+                              />
                             );
                           }
                           return null;
@@ -988,30 +859,11 @@ const RequestDetailPage: React.FC = () => {
                         <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-muted-foreground shadow-none">
                           <p>{reopen.text.replace('[REABERTURA]', '').trim()}</p>
                           {reopen.attachments && reopen.attachments.length > 0 && (
-                            <div className="mt-2">
-                              <div className="text-xs font-medium mb-1">Anexos da Reabertura:</div>
-                              <div className="space-y-2">
-                                {reopen.attachments.map((attachment: Attachment) => (
-                                  <div key={attachment.id} className="flex items-center gap-2 p-2">
-                                    {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Tamanho desconhecido'}
-                                      </p>
-                                    </div>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => attachment.fileUrl && handleViewAttachment(attachment.fileUrl)}
-                                      disabled={!attachment.fileUrl}
-                                    >
-                                      Visualizar
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                            <AttachmentList
+                              attachments={reopen.attachments}
+                              label="Anexos da Reabertura:"
+                              onView={handleViewAttachment}
+                            />
                           )}
                           <p className="text-xs text-muted-foreground mt-2">
                             Reaberta por {reopen.userName} em {tryFormatDateTime(reopen.createdAt, 'dd/MM/yyyy HH:mm') ?? '—'}
@@ -1032,30 +884,11 @@ const RequestDetailPage: React.FC = () => {
                         <div className="bg-card p-3 rounded-md text-sm whitespace-pre-wrap border-l-4 border-destructive shadow-none">
                           <p>{reject.text.replace('[REJEITADA]', '').trim()}</p>
                           {reject.attachments && reject.attachments.length > 0 && (
-                            <div className="mt-2">
-                              <div className="text-xs font-medium mb-1">Anexos da Rejeição:</div>
-                              <div className="space-y-2">
-                              {reject.attachments.map((attachment: Attachment) => (
-                                <div key={attachment.id} className="flex items-center gap-2 p-2">
-                                    {getSemanticIcon('attachment', { className: 'h-4 w-4 text-muted-foreground' })}
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Tamanho desconhecido'}
-                                      </p>
-                                    </div>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => attachment.fileUrl && handleViewAttachment(attachment.fileUrl)}
-                                      disabled={!attachment.fileUrl}
-                                    >
-                                      Visualizar
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                            <AttachmentList
+                              attachments={reject.attachments}
+                              label="Anexos da Rejeição:"
+                              onView={handleViewAttachment}
+                            />
                           )}
                           <p className="text-xs text-muted-foreground mt-2">
                             Rejeitada por {reject.userName} em {tryFormatDateTime(reject.createdAt, 'dd/MM/yyyy HH:mm') ?? '—'}

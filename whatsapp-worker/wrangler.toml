@@ -8,3 +8,7 @@ compatibility_date = "2024-03-20"
 
 # As chaves secretas como WHATSAPP_TOKEN serão inseridas via "wrangler secret put" para segurança.
 WHATSAPP_PHONE_ID = "1132835589913100"
+
+[[kv_namespaces]]
+binding = "WHATSAPP_SESSION"
+id = "c3a613a7a6194f2e889aff88141f7c4a"

@@ -1,18 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RequestPriority, RequestType } from '@/types';
+import { RequestPriority, RequestType, RequestStatus } from '@/types';
 import RequestCard from '@/components/requests/RequestCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useRequestsData, useRequestsCounters } from '@/hooks/use-requests-data';
-import { translate, getPriorityStyle, isResolved, isPending, getSemanticIcon } from '@/lib/utils';
-import { isAssignedToSistemaEugenio } from '@/config/specialUsers';
+import { useRequestsData, useRequestsCountersData } from '@/hooks/use-requests-data';
+import { translate, getPriorityStyle, getSemanticIcon } from '@/lib/utils';
+import { SISTEMA_EUGENIO_USER_ID } from '@/config/specialUsers';
 
 interface Filters {
   types: RequestType[];
@@ -32,73 +32,45 @@ const AllRequestsPage: React.FC = () => {
   const pageSize = 6;
   const [tab, setTab] = useState<TabValue>('novas');
 
-  // Filtro do backend constante e leve (estável por identidade)
-  const backendFilters = useMemo(() => ({ fullData: false }), []);
-  
-  // Usar o novo hook para gerenciar dados
-  const {
-    requests,
-    loading,
-    error,
-    clearError,
-  } = useRequestsData({
-    page: 1,
-    pageSize: 1000, // Buscar todas para calcular contadores
+  // Mapeia a aba atual para os filtros corretos do backend
+  const currentStatus = (tab === 'novas' ? 'new' : 
+                        tab === 'in_progress' ? ['in_progress', 'assigned', 'reopened'] : 
+                        tab === 'resolved' ? 'resolved' : 
+                        (tab === 'high_priority' || tab === 'sistema_eugenio') ? ['new', 'assigned', 'in_progress', 'reopened'] : undefined) as RequestStatus | RequestStatus[] | undefined;
+                        
+  const currentPriority = tab === 'high_priority'
+    ? (filters.priorities.length > 0 ? (filters.priorities.includes('high') ? ['high'] : ['__empty__']) : ['high'])
+    : (filters.priorities.length > 0 ? filters.priorities : undefined);
+    
+  const currentApprovalStatus = tab === 'rejected' ? 'rejected' : tab === 'all' ? undefined : 'not_rejected';
+  const currentAssignedTo = tab === 'sistema_eugenio' ? SISTEMA_EUGENIO_USER_ID : undefined;
+
+  // Busca os dados paginados e filtrados pelo banco
+  const { requests: paginatedRequests, loading, totalCount, error: fetchError, clearError } = useRequestsData({
+    page,
+    pageSize,
+    status: currentStatus,
     autoRefresh: true,
-    refreshInterval: 30000, // 30 segundos
-    filters: backendFilters // Carregamento leve para performance
+    refreshInterval: 30000,
+    filters: {
+      fullData: false,
+      search: searchQuery || undefined,
+      type: filters.types.length > 0 ? filters.types : undefined,
+      priority: currentPriority,
+      approvalStatus: currentApprovalStatus,
+      assignedTo: currentAssignedTo,
+    }
   });
 
-  // Calcular contadores usando o hook específico
-  const calculatedCounts = useRequestsCounters(requests);
+  // Busca contadores consolidados via RPC
+  const { counts: calculatedCounts } = useRequestsCountersData(undefined, true, 30000);
 
   // Resetar página para 1 quando filtros ou aba mudam
   useEffect(() => {
     setPage(1);
   }, [tab, searchQuery, filters.types, filters.priorities]);
 
-  const filteredRequests = useMemo(() => {
-    let filtered = [...requests];
-
-    if (tab === 'novas') {
-      filtered = filtered.filter(r => r.status === 'new' && r.approvalstatus !== 'rejected');
-    } else if (tab === 'high_priority') {
-      filtered = filtered.filter(r => r.priority === 'high' && isPending(r.status) && r.approvalstatus !== 'rejected');
-    } else if (tab === 'sistema_eugenio') {
-      filtered = filtered.filter(r => isAssignedToSistemaEugenio(r.assignedto)).filter(r => isPending(r.status));
-    } else if (tab === 'in_progress') {
-      filtered = filtered.filter(r => ['in_progress', 'assigned', 'reopened'].includes(r.status ?? '') && r.approvalstatus !== 'rejected');
-    } else if (tab === 'resolved') {
-      filtered = filtered.filter(r => isResolved(r.status) && r.approvalstatus !== 'rejected');
-    } else if (tab === 'rejected') {
-      filtered = filtered.filter(r => r.approvalstatus === 'rejected');
-    }
-
-    filtered = filtered.sort((a, b) => new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime());
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.description?.toLowerCase().includes(q) ||
-        r.id?.toLowerCase().includes(q) ||
-        r.requestername?.toLowerCase().includes(q) ||
-        r.requesteremail?.toLowerCase().includes(q)
-      );
-    }
-    if (filters.types.length > 0) {
-      filtered = filtered.filter(r => r.type !== null && filters.types.includes(r.type));
-    }
-    if (filters.priorities.length > 0) {
-      filtered = filtered.filter(r => r.priority !== null && filters.priorities.includes(r.priority));
-    }
-    return filtered;
-  }, [requests, tab, searchQuery, filters.types, filters.priorities]);
-
-  const paginatedRequests = useMemo(() => {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize;
-    return filteredRequests.slice(from, to);
-  }, [filteredRequests, page]);
+  const error = fetchError;
   
   const handleTypeFilterChange = (type: RequestType) => {
     setFilters(prev => {
@@ -371,8 +343,8 @@ const AllRequestsPage: React.FC = () => {
       {/* Controles de paginação */}
       <div className="flex justify-center gap-2 mt-4">
         <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
-        <span className="px-2">Página {page} de {Math.ceil(filteredRequests.length / pageSize) || 1}</span>
-        <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page * pageSize >= filteredRequests.length}>Próxima</Button>
+        <span className="px-2">Página {page} de {Math.max(1, Math.ceil(totalCount / pageSize))}</span>
+        <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page * pageSize >= totalCount}>Próxima</Button>
       </div>
       
       {error && <div className="text-destructive text-center my-4">{error}</div>}

@@ -6,6 +6,18 @@ Formato inspirado em [Keep a Changelog](https://keepachangelog.com/), adaptado p
 
 ---
 
+## 2026-06-04 — Auditoria e Saneamento Menor
+
+- **Limpeza de código morto** — exclusão de `App.css` (CRA boilerplate sem uso) e das pastas vazias `components/debug/` e `components/email/`.
+- **Alinhamento TypeScript** — removidas flags relaxadas (`noImplicitAny: false`, etc.) do `tsconfig.json` raiz para refletir o rigor de `tsconfig.app.json` e evitar mascaramento de erros na IDE.
+- **Otimização de Contadores e Paginação (Ponto 5)** — Criada a função RPC `get_requests_counters` no banco para resolver problema crítico de limite de Egress no plano gratuito. Refatorados `AllRequestsPage`, `MyRequestsPage` e `DashboardPage` para eliminar `pageSize: 1000` e buscar dados agregados no servidor, corrigindo também loops de filtragem de approvalStatus (bugfix do 'not_rejected').
+- **Auditoria e Limpeza Geral (Ponto 6)** — Projeto auditado através do TypeScript Strict Compiler (`noUnusedLocals: true`). Imports órfãos (`isResolved`, `isPending`, `useMemo`, `ITRequest`) e inconsistências de tipagem de arrays literais de Status foram corrigidas nas listagens (`AllRequestsPage` e `MyRequestsPage`). Sistema atinge estado de "Zero Erros" no compilador.
+- **Blindagem de Rotas Administrativas (Ponto 7)** — Implementado o guardião de rotas `RequireAdmin.tsx` no `App.tsx` para proteger fisicamente as rotas `/users` e `/settings`. Redireciona usuários sem a role 'admin' sumariamente para o `/dashboard`.
+- **Componentização Extrema do Ajuste de Estoque (Ponto 8)** — "Secagem" da `StockAdjustmentPage.tsx` concluída (de 404 para ~18 linhas). Todo o formulário, lógica de lotes (Zod) e formatação do integrador do WhatsApp foram isolados cirurgicamente no novo componente protegido `StockAdjustmentForm.tsx`.
+- **Segurança do Webhook do WhatsApp (Ponto 9)** — Implementação de validação criptográfica HMAC-SHA256 usando Web Crypto API no Cloudflare Worker (`whatsapp-worker/src/index.js`), verificando a assinatura oficial da Meta (`X-Hub-Signature-256`) contra interceptações e envios falsos. Limpeza de documentações legadas e unificação dos fluxos TI e Vendedores no mesmo escopo protegido.
+
+---
+
 ## 2026-05-22 — Integração WhatsApp e refinamento visual
 
 - **WhatsApp Cloud API** — Integração ponta-a-ponta com a API oficial da Meta utilizando Cloudflare Workers (`whatsapp-worker`) para intermediar as mensagens sem onerar o frontend.

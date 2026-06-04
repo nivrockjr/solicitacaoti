@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useRobustQuery } from './use-robust-query';
-import { getRequests } from '@/services/requestService';
+import { getRequests, getRequestsCounters } from '@/services/requestService';
 import { RequestStatus, ITRequest } from '@/types';
 import { isAssignedToSistemaEugenio } from '@/config/specialUsers';
 
@@ -16,6 +16,8 @@ interface UseRequestsDataOptions {
     type?: string[];
     search?: string;
     notStatus?: string;
+    approvalStatus?: string;
+    assignedTo?: string;
     fullData?: boolean;
   };
 }
@@ -67,6 +69,48 @@ export function useRequestsData(options: UseRequestsDataOptions = {}) {
 }
 
 /**
+ * useRequestsCountersData
+ * Hook para buscar contadores pré-calculados pelo backend via RPC.
+ */
+export function useRequestsCountersData(userEmail?: string, autoRefresh = false, refreshInterval = 30000) {
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  const query = useRobustQuery({
+    queryKey: ['requestsCounters', userEmail],
+    queryFn: async () => {
+      const result = await getRequestsCounters(userEmail);
+      setLastUpdated(new Date());
+      return result;
+    },
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  });
+
+  const refresh = useCallback(() => {
+    query.refetch();
+  }, [query]);
+
+  const defaultCounts = {
+    novas: 0,
+    in_progress: 0,
+    high_priority: 0,
+    sistema_eugenio: 0,
+    resolved: 0,
+    rejected: 0,
+    active: 0,
+    all: 0,
+  };
+
+  return {
+    counts: query.data || defaultCounts,
+    loading: query.isLoading || query.isFetching,
+    error: query.error ? (query.error as Error).message : null,
+    lastUpdated,
+    refresh,
+  };
+}
+
+/**
+ * @deprecated Use useRequestsCountersData para buscar contagens do backend em vez de contar no frontend.
  * useRequestsCounters
  * Hook para calcular contadores de solicitações baseados em uma lista.
  */

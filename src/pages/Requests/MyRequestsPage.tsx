@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSemanticIcon } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ITRequest } from '@/types';
-import { getRequests } from '@/services/requestService';
+import { useRequestsData, useRequestsCountersData } from '@/hooks/use-requests-data';
 import { useAuth } from '@/contexts/AuthContext';
 import RequestCard from '@/components/requests/RequestCard';
 
@@ -14,10 +13,8 @@ const TAB_VALUES = ['active', 'resolved', 'high_priority', 'rejected'] as const;
 type TabValue = typeof TAB_VALUES[number];
 
 const MyRequestsPage: React.FC = () => {
-  const [requests, setRequests] = useState<ITRequest[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [error, setError] = useState<string | null>(null);
@@ -38,91 +35,44 @@ const MyRequestsPage: React.FC = () => {
     setPage(1);
   }, [tab]);
 
-  // useEffect para buscar solicitações (remover approvalStatus do fetch)
+  // Atualiza os contadores via RPC
+  const { counts } = useRequestsCountersData(user?.email, true, 30000);
+  const tabCounts = {
+    active: counts.active,
+    resolved: counts.resolved,
+    high_priority: counts.high_priority,
+    rejected: counts.rejected,
+  };
+
+  // Mapeia a aba atual para os filtros corretos do backend
+  const currentStatus = (tab === 'active' ? ['new', 'assigned', 'in_progress', 'reopened'] : tab === 'resolved' ? 'resolved' : undefined) as import('@/types').RequestStatus | import('@/types').RequestStatus[] | undefined;
+  const currentPriority = tab === 'high_priority' ? ['high'] : undefined;
+  const currentApprovalStatus = tab === 'rejected' ? 'rejected' : 'not_rejected';
+  const notStatus = tab === 'high_priority' ? 'resolved' : undefined;
+
+  // Busca apenas a página atual do backend
+  const { requests: paginatedRequests, loading, totalCount, error: fetchError } = useRequestsData({
+    userEmail: user?.email,
+    page,
+    pageSize,
+    status: currentStatus,
+    autoRefresh: true,
+    refreshInterval: 30000,
+    filters: {
+      search: searchQuery,
+      priority: currentPriority,
+      approvalStatus: currentApprovalStatus,
+      notStatus,
+      fullData: false,
+    }
+  });
+
+  // Mostra o erro do hook se houver (substitui o estado local)
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user) return;
-      setLoading(true);
-      setError(null);
-      // Buscar todas as solicitações do usuário (sem paginação)
-      const { data: allRequests = [] } = await getRequests(
-        user.email,
-        1,
-        1000,
-        undefined,
-        logout,
-        { fullData: false } // Carregamento leve para performance
-      );
-      setRequests(allRequests);
-      setLoading(false);
-    };
-    fetchRequests();
-  }, [user, logout]);
-  
-  const filteredRequests = useMemo(() => {
-    let filtered = [...requests];
-    const statusLower = (s: unknown) => (typeof s === 'string' ? s.toLowerCase() : '');
-    const priorityLower = (p: unknown) => (typeof p === 'string' ? p.toLowerCase() : '');
+    if (fetchError) setError(fetchError);
+    else setError(null);
+  }, [fetchError]);
 
-    if (tab === 'active') {
-      filtered = filtered.filter(r =>
-        ['new', 'assigned', 'in_progress', 'reopened'].includes(statusLower(r.status))
-      );
-    } else if (tab === 'resolved') {
-      filtered = filtered.filter(r => statusLower(r.status) === 'resolved');
-    } else if (tab === 'high_priority') {
-      filtered = filtered.filter(r => priorityLower(r.priority) === 'high' && statusLower(r.status) !== 'resolved');
-    } else if (tab === 'rejected') {
-      filtered = filtered.filter(r => r.approvalstatus === 'rejected');
-    }
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.description?.toLowerCase().includes(q) ||
-        r.id?.toLowerCase().includes(q)
-      );
-    }
-
-    filtered = filtered.sort((a, b) => new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime());
-    return filtered;
-  }, [requests, tab, searchQuery]);
-
-  const tabCounts = useMemo(() => {
-    if (requests.length === 0) {
-      return { active: 0, resolved: 0, high_priority: 0, rejected: 0 };
-    }
-
-    const active = requests.filter(r =>
-      ['new', 'assigned', 'in_progress', 'reopened'].includes(r.status ?? '') &&
-      r.approvalstatus !== 'rejected'
-    ).length;
-
-    const resolved = requests.filter(r =>
-      r.status === 'resolved' &&
-      r.approvalstatus !== 'rejected'
-    ).length;
-
-    const high_priority = requests.filter(r =>
-      r.priority === 'high' &&
-      r.status !== 'resolved' &&
-      r.approvalstatus !== 'rejected'
-    ).length;
-
-    const rejected = requests.filter(r => r.approvalstatus === 'rejected').length;
-
-    return { active, resolved, high_priority, rejected };
-  }, [requests]);
-
-  // Paginação frontend
-  const paginatedRequests = useMemo(() => {
-    const filtered = filteredRequests;
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize;
-    return filtered.slice(from, to);
-  }, [filteredRequests, page]);
-
-  const totalCount = filteredRequests.length;
   const hasNextPage = page * pageSize < totalCount;
   
   return (

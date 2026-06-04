@@ -3,48 +3,37 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRequestsData } from '@/hooks/use-requests-data';
+import { useRequestsData, useRequestsCountersData } from '@/hooks/use-requests-data';
 import RequestCard from '@/components/requests/RequestCard';
 import ChatAssistant from '@/components/ai/ChatAssistant';
-import { isResolved, isPending, getSemanticIcon } from '@/lib/utils';
+import { getSemanticIcon } from '@/lib/utils';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  const { requests: allRequests, loading } = useRequestsData({
-    userEmail: isAdmin ? undefined : user?.email,
-    pageSize: 1000,
-    filters: { fullData: false },
+  const userEmail = isAdmin ? undefined : user?.email;
+  
+  // Buscar contadores via RPC
+  const { counts } = useRequestsCountersData(userEmail, true, 30000);
+
+  // Buscar apenas as 3 mais recentes (e não 1000)
+  const { requests: recentRequests, loading } = useRequestsData({
+    userEmail,
+    page: 1,
+    pageSize: 3,
+    filters: { fullData: false, notStatus: 'rejected' },
   });
 
-  // Preserva a lógica original: total inclui rejeitados, lista exclui
-  const totalRequests = allRequests.length;
-  const requests = allRequests
-    .filter(r => r.approvalstatus !== 'rejected')
-    .sort((a, b) =>
-      new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime()
-    );
-  
-  // Função utilitária para normalizar prioridade
-  const normalizePriority = (priority: string | null | undefined) => (priority || '').toLowerCase().trim();
-
-  const isHighPriority = (priority: string | null | undefined) => normalizePriority(priority) === 'high';
-  const highPriorityRequests = requests.filter(r => isHighPriority(r.priority) && isPending(r.status)).length;
-
-  // Recent requests: 3 mais recentes
-  const recentRequests = [...requests]
-    .sort((a, b) => new Date(b.createdat ?? 0).getTime() - new Date(a.createdat ?? 0).getTime())
-    .slice(0, 3);
-
-  const pendingRequests = requests.filter(r => isPending(r.status)).length;
-  const resolvedRequests = requests.filter(r => isResolved(r.status)).length;
+  const totalRequests = counts.all;
+  const pendingRequests = counts.active;
+  const resolvedRequests = counts.resolved;
+  const highPriorityRequests = counts.high_priority;
   
   if (!import.meta.env.PROD) {
-    console.log('DASHBOARD - Total:', requests.length);
+    console.log('DASHBOARD - Total:', totalRequests);
     console.log('DASHBOARD - Pendentes:', pendingRequests);
     console.log('DASHBOARD - Resolvidas:', resolvedRequests);
-    console.log('DASHBOARD - Todos os status:', requests.map(r => r.status));
   }
   
   return (

@@ -61,6 +61,8 @@ export const getRequests = async (
     type?: string[];
     search?: string;
     notStatus?: string;
+    approvalStatus?: string;
+    assignedTo?: string;
     fullData?: boolean;
   }
 ): Promise<{ data: ITRequest[], count: number }> => {
@@ -103,6 +105,19 @@ export const getRequests = async (
     query = query.not('status', 'eq', filters.notStatus);
   }
   
+  if (filters?.approvalStatus) {
+    if (filters.approvalStatus === 'not_rejected') {
+      // Usa .or() para replicar a lógica "IS DISTINCT FROM 'rejected'"
+      query = query.or('approvalstatus.is.null,approvalstatus.neq.rejected');
+    } else {
+      query = query.eq('approvalstatus', filters.approvalStatus);
+    }
+  }
+  
+  if (filters?.assignedTo) {
+    query = query.eq('assignedto', filters.assignedTo);
+  }
+  
   query = query.order('createdat', { ascending: false }).range(from, to);
   
   const { data, count, error } = await query;
@@ -112,6 +127,28 @@ export const getRequests = async (
   }
   
   return { data: data || [], count: count || 0 };
+};
+
+export const getRequestsCounters = async (userEmail?: string) => {
+  const { data, error } = await supabase.rpc('get_requests_counters', {
+    p_user_email: userEmail || null
+  });
+  
+  if (error) {
+    if (!import.meta.env.PROD) console.error('[getRequestsCounters] Erro:', error);
+    throw new Error('Erro ao buscar contadores');
+  }
+  
+  return data as {
+    novas: number;
+    in_progress: number;
+    high_priority: number;
+    sistema_eugenio: number;
+    resolved: number;
+    rejected: number;
+    active: number;
+    all: number;
+  };
 };
 
 export const getRequestById = async (id: string): Promise<ITRequest> => {

@@ -69,8 +69,9 @@ src/
 ├── pages/           # rotas: Dashboard, Requests, Reports, Users, Settings, Acceptance
 ├── services/        # única camada que conversa com o Supabase
 └── types/           # tipos canônicos (ITRequest, User, Notification...)
-whatsapp-worker/     # Webhook serverless (Cloudflare) para envio/recebimento de mensagens
-├── src/index.js     # Lógica central de integração Meta <-> Supabase
+whatsapp-worker/     # Webhook serverless (Cloudflare) híbrido (TI + Vendedores)
+├── src/index.js     # Integração Meta <-> Supabase (Fluxo TI) + Roteamento
+├── src/vendedores.js# Máquina de estados conversacional (Fluxo Vendas)
 └── wrangler.toml    # Variáveis públicas e configuração de deploy
 ```
 
@@ -126,6 +127,23 @@ Sistema é um SPA estático. Build via `npm run build` gera `/dist`, que é serv
 
 > Não há Node.js no servidor web — o artefato frontend é estático.
 > O bot do WhatsApp roda de forma serverless na Cloudflare (deploy via `npx wrangler deploy`).
+
+---
+
+## Arquitetura WhatsApp (Worker Híbrido)
+
+O diretório `whatsapp-worker/` atua como uma "portaria" unificada para os Webhooks da Meta, hospedando dois ecossistemas na mesma rota:
+1. **Fluxo SolicitacaoTI (`index.js`):** Recebe eventos do Supabase, formata e envia os chamados para os usuários no WhatsApp. Gerencia cliques em botões interativos ("Verificado ✅" / "Não Resolvido ❌") e atualiza o Supabase. O acesso é bloqueado e blindado matematicamente verificando a assinatura `X-Hub-Signature-256`.
+2. **Fluxo Vendedores (`vendedores.js`):** Máquina de estados assíncrona baseada em Cloudflare KV que simula um carrinho de compras de ERP no WhatsApp. Autentica vendedores e processa pedidos disparando webhooks para o backend legado em PHP (`api_whatsapp.php`).
+
+### Cofre de Senhas (Cloudflare Secrets)
+Nenhuma chave sensível é salva no código. Para que o Worker funcione (ou para migrá-lo de ambiente), as seguintes variáveis precisam ser injetadas via painel da Cloudflare ou terminal (`npx wrangler secret put <NOME>`):
+
+- `WHATSAPP_TOKEN`: Bearer Token de acesso à Graph API da Meta.
+- `WHATSAPP_APP_SECRET`: Chave mestre gerada pela Meta (App Secret) exigida para o cálculo de assinatura e blindagem da rota contra injeções.
+- `WHATSAPP_VERIFY_TOKEN`: Chave arbitrária usada na verificação do ciclo de vida inicial do webhook.
+- `SUPABASE_SERVICE_ROLE_KEY`: Service Key do Supabase (bypass de RLS) para o bot poder alterar dados e incluir comentários.
+- `PQVIRK_API_KEY`: Senha compartilhada que autentica o Worker quando ele chama o WampServer PHP (`api_whatsapp.php`).
 
 ---
 

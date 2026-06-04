@@ -1,3 +1,5 @@
+import { handleVendedoresConversationalFlow } from './vendedores.js';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -278,7 +280,22 @@ function handleMetaVerification(request, env) {
 
 async function handleMetaMessage(request, env) {
   try {
-    const body = await request.json();
+    const rawBody = await request.text();
+    
+    // [SEGURANÇA] Validação da Assinatura da Meta (X-Hub-Signature-256)
+    const signature = request.headers.get("x-hub-signature-256");
+    if (env.WHATSAPP_APP_SECRET && signature) {
+      const expectedSig = await verifyMetaSignature(rawBody, env.WHATSAPP_APP_SECRET);
+      if (`sha256=${expectedSig}` !== signature) {
+        console.error("ALERTA DE SEGURANÇA: Assinatura da Meta inválida! Rejeitando requisição.");
+        return new Response("Invalid signature", { status: 403 });
+      }
+    } else if (env.WHATSAPP_APP_SECRET && !signature) {
+      console.error("ALERTA DE SEGURANÇA: Requisição sem assinatura! Rejeitando.");
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    const body = JSON.parse(rawBody);
     console.log("Mensagem recebida da Meta:", JSON.stringify(body));
     
     // O WhatsApp manda os eventos organizados em 'entry' e 'changes'
@@ -367,8 +384,18 @@ async function handleMetaMessage(request, env) {
                     text: { body: replyText }
                   })
                 });
+              } else {
+                 await handleVendedoresConversationalFlow(msg, senderPhone, env);
+                 return new Response("EVENT_RECEIVED", { status: 200 });
               }
-            } else if (['text', 'audio', 'image', 'video', 'sticker', 'document'].includes(msg.type)) {
+            } else if (['text', 'audio', 'image', 'video', 'sticker', 'document'].includes(msg.type) || (msg.type === 'interactive' && (msg.interactive.type === 'list_reply'))) {
+              // [PASSO 3] FLUXO DO VENDEDOR (Se não for verificação do TI)
+              await handleVendedoresConversationalFlow(msg, senderPhone, env);
+
+              // As mensagens originais automáticas foram migradas para a função handleVendedoresConversationalFlow
+              return new Response("EVENT_RECEIVED", { status: 200 });
+            } else if (false) { // Desativa o bloco original de mensagens automáticas do TI (agora integrado no fluxo)
+
               // 5. Responder com mensagem automática e Cartões de Contato
               const waUrl = `https://graph.facebook.com/v25.0/${env.WHATSAPP_PHONE_ID}/messages`;
               
@@ -438,4 +465,27 @@ async function handleMetaMessage(request, env) {
     console.error("Erro no meta webhook:", error);
     return new Response("Internal Server Error", { status: 500 });
   }
+}
+
+// -----------------------------------------------------------------------------
+// Funções de Segurança
+// -----------------------------------------------------------------------------
+async function verifyMetaSignature(payload, secret) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  
+  const signatureBuffer = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(payload)
+  );
+
+  const hashArray = Array.from(new Uint8Array(signatureBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

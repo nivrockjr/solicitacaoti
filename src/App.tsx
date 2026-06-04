@@ -7,6 +7,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
+import RequireAdmin from "@/components/layout/RequireAdmin";
 import LoginPage from "@/pages/Auth/LoginPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import NewRequestPage from "@/pages/Requests/NewRequestPage";
@@ -83,8 +84,11 @@ const App = () => {
                     <Route path="reports" element={<ReportsPage />} />
                     <Route path="stock-adjustment" element={<StockAdjustmentPage />} />
                     <Route path="ciclo-vida" element={<CicloVidaPage />} />
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="settings" element={<SettingsPage />} />
+                    {/* Rotas restritas para Administradores */}
+                    <Route element={<RequireAdmin />}>
+                      <Route path="users" element={<UsersPage />} />
+                      <Route path="settings" element={<SettingsPage />} />
+                    </Route>
                   </Route>
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />

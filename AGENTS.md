@@ -18,7 +18,7 @@ exclusão pertence a ele.
   Supabase + auth custom (bcrypt + funções SECURITY DEFINER).
 - Build estático. Sem Node no servidor: SSR, ISR, Edge Functions e API Routes não são opção.
 
-Detalhe técnico em `CONTRIBUTING.md`. Histórico em `CHANGELOG.md`. Visão em `README.md`.
+Detalhe técnico em `CONTRIBUTING.md`. Histórico em `CHANGELOG.md`. Visão em `README.md`. Ideias futuras em `ROADMAP.md`.
 
 ---
 

@@ -186,6 +186,7 @@ Nenhuma chave sensível é salva no código. Para que o Worker funcione (ou para
 - [`AGENTS.md`](./AGENTS.md) — fonte única de instruções para agentes de IA (contexto, regras, higiene, norte de design). Portável entre ferramentas (Claude Code, Antigravity, etc.).
 - [`CLAUDE.md`](./CLAUDE.md) — camada específica do Claude Code; importa o `AGENTS.md` e adiciona o protocolo de auditoria.
 - [`CHANGELOG.md`](./CHANGELOG.md) — histórico das mudanças importantes.
+- [`ROADMAP.md`](./ROADMAP.md) — ideias e funcionalidades em estudo. Nada aqui foi aprovado para implementação.
 
 ---
 

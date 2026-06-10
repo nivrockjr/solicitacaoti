@@ -31,4 +31,5 @@ dist-ssr
 # Security and temp folders
 scratch/
 whatsapp-worker/chavesecreta/
+whatsapp-worker/*.md
 supabase/.temp/

@@ -134,7 +134,40 @@ Sistema é um SPA estático. Build via `npm run build` gera `/dist`, que é serv
 
 O diretório `whatsapp-worker/` atua como uma "portaria" unificada para os Webhooks da Meta, hospedando dois ecossistemas na mesma rota:
 1. **Fluxo SolicitacaoTI (`index.js`):** Recebe eventos do Supabase, formata e envia os chamados para os usuários no WhatsApp. Gerencia cliques em botões interativos ("Verificado ✅" / "Não Resolvido ❌") e atualiza o Supabase. O acesso é bloqueado e blindado matematicamente verificando a assinatura `X-Hub-Signature-256`.
-2. **Fluxo Vendedores (`vendedores.js`):** Máquina de estados assíncrona baseada em Cloudflare KV que simula um carrinho de compras de ERP no WhatsApp. Autentica vendedores e processa pedidos disparando webhooks para o backend legado em PHP (`api_whatsapp.php`).
+2. **Fluxo Vendedores (`vendedores.js`):** Máquina de estados assíncrona baseada em Cloudflare KV que simula um carrinho de compras de ERP no WhatsApp. Autentica vendedores e processa pedidos disparando webhooks para o backend legado em PHP (`api_whatsapp.php`). Possui documentação própria mantida fora do repositório (arquivos locais não versionados, protegidos pelo `.gitignore`).
+
+> **Atenção:** Os dois fluxos coexistem no mesmo Worker e compartilham o mesmo número de WhatsApp. Alterações em `index.js` podem afetar ambos os fluxos. O `vendedores.js` é de outro sistema e não deve ser modificado no contexto do projeto de TI.
+
+### Ciclo de vida das notificações TI
+
+```
+Supabase (INSERT/UPDATE em solicitacoes)
+  └─► POST /supabase-webhook (Cloudflare Worker)
+        ├─ Busca telefone do solicitante (requesterid) na tabela usuarios
+        ├─ Formata mensagem por tipo de chamado (geral, sistemas, estoque, lifecycle…)
+        └─► WhatsApp Cloud API (texto livre para o solicitante)
+              │
+              └─ Se status mudou para "resolved":
+                   envia mensagem interativa com botões
+                   ┌──────────────────┐  ┌──────────────────┐
+                   │ Verificado! ✅    │  │ Não Resolvido ❌  │
+                   └──────────────────┘  └──────────────────┘
+                          │                       │
+                  POST /meta-webhook       POST /meta-webhook
+                          │                       │
+                  Adiciona comentário      Adiciona comentário
+                  automático no chamado    + muda status p/ "reopened"
+```
+
+**Quem recebe a notificação:** sempre o solicitante do chamado (`requesterid`). O admin/técnico não recebe notificação via WhatsApp.
+
+### Janela de 24h da Meta (decisão consciente)
+
+O código atual envia mensagens como **texto livre** (free-form), não como Templates da Meta. Isso significa que a Meta só entrega a mensagem se o destinatário tiver enviado algo para o número do bot nas últimas 24 horas (regra da "janela de serviço"). Fora da janela, o envio é bloqueado silenciosamente.
+
+Esta é uma **decisão consciente**, alinhada ao princípio de zero-custo do projeto: mensagens de texto livre dentro da janela de 24h são gratuitas. Templates (que funcionam fora da janela) são cobrados por mensagem entregue (~US$ 0,03/msg para Utility no Brasil, modelo vigente desde julho/2025).
+
+> Para que um funcionário receba notificações, ele precisa enviar uma mensagem para o número do bot pelo menos uma vez a cada 24 horas.
 
 ### Cofre de Senhas (Cloudflare Secrets)
 Nenhuma chave sensível é salva no código. Para que o Worker funcione (ou para migrá-lo de ambiente), as seguintes variáveis precisam ser injetadas via painel da Cloudflare ou terminal (`npx wrangler secret put <NOME>`):

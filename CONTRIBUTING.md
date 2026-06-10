@@ -115,6 +115,35 @@ RLS apertado em `usuarios` e `notificacoes` (anon não pode INSERT/UPDATE/DELETE
 
 ---
 
+## Cloudflare Worker (`whatsapp-worker/`)
+
+O Worker é **híbrido**: hospeda o fluxo de notificações da TI e um fluxo de vendedores de outro sistema no mesmo número de WhatsApp. Ambos compartilham o `index.js` como roteador.
+
+| Arquivo | Escopo | Pode modificar? |
+|---|---|---|
+| `src/index.js` | Roteador + fluxo TI | Sim, com cuidado (afeta os dois fluxos) |
+| `src/vendedores.js` | Fluxo de vendedores (outro sistema) | **Não** — fora do escopo do projeto TI |
+| `wrangler.toml` | Configuração do Worker | Sim, com aprovação |
+
+### Regras ao modificar
+
+- **Nunca altere** `vendedores.js` nem a lógica de despacho para vendedores em `index.js` (linhas que chamam `handleVendedoresConversationalFlow`).
+- A pasta pode conter `.md` com documentação interna sensível (IPs, infra, schema). Esses arquivos estão protegidos pelo `.gitignore` e **não devem ser commitados**.
+- Secrets são gerenciados exclusivamente via `npx wrangler secret put <NOME>`. Nunca hardcode credenciais.
+
+### Deploy
+
+```bash
+cd whatsapp-worker
+npx wrangler deploy
+```
+
+### Dependência externa
+
+O fluxo TI depende de um **webhook configurado no painel do Supabase** (Database → Webhooks) que dispara um `POST` para a rota `/supabase-webhook` do Worker a cada `INSERT` ou `UPDATE` na tabela `solicitacoes`. Sem esse webhook, as notificações WhatsApp não são enviadas.
+
+---
+
 ## Como propor mudança
 
 Antes de uma refatoração ou novo módulo:

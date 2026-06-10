@@ -33,11 +33,16 @@ const AcceptancePage: React.FC = () => {
   const [traineeDepartment, setTraineeDepartment] = useState('');
   const { toast } = useToast();
 
-  // Função para extrair o nome do colaborador do título (ex: "Onboarding - Wendell")
+  // Função para extrair o nome do colaborador (prioriza metadados seguros sobre o título da UI)
   const getCollaboratorName = () => {
+    // Prioridade máxima: Dado estruturado salvo no JSONB pelo LifecycleRequestForm
+    if (request?.metadata?.form_data?.collaboratorName) {
+      return request.metadata.form_data.collaboratorName;
+    }
+
     if (!request?.title) return request?.requestername || 'Colaborador';
     
-    // Regex para capturar tudo o que vem após a ação (Onboarding, Offboarding ou Treinamento) e o separador " - "
+    // Fallback 1: Tenta extrair do título padrão "Ação - Nome"
     const regex = /(?:Onboarding|Offboarding|Treinamento)\s*-\s*(.+)$/i;
     const match = request.title.match(regex);
     
@@ -45,7 +50,7 @@ const AcceptancePage: React.FC = () => {
       return match[1].trim();
     }
     
-    // Fallback: se não encontrar o padrão acima, tenta o hífen simples
+    // Fallback 2: Se não encontrar o padrão exato, tenta separar pelo hífen genérico
     const parts = request.title.split(' - ');
     if (parts.length > 1) {
       return parts[parts.length - 1].trim();

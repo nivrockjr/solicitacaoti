@@ -6,6 +6,11 @@ Formato inspirado em [Keep a Changelog](https://keepachangelog.com/), adaptado p
 
 ---
 
+## 2026-06-10 — Segurança e Ciclo de Vida do Colaborador
+
+- **Extração Segura do Nome no Termo de Aceite** — Corrigida a função `getCollaboratorName` na `AcceptancePage.tsx`. O sistema agora prioriza o metadado estruturado `request.metadata.form_data.collaboratorName` gravado na criação, abandonando o fallback frágil via Regex no título. Previne termos anônimos caso o título seja editado à mão.
+- **Saneamento de Chaves e Documentação Interna** — Adicionada regra ao `.gitignore` isolando documentos sensíveis da pasta `whatsapp-worker/`. Arquivos locais de rascunho com chaves de banco expostas (`scratch/count.js`) foram auditados e excluídos, mitigando risco de vazamento no GitHub.
+
 ## 2026-06-04 — Auditoria e Saneamento Menor
 
 - **Auditoria de segurança das dependências (Dependabot — 6 alertas)** — Avaliados os 6 alertas abertos cruzando severidade com o uso real (SPA estático, sem Node no servidor). Corrigido o único com fix barato e de valor real: `react-router-dom` 6.30.3 → 6.30.4 (patch), fechando o alerta de open redirect (não explorável no uso atual — todos os `navigate()` usam rotas fixas — mas correção trivial e segura). Os outros 5 foram analisados e aceitos como risco baixo/nulo: `xlsx` ×2 (altos, sem fix no npm; o sistema só escreve, nunca parseia, e os CVEs só disparam em parse); `ws` (transitiva do Supabase realtime, não roda no browser, que usa WebSocket nativo); `esbuild` e `vite` (apenas dev-server local; o fix exigiria subir o Vite para a major 6, desproporcional). `tsc`, `lint` e `build` limpos.

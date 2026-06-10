@@ -51,7 +51,7 @@ Criar um menu exclusivo do administrador (Operador) chamado **"Ativos de TI"** c
 - ~100 ativos físicos no total (notebooks, desktops, monitores, mouses, teclados, headsets, celulares, telefones PABX, impressoras, webcams, microfones, adaptadores).
 - ~50 usuários cadastrados no sistema (todas as filiais).
 - Operador único de TI. Qualquer solução que exija manutenção complexa é desproporcional.
-- **Supabase free tier.** O impacto estimado é desprezível (~200 linhas de dados + histórico), mas toda decisão de schema deve ser validada contra as políticas de egress gratuitas.
+- **Supabase free tier.** O impacto estimado é desprezível (~200 linhas de dados + histórico de movimentações), mas toda decisão de schema deve ser validada contra os limites do plano gratuito (500MB de storage de banco, 1GB de file storage para fotos).
 
 ### Integrações previstas com módulos existentes
 

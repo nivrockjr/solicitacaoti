@@ -26,7 +26,7 @@ Regras para agentes de IA: [`AGENTS.md`](./AGENTS.md).
 
 ### O problema que resolve
 
-Hoje o controle de equipamentos físicos de TI da PQVIRK não existe de forma estruturada: não há registro de o que temos, onde está, quem usa, se está em garantia ou se está parado em estoque. Esse controle existe apenas na memória do Operador e em históricos de compras não consolidados.
+Hoje o controle de equipamentos físicos de TI não existe de forma estruturada no sistema: não há registro do que temos, onde está, quem usa, se está em garantia ou se está parado em estoque. Esse controle existe apenas na memória do Operador e em históricos de compras não consolidados.
 
 ### Contexto do sistema atual (leia estes arquivos antes de propor qualquer coisa)
 

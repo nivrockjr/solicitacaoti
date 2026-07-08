@@ -27,7 +27,11 @@ export function ResolutionPanel({ request, onView }: ResolutionPanelProps) {
         )}
         {request.resolvedat && (
           <p className="text-xs text-muted-foreground mt-2">
-            Resolvida por {request.assignedtoname || 'Administrador'} em {tryFormatDateTime(request.resolvedat, 'dd/MM/yyyy HH:mm') ?? '—'}
+            Resolvida por {
+              request.type === 'employee_lifecycle' && request.metadata?.form_data?.action === 'training'
+                ? request.metadata?.form_data?.collaboratorName || request.requestername || 'Colaborador'
+                : request.assignedtoname || 'Administrador'
+            } em {tryFormatDateTime(request.resolvedat, 'dd/MM/yyyy HH:mm') ?? '—'}
             {whatsappComment && (
               <>
                 <br />

@@ -95,4 +95,4 @@ Estas perguntas **não têm resposta ainda**. O agente deve pesquisar, propor al
 
 ---
 
-*Roadmap mantido pelo Operador. Última revisão: 2026-06-10.*
+*Roadmap mantido pelo Operador. Última revisão: 2026-07-08.*

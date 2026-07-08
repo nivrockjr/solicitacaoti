@@ -203,7 +203,7 @@ const RequestDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                {request.resolution && request.status === 'resolved' && (
+                {request.resolution && (request.status === 'resolved' || request.status === 'closed') && (
                   <ResolutionPanel request={request} onView={handleViewAttachment} />
                 )}
 

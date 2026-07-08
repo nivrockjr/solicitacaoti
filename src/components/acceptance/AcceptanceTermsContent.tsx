@@ -133,7 +133,7 @@ export function AcceptanceTermsContent({
           <section>
             <h4 className={titleClass}>{getNextNum()} FINALIDADE</h4>
             <p className={paraClass}>
-              Este termo registra a participação e a ciência do colaborador sobre o treinamento de TI realizado.
+              Este termo constitui evidência documentada de competência conforme os requisitos da cláusula 7.2 da norma ISO 9001:2015, registrando a participação do colaborador no treinamento descrito e a sua ciência sobre o conteúdo ministrado.
             </p>
           </section>
 
@@ -149,7 +149,7 @@ export function AcceptanceTermsContent({
           <section>
             <h4 className={titleClass}>{getNextNum()} CIÊNCIA</h4>
             <p className={paraClass}>
-              Declaro que participei do treinamento listado e estou ciente do conteúdo apresentado.
+              Declaro que participei integralmente do treinamento descrito acima, que compreendi o conteúdo apresentado, e que o considero suficiente para o exercício das atividades relacionadas. Reconheço que este registro será retido como evidência de competência para fins de auditoria e melhoria contínua.
             </p>
           </section>
         </>
@@ -158,10 +158,16 @@ export function AcceptanceTermsContent({
       <section className="mt-4 pt-3 border-t border-border/50">
         <h4 className={titleClass}>DADOS, PRIVACIDADE E RETENÇÃO</h4>
         <p className={paraClass}>
-          Este registro digital será mantido pela PQVIRK pelo prazo mínimo de 5 (cinco) anos, para fins de controle de ativos, rastreabilidade e conformidade, conforme boas práticas de gestão de TI e legislação aplicável (LGPD Art. 9, §1).
+          Este registro digital será mantido pela PQVIRK pelo prazo mínimo de 5 (cinco) anos, para fins de {
+            isTraining ? 'comprovação de treinamento, rastreabilidade e conformidade (ISO 9001)' : 'controle de ativos, rastreabilidade e conformidade'
+          }, conforme boas práticas de gestão corporativa e legislação aplicável (LGPD Art. 9, §1).
         </p>
         <p className={`${paraClass} mt-1`}>
-          Os dados registrados neste sistema — nome, setor, assinatura digital e ativos de TI associados — são utilizados exclusivamente para fins de gestão de equipamentos e acessos corporativos. O titular pode solicitar acesso, correção ou exclusão desses registros diretamente ao responsável de TI da PQVIRK (LGPD Art. 18).
+          Os dados registrados neste sistema — nome, setor, assinatura digital{
+            !isTraining ? ' e ativos de TI associados' : ''
+          } — são utilizados exclusivamente para fins de {
+            isTraining ? 'registro de competência técnica e conformidade' : 'gestão de equipamentos e acessos corporativos'
+          }. O titular pode solicitar acesso, correção ou exclusão desses registros diretamente ao responsável de TI da PQVIRK (LGPD Art. 18).
         </p>
       </section>
     </div>

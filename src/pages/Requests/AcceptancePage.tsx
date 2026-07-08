@@ -175,6 +175,12 @@ const AcceptancePage: React.FC = () => {
         const data = await getRequestById(id);
         if (data) {
           setRequest(data);
+          
+          if (data.metadata?.form_data?.targetUserId) {
+            setTraineeName(data.metadata.form_data.collaboratorName || '');
+            setTraineeDepartment(data.metadata.form_data.department || '');
+          }
+
           const done =
             data.status === 'resolved' ||
             data.status === 'closed';
@@ -355,7 +361,9 @@ const AcceptancePage: React.FC = () => {
               </p>
 
               <p className="mb-4 text-foreground print:text-black print:mb-2">
-                Eu, <span className="underline font-semibold">{collaboratorName}</span>, colaborador(a) da <strong>PQVIRK</strong>{colaboradorSetor ? `, do setor de ${colaboradorSetor},` : ','} declaro para os devidos fins de controle de qualidade e gestão de ativos que:
+                Eu, <span className="underline font-semibold">{collaboratorName}</span>, colaborador(a) da <strong>PQVIRK</strong>{colaboradorSetor ? `, do setor de ${colaboradorSetor},` : ','} declaro para os devidos fins de {
+                  isTraining ? 'comprovação de competência e rastreabilidade' : 'controle de qualidade e gestão de ativos'
+                } que:
               </p>
 
               <AcceptanceTermsContent
@@ -465,7 +473,7 @@ const AcceptancePage: React.FC = () => {
           {isTraining && (
             <div className="space-y-2">
               <p className="text-sm font-semibold text-foreground">Conteúdo do treinamento</p>
-              <div className="whitespace-pre-wrap text-sm bg-muted/30 border border-border rounded-md p-3 max-h-[220px] overflow-y-auto text-foreground">
+              <div className="whitespace-pre-wrap text-sm bg-background border border-input rounded-md p-3 max-h-[220px] overflow-y-auto text-foreground">
                 {getTrainingContent() || 'Conteúdo não informado.'}
               </div>
             </div>
@@ -477,7 +485,9 @@ const AcceptancePage: React.FC = () => {
             </p>
             
             <p className="mb-4 text-foreground print:text-black print:text-[11px] print:mb-2">
-              Eu, <span className="underline font-semibold">{collaboratorName}</span>, colaborador(a) da <strong>PQVIRK</strong>{colaboradorSetor ? `, do setor de ${colaboradorSetor},` : ','} declaro para os devidos fins de controle de qualidade e gestão de ativos que:
+              Eu, <span className="underline font-semibold">{collaboratorName}</span>, colaborador(a) da <strong>PQVIRK</strong>{colaboradorSetor ? `, do setor de ${colaboradorSetor},` : ','} declaro para os devidos fins de {
+                isTraining ? 'comprovação de competência e rastreabilidade' : 'controle de qualidade e gestão de ativos'
+              } que:
             </p>
             
             <AcceptanceTermsContent
@@ -528,6 +538,7 @@ const AcceptancePage: React.FC = () => {
                     value={traineeName}
                     onChange={(e) => setTraineeName(e.target.value)}
                     placeholder="Digite seu nome completo"
+                    disabled={!!request?.metadata?.form_data?.targetUserId}
                   />
                 </div>
 
@@ -538,6 +549,7 @@ const AcceptancePage: React.FC = () => {
                     value={traineeDepartment}
                     onChange={(e) => setTraineeDepartment(e.target.value)}
                     placeholder="Digite seu setor"
+                    disabled={!!request?.metadata?.form_data?.targetUserId}
                   />
                 </div>
               </div>

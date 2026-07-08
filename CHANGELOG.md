@@ -6,6 +6,12 @@ Formato inspirado em [Keep a Changelog](https://keepachangelog.com/), adaptado p
 
 ---
 
+## 2026-07-08 — Fluxo de Treinamento e Auditoria ISO 9001
+
+- **Adequação ISO 9001 no Termo de Aceite** — Textos e termos jurídicos de LGPD na tela de aceite (`AcceptancePage` e `AcceptanceTermsContent`) foram tornados dinâmicos. Quando a solicitação for de "Treinamento", remove-se citações genéricas sobre "equipamentos e gestão de ativos" para evitar inconsistências durante auditorias de qualidade, focando exclusivamente na comprovação de competência técnica e rastreabilidade.
+- **Titularidade de Solicitações em Lote (Ownership)** — A rotina de criação de chamados em lote (`LifecycleRequestForm`) agora cadastra cada solicitação forçando o funcionário-alvo como o verdadeiro `requester` no banco de dados. Isso resolve o gap de chamados invisíveis na listagem "Minhas Solicitações", permitindo que os próprios funcionários acompanhem a pendência do seu treinamento no painel. (As solicitações antigas de treinamento também foram saneadas via script de migração na base de dados).
+- **Refinamento de UI (Acessibilidade)** — Corrigida a legibilidade do painel "Conteúdo do Treinamento" no Dark Mode, substituindo cores chumbadas (`bg-muted/30`) por tokens dinâmicos (`bg-background` e `border-input`) que acompanham corretamente a troca de temas.
+
 ## 2026-06-10 — Segurança e Ciclo de Vida do Colaborador
 
 - **Extração Segura do Nome no Termo de Aceite** — Corrigida a função `getCollaboratorName` na `AcceptancePage.tsx`. O sistema agora prioriza o metadado estruturado `request.metadata.form_data.collaboratorName` gravado na criação, abandonando o fallback frágil via Regex no título. Previne termos anônimos caso o título seja editado à mão.

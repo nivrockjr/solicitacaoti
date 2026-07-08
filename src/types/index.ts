@@ -49,6 +49,7 @@ export interface DeliveryItem {
 export interface ITRequestMetadata {
   form_data?: {
     action?: 'onboarding' | 'offboarding' | string;
+    targetUserId?: string;
     relatedOnboardingId?: string;
     collaboratorName?: string;
     department?: string;

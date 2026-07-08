@@ -188,6 +188,33 @@ export function RequestSidebar({
           <p className="font-medium">{tryFormatDateTime(request.createdat, 'dd/MM/yyyy HH:mm') ?? '—'}</p>
         </div>
 
+        {request.type === 'employee_lifecycle' &&
+         request.metadata?.form_data?.action === 'training' &&
+         request.metadata?.form_data?.targetUserId === user?.id && (
+          <>
+            <Separator />
+            <div className="space-y-3 py-2">
+              <div className="flex items-center gap-2 text-primary">
+                {getSemanticIcon('info', { className: 'h-4 w-4' })}
+                <p className="text-sm font-semibold">{!isFinished ? 'Sua Ação Necessária' : 'Treinamento Concluído'}</p>
+              </div>
+              <Button
+                onClick={() => window.open(`${window.location.origin}/aceite/${requestId}`, '_blank')}
+                variant={!isFinished ? 'default' : 'outline'}
+                size="sm"
+                className={`w-full flex items-center justify-center gap-2 ${
+                  !isFinished
+                    ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                    : 'bg-success/10 border-success/20 text-success hover:bg-success/20'
+                }`}
+              >
+                {getSemanticIcon(!isFinished ? 'action-edit' : 'success', { className: 'h-4 w-4' })} 
+                {!isFinished ? 'Assinar Treinamento' : 'Assinado - Ver Termo'}
+              </Button>
+            </div>
+          </>
+        )}
+
         {user?.role === 'admin' && (
           <>
             <Separator />

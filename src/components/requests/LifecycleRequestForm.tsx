@@ -24,6 +24,9 @@ import { OffboardingLinkSelect } from './lifecycle/OffboardingLinkSelect';
 import { CollaboratorBasicFields } from './lifecycle/CollaboratorBasicFields';
 import { AccessItemsCheckboxList } from './lifecycle/AccessItemsCheckboxList';
 import { TrainingFields } from './lifecycle/TrainingFields';
+import { TrainingUserSelect } from './lifecycle/TrainingUserSelect';
+import { notificationService } from '@/services/notificationService';
+import { supabase } from '@/lib/supabase';
 
 const LifecycleRequestForm: React.FC = () => {
   const { user } = useAuth();
@@ -39,6 +42,7 @@ const LifecycleRequestForm: React.FC = () => {
       action: 'onboarding',
       collaboratorName: '',
       department: '',
+      targetUserIds: [],
       relatedOnboardingId: '',
       accessItems: [],
       trainingMode: undefined,
@@ -155,6 +159,62 @@ const LifecycleRequestForm: React.FC = () => {
         training: 'Treinamento',
       };
 
+      if (normalizedAction === 'training') {
+        if (!data.targetUserIds || data.targetUserIds.length === 0) return;
+
+        const { data: targetUsers, error: usersError } = await supabase
+          .from('usuarios')
+          .select('id, name, email, department')
+          .in('id', data.targetUserIds);
+        
+        if (usersError || !targetUsers) throw new Error('Falha ao buscar dados dos colaboradores selecionados.');
+
+        let createdCount = 0;
+        for (const targetUser of targetUsers) {
+          const requestData: Omit<ITRequest, 'id' | 'createdat' | 'deadlineat'> = {
+            requesterid: targetUser.id,
+            requestername: targetUser.name,
+            requesteremail: targetUser.email,
+            title: `Treinamento - ${targetUser.name}`,
+            description: createCicloVidaDescription({
+              ...data,
+              collaboratorName: targetUser.name,
+              department: targetUser.department || 'Sem setor',
+            }),
+            type: 'employee_lifecycle' as const,
+            priority: 'medium' as const,
+            status: 'new' as const,
+            comments: [],
+            metadata: { 
+              form_data: {
+                ...data,
+                targetUserId: targetUser.id,
+                collaboratorName: targetUser.name,
+                department: targetUser.department || 'Sem setor',
+              } 
+            },
+          };
+
+          const createdRequest = await createRequest(requestData);
+          createdCount++;
+
+          await notificationService.send({
+            para: targetUser.id,
+            mensagem: `Você tem um treinamento pendente: Treinamento - ${targetUser.name}`,
+            tipo: 'request_created',
+            request_id: createdRequest.id
+          });
+        }
+
+        toast({
+          title: 'Solicitações enviadas',
+          description: `${createdCount} solicitações de Treinamento criadas com sucesso!`,
+        });
+        setIsSubmitting(false);
+        navigate('/dashboard');
+        return;
+      }
+
       const lifecycleComments = [];
       if (normalizedAction === 'offboarding' && data.relatedOnboardingId) {
         lifecycleComments.push(buildLifecycleLinkComment('onboarding', data.relatedOnboardingId));
@@ -266,9 +326,25 @@ const LifecycleRequestForm: React.FC = () => {
               />
             )}
 
-            {watchAction !== 'offboarding' && <CollaboratorBasicFields form={form} />}
+            {watchAction === 'onboarding' && <CollaboratorBasicFields form={form} />}
 
-
+            {watchAction === 'training' && (
+              <FormField
+                control={form.control}
+                name="targetUserIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <TrainingUserSelect
+                        selectedUserIds={field.value || []}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {watchAction === 'onboarding' && <AccessItemsCheckboxList form={form} />}
 

@@ -31,15 +31,20 @@ export function OffboardingLinkSelect({
               </SelectTrigger>
               <SelectContent>
                 {availableOnboardings.length === 0 ? (
-                  <SelectItem value="none" disabled>
-                    Nenhum colaborador elegível para devolução encontrado.
+                  <SelectItem value="avulso">
+                    Nenhum elegível encontrado. Realizar Offboarding Avulso
                   </SelectItem>
                 ) : (
-                  availableOnboardings.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {getOnboardingLabel(item)}
+                  <>
+                    <SelectItem value="avulso" className="font-semibold text-primary">
+                      + Colaborador Antigo (Offboarding Avulso)
                     </SelectItem>
-                  ))
+                    {availableOnboardings.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {getOnboardingLabel(item)}
+                      </SelectItem>
+                    ))}
+                  </>
                 )}
               </SelectContent>
             </Select>

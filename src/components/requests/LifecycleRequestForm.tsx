@@ -117,13 +117,18 @@ const LifecycleRequestForm: React.FC = () => {
 
   useEffect(() => {
     if (watchAction === 'offboarding' && watchRelatedId) {
-      const selected = availableOnboardings.find(onb => onb.id === watchRelatedId);
-      if (selected) {
-        const name = selected.metadata?.form_data?.collaboratorName || selected.title?.split(' - ')[1] || selected.requestername || '';
-        const depto = selected.metadata?.form_data?.department || selected.description?.match(/Setor:\s*(.+?)(?:\n|$)/)?.[1]?.trim() || '';
-        
-        form.setValue('collaboratorName', name);
-        form.setValue('department', depto);
+      if (watchRelatedId === 'avulso') {
+        form.setValue('collaboratorName', '');
+        form.setValue('department', '');
+      } else {
+        const selected = availableOnboardings.find(onb => onb.id === watchRelatedId);
+        if (selected) {
+          const name = selected.metadata?.form_data?.collaboratorName || selected.title?.split(' - ')[1] || selected.requestername || '';
+          const depto = selected.metadata?.form_data?.department || selected.description?.match(/Setor:\s*(.+?)(?:\n|$)/)?.[1]?.trim() || '';
+          
+          form.setValue('collaboratorName', name);
+          form.setValue('department', depto);
+        }
       }
     }
   }, [watchAction, watchRelatedId, availableOnboardings, form]);
@@ -142,7 +147,6 @@ const LifecycleRequestForm: React.FC = () => {
       const normalizedAction = data.action;
       if (
         normalizedAction === 'offboarding' &&
-        availableOnboardings.length > 0 &&
         !data.relatedOnboardingId
       ) {
         toast({
@@ -216,9 +220,11 @@ const LifecycleRequestForm: React.FC = () => {
       }
 
       const lifecycleComments = [];
-      if (normalizedAction === 'offboarding' && data.relatedOnboardingId) {
+      if (normalizedAction === 'offboarding' && data.relatedOnboardingId && data.relatedOnboardingId !== 'avulso') {
         lifecycleComments.push(buildLifecycleLinkComment('onboarding', data.relatedOnboardingId));
       }
+
+      const effectiveRelatedId = data.relatedOnboardingId === 'avulso' ? '' : data.relatedOnboardingId;
 
       const requestData: Omit<ITRequest, 'id' | 'createdat' | 'deadlineat'> = {
         requesterid: user?.id || '',
@@ -227,22 +233,29 @@ const LifecycleRequestForm: React.FC = () => {
         title: `${actionLabels[data.action]} - ${data.collaboratorName}`,
         description: createCicloVidaDescription(data),
         type: 'employee_lifecycle' as const,
-        priority: 'medium' as const,
+        priority: 'high' as const,
         status: 'new' as const,
         comments: lifecycleComments,
-        metadata: { form_data: data },
+        metadata: { 
+          form_data: {
+            ...data,
+            relatedOnboardingId: effectiveRelatedId,
+          } 
+        },
       };
 
       const createdRequest = await createRequest(requestData);
 
-      if (normalizedAction === 'offboarding' && data.relatedOnboardingId) {
+      if (normalizedAction === 'offboarding' && data.relatedOnboardingId && data.relatedOnboardingId !== 'avulso') {
         try {
           const related = availableOnboardings.find((item) => item.id === data.relatedOnboardingId);
-          const existingComments = Array.isArray(related?.comments) ? related.comments : [];
-          const reverseComment = buildLifecycleLinkComment('offboarding', createdRequest.id);
-          await updateRequest(data.relatedOnboardingId, {
-            comments: [...existingComments, reverseComment],
-          });
+          if (related) {
+            const existingComments = Array.isArray(related.comments) ? related.comments : [];
+            const reverseComment = buildLifecycleLinkComment('offboarding', createdRequest.id);
+            await updateRequest(data.relatedOnboardingId, {
+              comments: [...existingComments, reverseComment],
+            });
+          }
         } catch (relationError) {
           if (!import.meta.env.PROD) console.error('Falha ao registrar vínculo no onboarding original:', relationError);
           toast({

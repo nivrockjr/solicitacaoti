@@ -110,7 +110,15 @@ export const listAdminIds = async (): Promise<string[]> => {
 
 /**
  * Busca um admin específico por nome. Usado pela atribuição automática
- * baseada em `adminAssignments` (ex.: solicitações de estoque vão ao Nivaldo).
+ * baseada em `adminAssignments` (ex.: solicitações de estoque vão ao admin
+ * declarado em `ADMIN_ASSIGNMENTS` para o tipo `ajuste_estoque`).
+ *
+ * ATENÇÃO: o casamento é por igualdade EXATA de `usuarios.name` + `role = 'admin'`.
+ * Renomear o usuário na tela de Usuários desliga a atribuição automática em
+ * silêncio — o chamado passa a nascer sem responsável e com status `new`, sem
+ * log algum: esta função devolve `null` sem lançar, e ainda descarta o `error`
+ * do Supabase na desestruturação, de modo que o `catch` de `createRequest`
+ * nunca chega a ser acionado.
  */
 export const findAdminByName = async (name: string): Promise<{ id: string; name: string } | null> => {
   const { data } = await supabase

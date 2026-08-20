@@ -20,6 +20,34 @@ Regras para agentes de IA: [`AGENTS.md`](./AGENTS.md).
 
 ---
 
+## 🔧 Dívida de segurança levantada em 19/08/2026
+
+**Status:** Em análise — achados de uma auditoria de rotas. Nada foi corrigido; aguarda decisão do Operador.
+
+Contexto: ao mover `/requests` e `/reports` para dentro do `RequireAdmin`, a auditoria varreu as demais rotas e encontrou três pontas soltas. Estão listadas em ordem de urgência.
+
+### 1. `select('*')` em `usuarios` devolve a coluna `senha_hash` — ALTA
+
+`components/requests/lifecycle/TrainingUserSelect.tsx` lê a tabela com `select('*')`, e a verificação contra o banco confirmou que o retorno inclui `senha_hash` (bcrypt, 60 caracteres). A rota que leva a esse componente, `/ciclo-vida`, está fora do `RequireAdmin` e não aparece no `Sidebar` — é alcançável apenas digitando a URL. Como a leitura de `usuarios` é permitida à chave anon, que vai no bundle publicado, o acesso não depende de sessão.
+
+Não é falha de arquitetura: o outro ponto que lê a mesma tabela, `LifecycleRequestForm`, já pede `select('id, name, email, department')`. Correção prevista: colunas explícitas + mover o acesso para `userService` (critério 8 do `AGENTS.md`, hoje há `supabase.from` direto em componente). Avaliar junto se `/ciclo-vida` deve entrar no `RequireAdmin`.
+
+Efeito colateral documental: enquanto isso não for corrigido, a afirmação do `README.md` de que "o frontend nunca lê senha" está factualmente errada.
+
+### 2. Políticas abertas em `solicitacoes` — MÉDIA
+
+Decisão consciente, já registrada em `CONTRIBUTING.md`. Fica aqui não como bug, mas porque o alcance merece ser redimensionado: a tabela inteira é legível pela chave anon, e as descrições de ajuste de estoque carregam nome do solicitante, setor, custo em R$, número de lote e peso por produto. Qualquer mudança aqui é alteração de schema e exige decisão explícita.
+
+### 3. Premissa desatualizada no `CONTRIBUTING.md` — BAIXA
+
+A justificativa escrita para manter as policies abertas é "sem PII sensível". O conteúdo descrito no item 2 já não se encaixa nessa descrição. A frase não foi corrigida de propósito: ela sustenta uma decisão do Operador e deve ser revista junto com o item 2, não antes — caso contrário o documento passa a registrar um risco sem registrar a decisão que o acompanha.
+
+### Nota de escopo sobre a proteção de rotas
+
+O `RequireAdmin` decide a partir do papel guardado no `localStorage`, que o próprio usuário pode editar, e não interfere no acesso direto à API. Ele reduz exposição acidental por navegação — que é o vetor realista num sistema interno de 26 pessoas — e nada além disso. Os itens acima é que tratam do dado.
+
+---
+
 ## 🔍 Módulo: Ativos de TI (IT Asset Management)
 
 **Status:** Em análise — ideia a ser explorada colaborativamente com o Operador antes de qualquer decisão técnica.

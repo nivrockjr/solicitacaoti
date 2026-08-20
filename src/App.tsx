@@ -80,14 +80,14 @@ const App = () => {
                     <Route path="request/new" element={<NewRequestPage />} />
                     <Route path="request/:id" element={<RequestDetailPage />} />
                     <Route path="requests/my" element={<MyRequestsPage />} />
-                    <Route path="requests" element={<AllRequestsPage />} />
-                    <Route path="reports" element={<ReportsPage />} />
                     <Route path="stock-adjustment" element={<StockAdjustmentPage />} />
                     <Route path="ciclo-vida" element={<CicloVidaPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
                     {/* Rotas restritas para Administradores */}
                     <Route element={<RequireAdmin />}>
+                      <Route path="requests" element={<AllRequestsPage />} />
+                      <Route path="reports" element={<ReportsPage />} />
                       <Route path="users" element={<UsersPage />} />
-                      <Route path="settings" element={<SettingsPage />} />
                     </Route>
                   </Route>
                   {/* 404 Route */}

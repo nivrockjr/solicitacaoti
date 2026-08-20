@@ -19,7 +19,7 @@ interface Filters {
   priorities: RequestPriority[];
 }
 
-const TAB_VALUES = ['novas', 'high_priority', 'sistema_eugenio', 'in_progress', 'resolved', 'rejected', 'all'] as const;
+const TAB_VALUES = ['novas', 'high_priority', 'sistema_eugenio', 'ajuste_estoque', 'in_progress', 'resolved', 'rejected', 'all'] as const;
 type TabValue = typeof TAB_VALUES[number];
 
 const AllRequestsPage: React.FC = () => {
@@ -36,7 +36,7 @@ const AllRequestsPage: React.FC = () => {
   const currentStatus = (tab === 'novas' ? 'new' : 
                         tab === 'in_progress' ? ['in_progress', 'assigned', 'reopened'] : 
                         tab === 'resolved' ? 'resolved' : 
-                        (tab === 'high_priority' || tab === 'sistema_eugenio') ? ['new', 'assigned', 'in_progress', 'reopened'] : undefined) as RequestStatus | RequestStatus[] | undefined;
+                        (tab === 'high_priority' || tab === 'sistema_eugenio' || tab === 'ajuste_estoque') ? ['new', 'assigned', 'in_progress', 'reopened'] : undefined) as RequestStatus | RequestStatus[] | undefined;
                         
   const currentPriority = tab === 'high_priority'
     ? (filters.priorities.length > 0 ? (filters.priorities.includes('high') ? ['high'] : ['__empty__']) : ['high'])
@@ -44,6 +44,13 @@ const AllRequestsPage: React.FC = () => {
     
   const currentApprovalStatus = tab === 'rejected' ? 'rejected' : tab === 'all' ? undefined : 'not_rejected';
   const currentAssignedTo = tab === 'sistema_eugenio' ? SISTEMA_EUGENIO_USER_ID : undefined;
+
+  // A aba de Ajuste de Estoque fixa o tipo. Se o usuário marcar tipos no popover de
+  // Filtros, aplica-se a interseção — mesmo padrão já usado em `currentPriority`
+  // para a aba de Alta Prioridade.
+  const currentType = tab === 'ajuste_estoque'
+    ? (filters.types.length > 0 ? (filters.types.includes('ajuste_estoque') ? ['ajuste_estoque'] : ['__empty__']) : ['ajuste_estoque'])
+    : (filters.types.length > 0 ? filters.types : undefined);
 
   // Busca os dados paginados e filtrados pelo banco
   const { requests: paginatedRequests, loading, totalCount, error: fetchError, clearError } = useRequestsData({
@@ -55,7 +62,7 @@ const AllRequestsPage: React.FC = () => {
     filters: {
       fullData: false,
       search: searchQuery || undefined,
-      type: filters.types.length > 0 ? filters.types : undefined,
+      type: currentType,
       priority: currentPriority,
       approvalStatus: currentApprovalStatus,
       assignedTo: currentAssignedTo,
@@ -254,7 +261,7 @@ const AllRequestsPage: React.FC = () => {
         }}
         defaultValue="novas"
       >
-        <TabsList>
+        <TabsList className="flex-wrap h-auto justify-start gap-y-1">
           <TabsTrigger value="novas">
             Novas ({calculatedCounts.novas})
           </TabsTrigger>
@@ -263,6 +270,9 @@ const AllRequestsPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="sistema_eugenio">
             Sistema Eugênio ({calculatedCounts.sistema_eugenio})
+          </TabsTrigger>
+          <TabsTrigger value="ajuste_estoque">
+            Ajuste de Estoque ({calculatedCounts.ajuste_estoque})
           </TabsTrigger>
           <TabsTrigger value="in_progress">
             Em Andamento ({calculatedCounts.in_progress})
@@ -278,7 +288,7 @@ const AllRequestsPage: React.FC = () => {
           </TabsTrigger>
         </TabsList>
         
-        {['novas', 'high_priority', 'sistema_eugenio', 'in_progress', 'resolved', 'rejected', 'all'].map((status) => (
+        {TAB_VALUES.map((status) => (
           <TabsContent key={status} value={status} className="mt-4">
             {loading ? (
               <div className="flex items-center justify-center h-40">

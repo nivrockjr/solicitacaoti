@@ -144,6 +144,7 @@ export const getRequestsCounters = async (userEmail?: string) => {
     in_progress: number;
     high_priority: number;
     sistema_eugenio: number;
+    ajuste_estoque: number;
     resolved: number;
     rejected: number;
     active: number;

@@ -45,13 +45,6 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
   const resolvedAtLabel = tryFormatDateTime(request.resolvedat, 'dd/MM/yyyy HH:mm');
   const deadlineAtLabel = tryFormatDateTime(request.deadlineat, 'dd/MM/yyyy HH:mm');
 
-  // `productName` pode ser anexado ao request em fluxos de Ajuste de Estoque;
-  // não faz parte do schema canônico de `solicitacoes`, por isso a interseção local.
-  const stockProductName =
-    request.type === 'ajuste_estoque'
-      ? (request as ITRequest & { productName?: string }).productName
-      : undefined;
-
   return (
     <Card className="overflow-hidden">
       <div
@@ -61,11 +54,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-medium leading-tight line-clamp-1">
-              {stockProductName
-                ? `Ajuste de Estoque: ${stockProductName}`
-                : request.type === 'employee_lifecycle' && request.title
-                  ? request.title
-                  : request.description?.substring(0, 50)}
+              {request.title || request.description?.substring(0, 50)}
             </h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-2">
               Solicitação #{request.id}

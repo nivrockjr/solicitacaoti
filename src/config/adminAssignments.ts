@@ -10,7 +10,7 @@ export interface AdminAssignment {
 // Configuração das atribuições automáticas
 export const ADMIN_ASSIGNMENTS: AdminAssignment[] = [
   {
-    adminName: 'Nivaldo',
+    adminName: 'Mário Ítalo',
     requestTypes: ['ajuste_estoque'],
     description: 'Responsável por todas as solicitações de ajuste de estoque'
   }

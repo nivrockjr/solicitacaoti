@@ -174,7 +174,7 @@ const RequestDetailPage: React.FC = () => {
               <CardHeader className="flex flex-col md:flex-row justify-between md:items-start gap-4">
                 <div>
                   <CardTitle className="text-xl mb-1">
-                    {request.type === 'employee_lifecycle' ? request.title : (request.description || '').substring(0, 50)}
+                    {request.title || (request.description || '').substring(0, 50)}
                   </CardTitle>
                   <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">

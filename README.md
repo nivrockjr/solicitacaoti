@@ -169,6 +169,27 @@ Esta é uma **decisão consciente**, alinhada ao princípio de zero-custo do pro
 
 > Para que um funcionário receba notificações, ele precisa enviar uma mensagem para o número do bot pelo menos uma vez a cada 24 horas.
 
+#### Estado verificado em 20/08/2026 — está no ar, mas não entrega
+
+Diagnóstico feito com o log ao vivo do Worker (`npx wrangler tail`), criando um chamado e alterando seu status. Toda a cadeia respondeu: o webhook do Supabase disparou (INSERT e UPDATE), o Worker montou a mensagem e a Meta **aceitou** os dois envios, devolvendo `wamid`. A entrega, porém, falhou nas duas tentativas com o mesmo erro:
+
+```
+131047 — Re-engagement message
+"Message failed to send because more than 24 hours have passed
+ since the customer last replied to this number."
+```
+
+Ou seja: a integração está **publicada e funcional**, o `WHATSAPP_TOKEN` é válido e os 7 secrets estão configurados. O que impede a entrega é exclusivamente a janela de 24h estar fechada — exatamente o comportamento descrito acima, agora confirmado em produção pelo código de erro oficial da Meta.
+
+Consequência prática, e o dado mais importante deste bloco: em **549 chamados não existe um único comentário gravado pelo robô**. O ciclo de validação (botões "Verificado ✅" / "Não Resolvido ❌") nunca chegou a rodar de verdade. Quem lê o diagrama acima deve entender que ele descreve o desenho, não um fluxo em uso.
+
+> **Prazo:** a Meta anunciou que **a partir de 01/10/2026 as mensagens de serviço passam a ser cobradas** — justamente as mensagens sem template dentro da janela de 24h, que sustentam a decisão de custo zero descrita acima. As tarifas seriam publicadas até 01/09/2026. Reavaliar esta seção nessa data.
+> Fonte: `developers.facebook.com/documentation/business-messaging/whatsapp/pricing/non-template-messages` (consultada em 20/08/2026).
+
+#### Terceiro caminho: o compartilhamento manual do Ajuste de Estoque
+
+Além dos dois fluxos do diagrama, existe um caminho que **não passa pelo Worker nem pela API da Meta**: o botão "Salvar e enviar para o WhatsApp" do formulário de Ajuste de Estoque (`src/components/stock/StockAdjustmentForm.tsx`). Ele monta o texto do ajuste e abre o WhatsApp do próprio usuário por um link `wa.me`, **sem destinatário definido** — quem escolhe para quem enviar é a pessoa. Não tem custo, não tem entrega garantida e não gera registro no sistema.
+
 ### Cofre de Senhas (Cloudflare Secrets)
 Nenhuma chave sensível é salva no código. Para que o Worker funcione (ou para migrá-lo de ambiente), as seguintes variáveis precisam ser injetadas via painel da Cloudflare ou terminal (`npx wrangler secret put <NOME>`):
 
@@ -177,6 +198,10 @@ Nenhuma chave sensível é salva no código. Para que o Worker funcione (ou para
 - `WHATSAPP_VERIFY_TOKEN`: Chave arbitrária usada na verificação do ciclo de vida inicial do webhook.
 - `SUPABASE_SERVICE_ROLE_KEY`: Service Key do Supabase (bypass de RLS) para o bot poder alterar dados e incluir comentários.
 - `PQVIRK_API_KEY`: Senha compartilhada que autentica o Worker quando ele chama o WampServer PHP (`api_whatsapp.php`).
+- `SUPABASE_URL` e `SUPABASE_ANON_KEY`: endereço do projeto e chave pública, também guardados como secrets.
+
+> `WHATSAPP_PHONE_ID` **não** é secret: está em texto puro no `wrangler.toml`, por ser apenas o identificador do número na Meta.
+> Endereço público do Worker, número de telefone do bot e id da conta Cloudflare ficam em `whatsapp-worker/OPERACAO.local.md`, fora do versionamento — a rota `/supabase-webhook` não exige autenticação, então divulgar sua URL equivale a divulgar uma credencial.
 
 ---
 

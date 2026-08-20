@@ -138,6 +138,41 @@ cd whatsapp-worker
 npx wrangler deploy
 ```
 
+### Operação no dia a dia
+
+Rodar sempre de dentro de `whatsapp-worker/`:
+
+| Para | Comando |
+|---|---|
+| Confirmar login e conta | `npx wrangler whoami` |
+| Ver o que está publicado | `npx wrangler deployments list` |
+| **Log ao vivo** (resolve qualquer dúvida) | `npx wrangler tail whatsapp-bot-ti` |
+| Nomes dos secrets (nunca os valores) | `npx wrangler secret list` |
+| Validar sem publicar | `npx wrangler deploy --dry-run` |
+| Voltar versão | `npx wrangler rollback` |
+
+**O login OAuth expira sem avisar.** Venceu em 05/06/2026 e ninguém percebeu — o Worker continuou no ar, mas o terminal perdeu o acesso, o que dá a falsa impressão de projeto abandonado. Se `whoami` reclamar, `npx wrangler login`. Para uso não-interativo, use um API Token em `CLOUDFLARE_API_TOKEN`.
+
+**Não há `package.json` nesta pasta**, então cada `npx wrangler` busca a versão mais recente do registro — o que já falhou na prática. Se atrapalhar, fixe: `npx wrangler@4.124.0 <comando>`.
+
+Dados de operação que não podem ser versionados (endereço público do Worker, número do bot, id da conta) estão em `whatsapp-worker/OPERACAO.local.md`, coberto pela regra `whatsapp-worker/*.md` do `.gitignore`.
+
+### Como desligar
+
+Em ordem de alcance:
+
+1. **Uma pessoa** — apagar o WhatsApp dela na tela de Usuários. O Worker checa e sai limpo. Instantâneo, sem deploy.
+2. **Todo o fluxo de TI** — desativar o webhook no painel do Supabase (*Database → Webhooks*). Instantâneo, sem deploy, e **não afeta o fluxo de vendedores**, que entra por outra rota. É o disjuntor geral.
+3. **Emergência** — `npx wrangler rollback` reverte o Worker inteiro, vendedores incluídos.
+
+**Nunca** remova a inscrição do webhook no painel da Meta: derruba junto o sistema de vendedores.
+
+### Vocabulário duplicado (atenção ao mexer)
+
+O Worker roda fora do bundle React, então mantém **cópia própria** das traduções de status, tipo e prioridade (`src/index.js`, mapas `statusMap`/`typeMap`/`priorityMap`). Elas já divergem do app: `resolved` aparece como "Resolvida" na tela (`src/lib/utils.ts`) e como "Concluída ✅" no WhatsApp, e o Worker tem uma prioridade `urgent` que não existe em `RequestType`. Ao mexer em `src/lib/utils.ts`, verifique as duas.
+
+A formatação das mensagens também depende do **texto literal** gravado pelos formulários — o Worker procura por "Setor:", "Lotes:", "Ação:" e outros para aplicar negrito. Renomear um rótulo no formulário quebra a formatação sem gerar erro.
+
 ### Dependência externa
 
 O fluxo TI depende de um **webhook configurado no painel do Supabase** (Database → Webhooks) que dispara um `POST` para a rota `/supabase-webhook` do Worker a cada `INSERT` ou `UPDATE` na tabela `solicitacoes`. Sem esse webhook, as notificações WhatsApp não são enviadas.

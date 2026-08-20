@@ -6,6 +6,16 @@ Formato inspirado em [Keep a Changelog](https://keepachangelog.com/), adaptado p
 
 ---
 
+## 2026-08-20 — Fecha a escrita anônima na tabela de usuários
+
+- **`REVOKE INSERT, UPDATE, DELETE ON usuarios FROM anon, authenticated`** — Medição com a chave pública (a mesma embutida no bundle servido pelo Apache) mostrou que ela podia **alterar e apagar** qualquer linha de `usuarios`: uma requisição bastava para se promover a `admin` ou remover as 27 contas. Só o INSERT estava bloqueado. Como a autenticação é própria, `auth.uid()` é sempre nulo e toda chamada chega como `anon` — nenhuma policy distingue um admin de um estranho, então a proteção aplicável é privilégio de tabela, não RLS por usuário. A revogação **não exigiu mudança de código nem deploy**: as quatro operações da tela de Usuários (criar, editar, excluir, resetar senha) já passavam por RPC `SECURITY DEFINER`, verificado ponto a ponto em `userService`. Confirmado após aplicar: leitura em HTTP 200; `PATCH` e `DELETE` devolvem `42501 permission denied for table usuarios`. Reversão em uma linha, registrada em `CONTRIBUTING.md`.
+- **Documentação corrigida — duas afirmações eram falsas** — `CONTRIBUTING.md` dizia "RLS apertado em `usuarios` e `notificacoes` (anon não pode INSERT/UPDATE/DELETE direto)" e `README.md` dizia que "o frontend nunca lê senha". Nenhuma das duas se sustentava: só o INSERT em `usuarios` estava bloqueado, e cinco pontos do código usam `select('*')` nessa tabela — o `*` traz `senha_hash` junto, inclusive para quem chame a API direto. Ambos os documentos passaram a descrever o estado medido, com tabela de permissões por tabela e por operação. Documentação errada é pior que ausente: faz a auditoria seguinte pular a verificação.
+- **`ROADMAP.md` atualizado** — dois itens marcados como resolvidos, um novo registrado (a função `update_user_password` não verifica quem a chama, e a correção óbvia daria atrito, não segurança, porque o `p_admin_id` viria do `localStorage`), e uma nota de calibragem: as correções aqui devem ser proporcionais a um sistema interno de 27 pessoas em plano gratuito, não a uma infraestrutura crítica.
+
+**Pendente e conhecido:** `usuarios.senha_hash` segue legível pela chave pública — corrigir exige privilégio de coluna no banco **mais** trocar os `select('*')` por colunas explícitas, nessa ordem (código antes do SQL, senão a tela de Usuários e a atribuição automática param em silêncio). `solicitacoes`, `notificacoes` e `user_settings` seguem abertas para escrita por necessidade do app, sem RPC equivalente. O plano gratuito não tem backup automático nem PITR: exportar as quatro tabelas em CSV periodicamente é a medida de maior retorno pelo menor esforço, e cobre tanto engano humano quanto ação de terceiros.
+
+---
+
 ## 2026-08-19 — Ajuste de Estoque, proteção de rotas e correção de títulos
 
 ### Proteção de rotas administrativas

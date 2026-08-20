@@ -110,8 +110,10 @@ Calculados em `requestService.calculateDeadline`. Tipos fora desta lista lançam
 
 ## Segurança
 
-- Senhas armazenadas como **bcrypt** em `usuarios.senha_hash`. Login passa pela função SQL `validate_login` (`SECURITY DEFINER`); o frontend nunca lê senha.
-- Tabelas `usuarios` e `notificacoes` com RLS apertado: anônimo não modifica dados; operações privilegiadas passam por funções `admin_create_user`, `admin_update_user`, `admin_delete_user`, `update_user_password`, `notify_list_mine`, `notify_mark_read`, `notify_mark_all_read`.
+- Senhas armazenadas como **bcrypt** em `usuarios.senha_hash`. Login passa pela função SQL `validate_login` (`SECURITY DEFINER`).
+  > Ressalva verificada em 20/08/2026: a afirmação de que "o frontend nunca lê senha" **não é exata**. Cinco pontos do código usam `select('*')` em `usuarios`, e o `*` traz a coluna `senha_hash` junto — inclusive para quem chamar a API direto com a chave pública. Corrigir exige privilégio de coluna no banco mais colunas explícitas no frontend. Registrado no `ROADMAP.md`.
+- Tabela `usuarios` **fechada para escrita** pela chave pública (`REVOKE INSERT, UPDATE, DELETE`, aplicado em 20/08/2026). Criar, editar, excluir e resetar senha passam por funções `SECURITY DEFINER`: `admin_create_user`, `admin_update_user`, `admin_delete_user`, `update_user_password`. Notificações idem, via `notify_list_mine`, `notify_mark_read`, `notify_mark_all_read`.
+- Leitura permanece aberta em todas as tabelas, e `solicitacoes`, `notificacoes` e `user_settings` continuam abertas para escrita — o app depende disso e não há RPC equivalente. Ver a tabela de permissões reais em `CONTRIBUTING.md`.
 - Storage com `file_size_limit: 10 MB` e whitelist de MIME types (PDF, imagens, Office, ZIP).
 - TypeScript em strict mode, ESLint sem warnings, build limpo.
 

@@ -111,7 +111,29 @@ Operações privilegiadas passam por funções SQL `SECURITY DEFINER`:
 - `gerar_id_solicitacao(date)` + trigger `before_insert_solicitacao` — geram id no formato `DDMMYYNNNNN`.
 - `criar_manutencao_preventiva_em_lote()` — disparada manualmente em 01/03 e 01/09.
 
-RLS apertado em `usuarios` e `notificacoes` (anon não pode INSERT/UPDATE/DELETE direto). `solicitacoes` mantém policies abertas — mono-operador, escala baixa, sem PII sensível.
+### Permissões da API (estado real, medido em 20/08/2026)
+
+A autenticação é própria (bcrypt + `validate_login`), então `auth.uid()` é sempre nulo: toda requisição chega ao PostgREST como `anon`, venha de um admin ou de um estranho. Nenhuma policy consegue distinguir um do outro — a proteção que funciona aqui é privilégio de tabela, não RLS por usuário.
+
+| Tabela | ler | inserir | alterar | apagar |
+|---|---|---|---|---|
+| `usuarios` | sim | **não** | **não** | **não** |
+| `notificacoes` | sim | sim | sim | sim |
+| `solicitacoes` | sim | sim | sim | sim |
+| `user_settings` | sim | sim | sim | sim |
+
+Escrita em `usuarios` foi revogada do papel `anon` em 20/08/2026 — as quatro operações da tela de Usuários já passavam por RPC `SECURITY DEFINER`, então a revogação não exigiu mudança de código. Reverter, se preciso:
+
+```sql
+GRANT INSERT, UPDATE, DELETE ON public.usuarios TO anon, authenticated;
+NOTIFY pgrst, 'reload schema';
+```
+
+As demais tabelas seguem abertas por necessidade: o app escreve direto em `solicitacoes` (`requestService`), em `notificacoes` (`notificationService`) e em `user_settings` (`userSettingsService`), e não há RPC equivalente. Fechar qualquer uma delas hoje derruba a operação — em particular, revogar UPDATE de `solicitacoes` impede mudar status, comentar, resolver e assinar termo de aceite.
+
+**Pendente:** `usuarios.senha_hash` continua legível pela chave pública. Corrigir exige privilégio de coluna no banco **e** trocar os `select('*')` do frontend por colunas explícitas — nessa ordem, o código antes do SQL, senão a tela de Usuários e a atribuição automática param.
+
+**Não proponha** policies com `auth.uid()`, `auth.jwt()` ou `auth.role()`: nesta arquitetura elas bloqueiam tudo, inclusive o próprio sistema.
 
 ---
 
